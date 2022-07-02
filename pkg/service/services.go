@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 
-	"github.com/sourcenetwork/orbis-go/pkg/core"
+	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
 
 // SecretRingService is a service that manages
@@ -21,17 +21,17 @@ type SecretRingService interface {
 
 type SecretManagementService interface {
 	//
-	Create(context.Context) core.Secret
-	Store(context.Context, core.SID, core.Secret, core.Proof) error
-	Get(context.Context, core.SID) (core.Secret, error)
-	GetShare(context.Context, core.SID) (core.SecretShare, error)
-	GetShares(context.Context, core.SID) ([]core.SecretShare, error)
-	Delete(context.Context, core.SID) error
+	Create(context.Context) types.Secret
+	Store(context.Context, types.SID, types.Secret, types.Proof) error
+	Get(context.Context, types.SID) (types.Secret, error)
+	GetShare(context.Context, types.SID) (types.SecretShare, error)
+	GetShares(context.Context, types.SID) ([]types.SecretShare, error)
+	Delete(context.Context, types.SID) error
 }
 
 // DKGService
 type DKGService interface {
-	PublicKey() (core.PublicKey, error)
-	Refresh(context.Context) (core.RefreshState, error)
+	PublicKey() (types.PublicKey, error)
+	Refresh(context.Context) (types.RefreshState, error)
 	Threshold() int
 }
