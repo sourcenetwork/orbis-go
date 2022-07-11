@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 
+	"github.com/sourcenetwork/orbis-go/pkg/crypto"
+	"github.com/sourcenetwork/orbis-go/pkg/proof"
 	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
 
@@ -10,7 +12,7 @@ import (
 // user created 'secrets'.
 type SecretRingService interface {
 	// Secret Management Operations
-	SecretManagementService
+	SecretsManagerService
 
 	// DKG Operations
 	DKGService
@@ -19,10 +21,9 @@ type SecretRingService interface {
 	GetNodes()
 }
 
-type SecretManagementService interface {
-	//
-	Create(context.Context) types.Secret
-	Store(context.Context, types.SID, types.Secret, types.Proof) error
+type SecretsManagerService interface {
+	// Create(context.Context) types.Secret
+	Store(context.Context, types.SID, types.Secret, proof.VerifiableEncryption) error
 	Get(context.Context, types.SID) (types.Secret, error)
 	GetShare(context.Context, types.SID) (types.SecretShare, error)
 	GetShares(context.Context, types.SID) ([]types.SecretShare, error)
@@ -31,7 +32,7 @@ type SecretManagementService interface {
 
 // DKGService
 type DKGService interface {
-	PublicKey() (types.PublicKey, error)
-	Refresh(context.Context) (types.RefreshState, error)
+	PublicKey() (crypto.PublicKey, error)
+	Refresh(context.Context) (dkg.RefreshState, error)
 	Threshold() int
 }
