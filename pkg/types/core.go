@@ -1,12 +1,16 @@
 package types
 
-// Secret is a recovered secret
-type Secret interface {}
+// Secret is a managed secret
+type Secret interface {
+	Recover() ([]byte, error)
+	Marshal() ([]byte, error)
+}
 
-type SecretShare struct{}
+// SecretShare is a cryptograhic share of a
+// secret.
+type PrivSecretShare struct{}
 
-type SID struct{}
-
+//
 type Proof struct{}
 
-type PublicKey
+type PublicKey struct{}
