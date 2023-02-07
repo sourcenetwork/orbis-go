@@ -1,0 +1,15 @@
+syntax = "proto3";
+package orbis.transport.v1alpha;
+
+option go_package = "github.com/sourcenetwork/orbis-go/pkg/transport";
+
+message Message {
+    int64 timestamp = 1; // unix time
+    string id = 2; // message id
+    string type = 3; // message type
+    bytes payload = 4; // generic payload
+    bool gossip = 5; // gossip message over pubsub
+    string nodeId = 6; // author node id (peer.ID)
+    bytes nodePubKey = 7; // authoring node pubkey (32bytes)
+    bytes sign = 8; // signature of the message (including payload)
+}
