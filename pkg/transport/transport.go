@@ -6,8 +6,11 @@ import (
 	"github.com/libp2p/go-libp2p/core/protocol"
 	ma "github.com/multiformats/go-multiaddr"
 
+	transportv1alpha "github.com/sourcenetwork/orbis-go/gen/proto/orbis/transport/v1alpha"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 )
+
+type Message = transportv1alpha.Message
 
 type Handler func(Message) error
 

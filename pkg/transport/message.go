@@ -1,15 +1,7 @@
 package transport
 
-type Message struct {
-	Timestamp uint64
-	ID        string
-	Node      Node
-	Type      string
-	Payload   []byte
-	Signature []byte
-	Gossip    bool
-}
+import (
+	transportv1alpha "github.com/sourcenetwork/orbis-go/gen/proto/orbis/transport/v1alpha"
+)
 
-func (m Message) Marshal() ([]byte, error) {
-	panic("not implemented") // TODO: Implement
-}
+type Message = transportv1alpha.Message
