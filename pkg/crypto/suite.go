@@ -13,6 +13,10 @@ type PublicKey struct {
 	key kyber.Point
 }
 
+func (pub PublicKey) Marshal() ([]byte, error) {
+	return pub.key.MarshalBinary()
+}
+
 type PrivateKey struct {
 	key kyber.Scalar
 }

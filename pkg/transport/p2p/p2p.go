@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"context"
+	"io"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/network"
@@ -9,6 +10,7 @@ import (
 	libp2pHost "github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	ma "github.com/multiformats/go-multiaddr"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
 )
@@ -63,19 +65,18 @@ func (pt *p2pTransport) Host() transport.Host {
 
 func (pt *p2pTransport) NewMessage(id string, gossip bool, payload []byte, msgType string) (transport.Message, error) {
 	h := pt.host()
-	signBuf, err := h.Sign(payload)
+	pubkeyBytes, err := h.PublicKey().Marshal()
 	if err != nil {
 		return transport.Message{}, err // todo: wrap
 	}
-
 	return transport.Message{
-		Timestamp: uint64(time.Now().Unix()),
-		ID:        id,
-		Node:      pt.node(),
-		Type:      msgType,
-		Payload:   payload,
-		Signature: signBuf,
-		Gossip:    gossip,
+		Timestamp:  time.Now().Unix(),
+		Id:         id,
+		NodeId:     h.ID(),
+		NodePubKey: pubkeyBytes,
+		Type:       msgType,
+		Payload:    payload,
+		Gossip:     gossip,
 	}, nil
 }
 
@@ -92,14 +93,33 @@ func (pt *p2pTransport) node() node {
 }
 
 func (pt *p2pTransport) AddHandler(pid protocol.ID, handler transport.Handler) {
-	h := streamHandlerFrom(handler)
-
+	streamHandler := streamHandlerFrom(handler)
+	pt.h.SetStreamHandler(pid, streamHandler)
 }
 
 func (pt *p2pTransport) RemoveHandler(pid protocol.ID) {
-	panic("not implemented") // TODO: Implement
+	pt.h.RemoveStreamHandler(pid)
 }
 
 func streamHandlerFrom(handler transport.Handler) func(network.Stream) {
+	return func(stream network.Stream) {
+		// parse message via protobuf
+		// send to handler
+		data := &transport.Message{}
+		buf, err := io.ReadAll(stream)
+		if err != nil {
+			stream.Reset()
+			// todo: log err
+			return
+		}
+		stream.Close()
 
+		err = proto.Unmarshal(buf, data)
+		if err != nil {
+			// todo: log err
+			return
+		}
+
+		handler(*data)
+	}
 }
