@@ -4,22 +4,15 @@ import (
 	ic "github.com/libp2p/go-libp2p/core/crypto"
 	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/kyber/v3/group/edwards25519"
+	"go.dedis.ch/kyber/v3/share"
 )
 
 var suite = edwards25519.NewBlakeSHA256Ed25519()
 
 // PublicKey
-type PublicKey struct {
-	key kyber.Point
-}
+type PublicKey kyber.Point
 
-func (pub PublicKey) Marshal() ([]byte, error) {
-	return pub.key.MarshalBinary()
-}
-
-type PrivateKey struct {
-	key kyber.Scalar
-}
+type PrivateKey kyber.Scalar
 
 func PublicKeyFromLibP2P(pubKey ic.PubKey) (PublicKey, error) {
 	var pubkey PublicKey
@@ -28,11 +21,14 @@ func PublicKeyFromLibP2P(pubKey ic.PubKey) (PublicKey, error) {
 		return pubkey, err
 	}
 
-	pubkey.key = suite.Point()
-	err = pubkey.key.UnmarshalBinary(buf)
+	pubkey = suite.Point()
+	err = pubkey.UnmarshalBinary(buf)
 
 	return pubkey, err
 }
 
 // PriShare
-type PriShare struct{}
+type PriShare share.PriShare
+
+// PubPoly
+type PubPoly share.PubPoly
