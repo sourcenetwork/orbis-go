@@ -12,19 +12,28 @@ import (
 )
 
 type ReencryptReply struct {
-	Ui kyber.Point
+	Ui share.PubShare
 	Ei kyber.Scalar
 	Fi kyber.Scalar
 }
 
+// ElGamalDealer is a semi-trusted dealer implementations
+// of the elgamal re-encryption algorithm.
+//
+// In this instance, the semi-trusted dealer is responsible
+// only for aggregating the respective node shares
+// but is not able to recover the underlying secret. This
+// helps in computation complexity and communication complexity
+// between the server and the requesting client.
 type ElGamalDealer struct {
 	// Embedded PSS Service
 	pss pss.Service
 
-	u    kyber.Point      // Encrypted Secret
-	pk   crypto.PublicKey // Receiver Public Key
-	poly share.PubPoly    //
-	uis  []kyber.Point    // reencrypted secret shares
+	u              kyber.Point       // Encrypted Secret
+	pk             crypto.PublicKey  // Receiver Public Key
+	poly           share.PubPoly     //
+	uis            []*share.PubShare // reencrypted secret shares
+	verifiedShares *int64
 
 	finished bool
 }
@@ -44,27 +53,37 @@ func (e *ElGamalDealer) Reencrypt(pk crypto.PublicKey, u kyber.Point) (Reencrypt
 	return ReencryptReply{}, nil
 }
 
+// Process verifies an incoming Re-encryption reply from another node.
 func (e *ElGamalDealer) Process(from pss.Node, r ReencryptReply) error {
 	// verify
+	// ufi = (u*pk)^fi
 	ufi := e.pss.Suite().Point().Mul(r.Fi, e.pss.Suite().Point().Add(e.u, e.pk))
-	uiei := e.pss.Suite().Point().Mul(e.pss.Suite().Scalar().Neg(r.Ei), r.Ui)
+	// uiei = ui^-ei
+	uiei := e.pss.Suite().Point().Mul(e.pss.Suite().Scalar().Neg(r.Ei), r.Ui.V)
+	// uihat = uiei ^ ufi
 	uiHat := e.pss.Suite().Point().Add(ufi, uiei)
 
+	//
 	gfi := e.pss.Suite().Point().Mul(r.Fi, nil)
+	//
 	gxi := e.poly.Eval(from.Index()).V
+	//
 	hiei := e.pss.Suite().Point().Mul(e.pss.Suite().Scalar().Neg(r.Ei), gxi)
+	//
 	hiHat := e.pss.Suite().Point().Add(gfi, hiei)
 
 	// locally produce challenge hash (random oracle)
 	hash := sha256.New()
-	r.Ui.MarshalTo(hash)
+	r.Ui.V.MarshalTo(hash)
 	uiHat.MarshalTo(hash)
 	hiHat.MarshalTo(hash)
 	c := e.pss.Suite().Scalar().SetBytes(hash.Sum(nil))
 
-	// proof verify
+	// verify
+	// H(ui + uiHat + hiHat) == r.Ei
 	if c.Equal(r.Ei) {
-		e.uis[from.Index()] = r.Ui
+		e.uis[from.Index()] = &r.Ui
+		// atomic add
 		return nil
 	}
 
@@ -73,6 +92,10 @@ func (e *ElGamalDealer) Process(from pss.Node, r ReencryptReply) error {
 
 func (e *ElGamalDealer) Recover() (kyber.Point, error) {
 	// verify length
-	//
-	// share.Recover(suite,)
+	if len(e.uis) < e.pss.Threshold() {
+		// we're not ready to recover yet
+		return nil, nil
+	}
+
+	return share.RecoverCommit(e.pss.Suite(), e.uis, e.pss.Threshold(), e.pss.Num())
 }
