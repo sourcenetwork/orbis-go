@@ -28,7 +28,11 @@ func PublicKeyFromLibP2P(pubKey ic.PubKey) (PublicKey, error) {
 }
 
 // PriShare
-type PriShare share.PriShare
+type PriShare struct {
+	share.PriShare
+}
 
 // PubPoly
-type PubPoly share.PubPoly
+type PubPoly struct {
+	share.PubPoly
+}

@@ -6,15 +6,16 @@ import (
 
 	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/kyber/v3/share"
+	"go.dedis.ch/kyber/v3/suites"
 
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	"github.com/sourcenetwork/orbis-go/pkg/pss"
 )
 
 type ReencryptReply struct {
-	Ui share.PubShare
-	Ei kyber.Scalar
-	Fi kyber.Scalar
+	Ui share.PubShare // nodes re-encrypted secret share
+	Ei kyber.Scalar   // random oracle challenge
+	Fi kyber.Scalar   // nizk proof of re-encryption
 }
 
 // ElGamalDealer is a semi-trusted dealer implementations
@@ -31,7 +32,6 @@ type ElGamalDealer struct {
 
 	u              kyber.Point       // Encrypted Secret
 	pk             crypto.PublicKey  // Receiver Public Key
-	poly           share.PubPoly     //
 	uis            []*share.PubShare // reencrypted secret shares
 	verifiedShares *int64
 
@@ -42,15 +42,35 @@ type ElGamalDealer struct {
 // u: key share commit
 func (e *ElGamalDealer) Reencrypt(pk crypto.PublicKey, u kyber.Point) (ReencryptReply, error) {
 	// ui = (u ^ ski) * (pk ^ ski)
+	ski := e.pss.Share().V
+	uski := e.pss.Suite().Point().Mul(ski, u)
+	pkski := e.pss.Suite().Point().Mul(ski, pk)
+	ui := uski.Add(uski, pkski)
 	// --
 
 	// si = random scalar
+	si := e.suite().Scalar().Pick(e.suite().RandomStream())
 	// uiHat = (u * pk) ^ si
-	// hiHat = g^si
+	uiHat := e.suite().Point().Mul(si, e.suite().Point().Add(u, pk))
+	// hiHat = g^si (nil implies default base g)
+	hiHat := e.suite().Point().Mul(si, nil)
 	// ei = H(ui + uiHat + hiHat)
+	hash := sha256.New()
+	ui.MarshalTo(hash)
+	uiHat.MarshalTo(hash)
+	hiHat.MarshalTo(hash)
+	ei := e.suite().Scalar().SetBytes(hash.Sum(nil))
 	// fi = si + (ski * ei)
+	fi := e.suite().Scalar().Add(si, e.suite().Scalar().Mul(ei, ski))
 
-	return ReencryptReply{}, nil
+	return ReencryptReply{
+		Ui: share.PubShare{
+			V: ui,
+			I: e.pss.Share().I,
+		},
+		Ei: ei,
+		Fi: fi,
+	}, nil
 }
 
 // Process verifies an incoming Re-encryption reply from another node.
@@ -63,13 +83,13 @@ func (e *ElGamalDealer) Process(from pss.Node, r ReencryptReply) error {
 	// uihat = uiei ^ ufi
 	uiHat := e.pss.Suite().Point().Add(ufi, uiei)
 
-	//
+	// gfi = g^fi
 	gfi := e.pss.Suite().Point().Mul(r.Fi, nil)
-	//
-	gxi := e.poly.Eval(from.Index()).V
-	//
+	// gxi = f(i)
+	gxi := e.pss.PublicPoly().Eval(from.Index()).V
+	// hiei = gxi^-ei
 	hiei := e.pss.Suite().Point().Mul(e.pss.Suite().Scalar().Neg(r.Ei), gxi)
-	//
+	// hiHat = gfi + hiei
 	hiHat := e.pss.Suite().Point().Add(gfi, hiei)
 
 	// locally produce challenge hash (random oracle)
@@ -84,6 +104,7 @@ func (e *ElGamalDealer) Process(from pss.Node, r ReencryptReply) error {
 	if c.Equal(r.Ei) {
 		e.uis[from.Index()] = &r.Ui
 		// atomic add
+		// check if threshold met - signal
 		return nil
 	}
 
@@ -98,4 +119,8 @@ func (e *ElGamalDealer) Recover() (kyber.Point, error) {
 	}
 
 	return share.RecoverCommit(e.pss.Suite(), e.uis, e.pss.Threshold(), e.pss.Num())
+}
+
+func (e *ElGamalDealer) suite() suites.Suite {
+	return e.pss.Suite()
 }
