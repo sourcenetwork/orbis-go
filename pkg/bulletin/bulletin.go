@@ -2,25 +2,43 @@ package bulletin
 
 import (
 	"context"
-
-	"github.com/samber/do"
+	"fmt"
+	// "github.com/samber/do"
 )
 
-type ProviderFn func(*do.Injector) Service
+// type BaseService = Bulletin[string, []byte]
 
-type Message interface{}
+var (
+	ErrDuplicateMessage = fmt.Errorf("bulletin: duplicate message")
+	ErrMessageNotFound  = fmt.Errorf("bulletin: message not found")
+)
+
+// type ProviderFn[Query any] func(*do.Injector) Bulletin[Query, []byte]
+
+type Message []byte
+
+type Proof []byte
 
 type Response struct {
-	Data  interface{}
-	Proof []byte
+	Data  Message
+	Proof Proof
 }
 
-type Query interface{}
+type Query struct{}
 
-type Service interface {
-	Post(context.Context, string, Message, ...Option) (Response, error)
-	Read(context.Context, string, ...Option) (Message, error)
-	Query(context.Context, Query, ...Option) ([]Message, error)
+type Bulletin interface {
+	// message format := /<namespace>/
+	// /ring/<ringID>/pss/<epochNum>/<nodeIndex>/<action>
+	// /ring/<ringID>/pre/<nodeIndex>/<action>
+	// /ring/<ringID>/dkg/<nodeIndex>/<action>
+	Post(context.Context, string, Message) (Response, error)
+	Read(context.Context, string) (Response, error)
+	Query(context.Context, string) ([]Response, error)
+
+	Verify(context.Context, Proof, string, Message) bool
+
+	// EventBus
+	// Events() eventbus.Bus
 
 	Start()
 	Shutdown()

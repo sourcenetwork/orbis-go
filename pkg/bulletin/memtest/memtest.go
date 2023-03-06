@@ -1,0 +1,141 @@
+package memtest
+
+import (
+	"context"
+	"sync"
+
+	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
+)
+
+// type BaseBulletin = bulletin.Bulletin[string, []byte]
+
+// Bulletin is an in-memory testing bulletinboard
+// implementation. It is *not* verifiable, doesn't use
+// any BFT mechanics, nor connected to a network.
+// For testing purposes only.
+type Bulletin struct {
+	mu       sync.RWMutex
+	messages map[string][]byte
+}
+
+// Post
+func (b *Bulletin) Post(ctx context.Context, identifier string, msg bulletin.Message) (bulletin.Response, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	// check duplicate
+	_, exists := b.messages[identifier]
+	if exists {
+		return bulletin.Response{}, bulletin.ErrDuplicateMessage
+	}
+	b.messages[identifier] = msg
+	return bulletin.Response{
+		Data: msg,
+	}, nil
+}
+
+// Read
+func (b *Bulletin) Read(ctx context.Context, identifer string) (bulletin.Response, error) {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	msg, exists := b.messages[identifer]
+	if !exists {
+		return bulletin.Response{}, bulletin.ErrMessageNotFound
+	}
+	return bulletin.Response{
+		Data: msg,
+	}, nil
+}
+
+// Query
+func (b *Bulletin) Query(ctx context.Context, query string) ([]bulletin.Response, error) {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	resps := make([]bulletin.Response, 0)
+	for id, msg := range b.messages {
+		if glob(query, id) {
+			resps = append(resps, bulletin.Response{
+				Data: msg,
+			})
+		}
+	}
+
+	return resps, nil
+}
+
+/*
+p2ptransport := p2p.NewTransport()
+rabin := dkg.Service(rabin)
+
+ring.New(rabin, avpss, cosmosBulletin, p2ptransport)
+
+manifest := {
+	"N": 9,
+	"threshold": 7,
+	"crv": "Ed25519",
+	"dkg": "rabin",
+	"pss": "avpss",
+	"pre": "elgamal",
+	"bulletin": "sourcehub",
+	"transport": "libp2p"
+}
+
+func New(manifest, repo) (service.SecretRing, error) {
+	ringID := cid.CID(manifest)
+
+	// type safe factories for constructing named DKGs
+	dkgFactory, err := do.InvokeNamed[dkg.Factory](manifest.dkg)
+	pssFactory, err := do.InvokeNamed[pss.Factory](manifest.pss)
+	preFactory, err := do.InvokeNamed[pre.Factory](manifest.pre)
+	// services
+	p2p, err := do.InvokeNamed[transport.Transport](manifest.transport)
+	hub, err := do.InvokeNamed[bulletin.Bulletin](manifest.bulletin))
+	dkgSrv, err := dkgFactory.New(rid, n, t, p2p, hub, nodes)
+	preSrv, err := preFactory.New(rid, n, t, p2p, hub, nodes, dkgSrv)
+	pssSrv, err := pssFactory.New(rid, p2p, hub, nodes, dkgSrv)
+
+	rs := &RingService{
+		ID: ringID,
+		DKG: dkgSrv,
+		PSS: pssSrv,
+		PRE: preSrv,
+		Transport: p2p,
+		Bulletin: hub,
+	}
+
+	go rs.handleEvents()
+
+	return rs, nil
+}
+
+type Events struct {
+	Rounds eventbus.Channel[Rounds]
+}
+
+type AVPSS struct {
+	events Events
+}
+
+func (p *AVPSS) RegisterTransport(t transport.Transport) error {
+	p.transport = t
+	t.AddHandler(avpss.ProtocolID(rid), p.transportHandler)
+}
+
+func (p *AVPSS) transportHandler(transport.Message)
+
+func (r *RingService) handleEvents() {
+	for {
+		select {
+		case <-ctx.Done():
+			// close
+		case pssmsg <-r.events.BulletinPSSMessageCh:
+			// forward
+			r.PSSService.ProcessMessage(r.ctx, pssmsg)
+		case dkgmsg <-r.events.BulletinDKGMessageCh:
+			//forward
+			r.DKGService.ProcessMessage(r.ctx, dkgmsg)
+		}
+	}
+}
+
+*/
