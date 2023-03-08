@@ -1,0 +1,14 @@
+syntax = "proto3";
+package orbis.repo.v1alpha;
+
+message Ring {
+    string id = 1;
+    int32 N = 2;
+    int32 T = 3;
+    string Curve = 4;
+    string Dkg = 5;
+    string Pss = 6;
+    string Pre = 7;
+    string Bulletin = 8;
+    string Transport = 9;
+}

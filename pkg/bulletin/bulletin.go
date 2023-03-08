@@ -35,7 +35,7 @@ type Bulletin interface {
 	Read(context.Context, string) (Response, error)
 	Query(context.Context, string) ([]Response, error)
 
-	Verify(context.Context, Proof, string, Message) bool
+	// Verify(context.Context, Proof, string, Message) bool
 
 	// EventBus
 	// Events() eventbus.Bus

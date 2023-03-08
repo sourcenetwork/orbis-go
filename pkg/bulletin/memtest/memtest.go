@@ -9,6 +9,8 @@ import (
 
 // type BaseBulletin = bulletin.Bulletin[string, []byte]
 
+var _ bulletin.Bulletin = (*Bulletin)(nil)
+
 // Bulletin is an in-memory testing bulletinboard
 // implementation. It is *not* verifiable, doesn't use
 // any BFT mechanics, nor connected to a network.
@@ -62,6 +64,10 @@ func (b *Bulletin) Query(ctx context.Context, query string) ([]bulletin.Response
 
 	return resps, nil
 }
+
+func (b *Bulletin) Start() {}
+
+func (b *Bulletin) Shutdown() {}
 
 /*
 p2ptransport := p2p.NewTransport()
