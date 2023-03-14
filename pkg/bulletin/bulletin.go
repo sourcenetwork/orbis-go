@@ -33,6 +33,9 @@ type Bulletin interface {
 	// /ring/<ringID>/dkg/<nodeIndex>/<action>
 	Post(context.Context, string, Message) (Response, error)
 	Read(context.Context, string) (Response, error)
+
+	// Query Search the bulletin board using a glob based
+	// text search system.
 	Query(context.Context, string) ([]Response, error)
 
 	// Verify(context.Context, Proof, string, Message) bool
