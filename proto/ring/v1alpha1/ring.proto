@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+package ring.v1alpha1;
+
+import "crypto/v1alpha1/crypto.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+
+service RingService {
+  rpc ListRings(ListRingsRequest) returns (ListRingsResponse) {
+    option (google.api.http) = {get: "/v1alpha1/rings"};
+  }
+
+  rpc GetRing(GetRingRequest) returns (GetRingResponse) {
+    option (google.api.http) = {get: "/v1alpha1/rings/{key=*}"};
+  }
+
+  rpc CreateRing(CreateRingRequest) returns (CreateRingResponse) {
+    option (google.api.http) = {
+      post: "/v1alpha1/rings/{key=*}"
+      body: "value"
+    };
+  }
+
+  rpc DeleteRing(DeleteRingRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {delete: "/v1alpha1/rings/{key=*}"};
+  }
+}
+
+message ListRingsRequest {
+  string key = 1;
+}
+
+message ListRingsResponse {
+  repeated Ring rings = 1;
+}
+
+message CreateRingRequest {
+  string key = 1;
+  string value = 2;
+}
+
+message CreateRingResponse {}
+
+message GetRingRequest {
+  string key = 1;
+}
+
+message GetRingResponse {
+  string key = 1;
+  string value = 2;
+}
+
+message DeleteRingRequest {
+  string key = 1;
+}
+
+message Ring {
+  string id = 1;
+  int32 n = 2;
+  int32 t = 3;
+  string dkg = 5;
+  string pss = 6;
+  string pre = 7;
+  string bulletin = 8;
+  string transport = 9;
+
+  repeated Node nodes = 10;
+}
+
+message Node {
+  string id = 1;
+  string address = 2; // multiaddress
+  crypto.v1alpha1.PublicKey public_key = 3;
+}
