@@ -77,8 +77,8 @@ ring.New(rabin, avpss, cosmosBulletin, p2ptransport)
 
 manifest := {
 	"N": 9,
-	"threshold": 7,
-	"crv": "Ed25519",
+	"T": 7,
+	"curve": "Ed25519",
 	"dkg": "rabin",
 	"pss": "avpss",
 	"pre": "elgamal",
@@ -87,7 +87,8 @@ manifest := {
 }
 
 func New(manifest, repo) (service.SecretRing, error) {
-	ringID := cid.CID(manifest)
+	ring, rid := types.RingFromManifest(manifest)
+	repo.Ring.Create(ctx, rid, ring)
 
 	// type safe factories for constructing named DKGs
 	dkgFactory, err := do.InvokeNamed[dkg.Factory](manifest.dkg)
@@ -98,7 +99,7 @@ func New(manifest, repo) (service.SecretRing, error) {
 	hub, err := do.InvokeNamed[bulletin.Bulletin](manifest.bulletin))
 	dkgSrv, err := dkgFactory.New(rid, n, t, p2p, hub, nodes)
 	preSrv, err := preFactory.New(rid, n, t, p2p, hub, nodes, dkgSrv)
-	pssSrv, err := pssFactory.New(rid, p2p, hub, nodes, dkgSrv)
+	pssSrv, err := pssFactory.New(rid, n, t, p2p, hub, nodes, dkgSrv)
 
 	rs := &RingService{
 		ID: ringID,
@@ -107,11 +108,17 @@ func New(manifest, repo) (service.SecretRing, error) {
 		PRE: preSrv,
 		Transport: p2p,
 		Bulletin: hub,
+		Repo: repo,
 	}
 
 	go rs.handleEvents()
 
 	return rs, nil
+}
+
+func (p *AVPSS) Reshare() error {
+	share := ...
+	p.repo.
 }
 
 type Events struct {

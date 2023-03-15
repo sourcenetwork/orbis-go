@@ -9,5 +9,6 @@ message Message {
     bool gossip = 5; // gossip message over pubsub
     string nodeId = 6; // author node id (peer.ID)
     bytes nodePubKey = 7; // authoring node pubkey (32bytes)
-    bytes signature = 8; // signature of the message (including payload)
+    string ringId = 8; //
+    bytes signature = 9; // signature of the message (including payload)
 }

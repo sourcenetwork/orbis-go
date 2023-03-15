@@ -25,20 +25,20 @@ func NewTransport(h libp2pHost.Host) transport.Transport {
 	}
 }
 
-func (pt *p2pTransport) Send(ctx context.Context, node transport.Node, msg transport.Message) error {
+func (pt *p2pTransport) Send(ctx context.Context, node transport.Node, msg *transport.Message) error {
 	// todo: telemetry
 
 	// todo: verify msg is of type p2p.message
 
 	peerID := peer.ID(node.ID())
-	protocolID := protocol.ConvertFromStrings([]string{msg.Type()})
+	protocolID := protocol.ConvertFromStrings([]string{msg.GetType()})
 	stream, err := pt.h.NewStream(ctx, peerID, protocolID...)
 	if err != nil {
 		return err // todo: wrap
 	}
 	defer stream.Close()
 
-	buf, err := msg.Marshal()
+	buf, err := proto.Marshal(msg)
 	if err != nil {
 		return err // todo: wrap
 	}
@@ -65,10 +65,11 @@ func (pt *p2pTransport) Host() transport.Host {
 
 func (pt *p2pTransport) NewMessage(id string, gossip bool, payload []byte, msgType string) (transport.Message, error) {
 	h := pt.host()
-	pubkeyBytes, err := h.PublicKey().Marshal()
+	pubkeyBytes, err := h.PublicKey().MarshalBinary()
 	if err != nil {
 		return transport.Message{}, err // todo: wrap
 	}
+	// todo: Signature
 	return transport.Message{
 		Timestamp:  time.Now().Unix(),
 		Id:         id,

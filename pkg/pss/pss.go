@@ -3,17 +3,19 @@ package pss
 import (
 	"context"
 
-	"github.com/samber/do"
 	"go.dedis.ch/kyber/v3/suites"
 
+	"github.com/samber/do"
+	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
-	"github.com/sourcenetwork/orbis-go/pkg/pss/types"
+	"github.com/sourcenetwork/orbis-go/pkg/dkg"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
+	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
 
 type Message interface{}
 
-type Service interface {
+type PSS interface {
 	// Name of the PSS Algorithm
 	Name() string
 	// Cryptographic suite
@@ -37,7 +39,7 @@ type Service interface {
 	Share() crypto.PriShare
 
 	// State of the PSS
-	State() types.State
+	State() State
 
 	Num() int
 	Threshold() int
@@ -48,4 +50,8 @@ type Node interface {
 	Index() int
 }
 
-type ProviderFn = func(*do.Injector) Service
+type Factory interface {
+	New(types.RingID, int, int, transport.Transport, bulletin.Bulletin, []types.Node, dkg.DKG) (PSS, error)
+}
+
+type ProvideFactory func(*do.Injector) Factory

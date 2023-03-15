@@ -5,7 +5,7 @@ import (
 
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto/proof"
-	ptypes "github.com/sourcenetwork/orbis-go/pkg/pss/types"
+	"github.com/sourcenetwork/orbis-go/pkg/pss"
 	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
 
@@ -17,37 +17,35 @@ import (
 
 // SecretRingService is a service that manages
 // user created 'secrets'.
-type SecretRingService[SSInfo interface {
-	NodeInfo() NodeInfo
-}, NodeInfo any] interface {
+type RingService interface {
 	// Secret Management Operations
 	SecretsManagerService
 
-	// DKG Operations
-	DKGService[NodeInfo]
+	// DKG + PSS Operations
+	DistKeyService
 }
 
 type SecretsManagerService interface {
 	// Create(context.Context) types.Secret
-	Store(context.Context, SID, types.Secret, proof.VerifiableEncryption) error
-	Get(context.Context, SID) (types.Secret, error)
-	GetShares(context.Context, SID) ([]types.PrivSecretShare, error)
-	Delete(context.Context, SID) error
+	Store(context.Context, types.SecretID, types.Secret, proof.VerifiableEncryption) error
+	Get(context.Context, types.SecretID) (types.Secret, error)
+	GetShares(context.Context, types.SecretID) ([]types.PrivSecretShare, error)
+	Delete(context.Context, types.SecretID) error
 }
 
-// DKGService
-type DKGService[NodeInfo any] interface {
+// DistKeyService
+type DistKeyService interface {
 	PublicKey() (crypto.PublicKey, error)
-	Refresh(context.Context, dkg.Config) (dkg.RefreshState, error)
+	Refresh(context.Context, pss.Config) (pss.RefreshState, error)
 	Threshold() int
-	State() ptypes.State
+	State() pss.State
 
 	// Committee Operations
-	CommitteeService[NodeInfo]
+	CommitteeService
 }
 
-type CommitteeService[NodeInfo any] interface {
-	Nodes() []NodeInfo
+type CommitteeService interface {
+	Nodes() []pss.Node
 }
 
 // SID is a Secret Identifier (SecretID)

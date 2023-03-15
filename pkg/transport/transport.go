@@ -15,7 +15,7 @@ type Message = transportv1alpha.Message
 type Handler func(Message) error
 
 type Transport interface {
-	Send(ctx context.Context, node Node, msg Message) error
+	Send(ctx context.Context, node Node, msg *Message) error
 	Gossip(ctx context.Context, topic string, msg Message) error
 	Connect(ctx context.Context, node Node) error
 	Host() Host
