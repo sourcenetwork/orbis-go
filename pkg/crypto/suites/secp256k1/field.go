@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"math/big"
 
+	secp256k1BTCD "github.com/btcsuite/btcd/btcec/v2"
 	"go.dedis.ch/kyber/v3/util/random"
 )
 
@@ -143,7 +144,12 @@ func fieldSquare(y *fieldElt) *fieldElt {
 // What I'm calling sqrtPower is called q on the s256 struct. (See
 // btcec.initS256), which is confusing because the "Q" in "QPlus1Div4" refers to
 // the field characteristic
-var sqrtPower = s256.QPlus1Div4()
+var sqrtPower = qPlus1Div4(s256)
+
+func qPlus1Div4(crv *secp256k1BTCD.KoblitzCurve) *big.Int {
+	return new(big.Int).Div(new(big.Int).Add(crv.P,
+		big.NewInt(1)), big.NewInt(4))
+}
 
 // maybeSqrtInField returns a square root of v, if it has any, else nil
 func maybeSqrtInField(v *fieldElt) *fieldElt {
