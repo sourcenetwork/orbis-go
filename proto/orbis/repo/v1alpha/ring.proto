@@ -3,12 +3,19 @@ package orbis.repo.v1alpha;
 
 message Ring {
     string id = 1;
-    int32 N = 2;
-    int32 T = 3;
-    string Curve = 4;
-    string Dkg = 5;
-    string Pss = 6;
-    string Pre = 7;
-    string Bulletin = 8;
-    string Transport = 9;
+    int32 n = 2;
+    int32 t = 3;
+    string dkg = 5;
+    string pss = 6;
+    string pre = 7;
+    string bulletin = 8;
+    string transport = 9;
+
+    repeated Node nodes = 10;
+}
+
+message Node {
+    string id = 1;
+    string publicKey = 2;
+    string address = 3; // multiaddress
 }
