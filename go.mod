@@ -3,12 +3,19 @@ module github.com/sourcenetwork/orbis-go
 go 1.18
 
 require (
+	github.com/btcsuite/btcd/btcec/v2 v2.3.0
+	github.com/ethereum/go-ethereum v1.11.4
+	github.com/go-bond/bond v0.1.36
+	github.com/gogo/protobuf v1.3.2
 	github.com/libp2p/go-libp2p v0.25.1
 	github.com/libp2p/go-libp2p-core v0.20.1
 	github.com/multiformats/go-multiaddr v0.8.0
 	github.com/samber/do v1.4.1
 	github.com/stretchr/testify v1.8.1
+	go.dedis.ch/fixbuf v1.0.3
 	go.dedis.ch/kyber/v3 v3.1.0
+	golang.org/x/crypto v0.4.0
+	google.golang.org/protobuf v1.28.1
 )
 
 require (
@@ -17,17 +24,14 @@ require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cockroachdb/errors v1.9.1 // indirect
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
-	github.com/cockroachdb/pebble v0.0.0-20230202003038-9fc4a2088c62 // indirect
+	github.com/cockroachdb/pebble v0.0.0-20230209160836-829675f94811 // indirect
 	github.com/cockroachdb/redact v1.1.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.4.0 // indirect
-	github.com/getsentry/sentry-go v0.17.0 // indirect
-	github.com/go-bond/bond v0.1.36 // indirect
-	github.com/gogo/protobuf v1.3.2 // indirect
+	github.com/getsentry/sentry-go v0.18.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/ipfs/go-cid v0.3.2 // indirect
 	github.com/klauspost/compress v1.15.15 // indirect
@@ -58,13 +62,9 @@ require (
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	go.dedis.ch/fixbuf v1.0.3 // indirect
-	golang.org/x/crypto v0.4.0 // indirect
-	golang.org/x/exp v0.0.0-20230131160201-f062dba9d201 // indirect
-	golang.org/x/sys v0.4.0 // indirect
-	golang.org/x/text v0.6.0 // indirect
-	google.golang.org/protobuf v1.28.1 // indirect
-	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
+	golang.org/x/exp v0.0.0-20230206171751-46f607a40771 // indirect
+	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/text v0.7.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.1.7 // indirect
 )

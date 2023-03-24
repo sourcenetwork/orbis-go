@@ -32,7 +32,7 @@ type PRE interface {
 }
 
 type Factory interface {
-	New(types.RingID, int, int, transport.Transport, bulletin.Bulletin, []types.Node, dkg.DKG) (PRE, error)
+	New(types.RingID, int32, int32, transport.Transport, bulletin.Bulletin, []types.Node, dkg.DKG) (PRE, error)
 }
 
 type ProvideFactory func(*do.Injector) Factory

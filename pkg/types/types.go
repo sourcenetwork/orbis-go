@@ -10,7 +10,7 @@ type SecretID string
 // RingID is a SecretRing identifier
 type RingID string
 
-type Node struct{}
+// type Node struct{}
 
 func RingFromManifest(manifest []byte) (*Ring, RingID, error) {
 	return nil, "", nil

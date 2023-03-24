@@ -5,7 +5,6 @@ import (
 
 	"go.dedis.ch/kyber/v3/suites"
 
-	"github.com/samber/do"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	"github.com/sourcenetwork/orbis-go/pkg/dkg"
@@ -51,7 +50,5 @@ type Node interface {
 }
 
 type Factory interface {
-	New(types.RingID, int, int, transport.Transport, bulletin.Bulletin, []types.Node, dkg.DKG) (PSS, error)
+	New(types.RingID, int32, int32, transport.Transport, bulletin.Bulletin, []types.Node, dkg.DKG) (PSS, error)
 }
-
-type ProvideFactory func(*do.Injector) Factory
