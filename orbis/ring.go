@@ -28,6 +28,47 @@ type ringService struct {
 	repo db.Repository
 }
 
+/*
+ring1
+manifest := {
+	"N": 9,
+	"T": 7,
+	"curve": "Ed25519",
+
+	"dkg": "rabin",
+	"pss": "avpss",
+	"pre": "elgamal",
+	"bulletin": "sourcehub",
+	"transport": "libp2p"
+}
+
+ring2
+manifest := {
+	"N": 9,
+	"T": 7,
+	"curve": "Ed25519",
+
+	"dkg": "rabin",
+	"pss": "avpss",
+	"pre": "elgamal",
+	"bulletin": "sourcehub",
+	"transport": "libp2p"
+}
+
+ring3
+manifest := {
+	"N": 9,
+	"T": 7,
+	"curve": "Ed25519",
+
+	"dkg": "rabin",
+	"pss": "avpss",
+	"pre": "elgamal",
+	"bulletin": "sourcehub",
+	"transport": "libp2p"
+}
+*/
+
 // NewRing creates a new instance of a ring with all the depedant components
 // and services wired together.
 func (n *node) NewRing(ctx context.Context, manifest []byte, repo db.Repository) (service.RingService, error) {
@@ -41,9 +82,9 @@ func (n *node) NewRing(ctx context.Context, manifest []byte, repo db.Repository)
 	}
 
 	// factories
-	dkgFactory, err1 := do.InvokeNamed[dkg.Factory](n.injector, ring.Dkg)
-	pssFactory, err2 := do.InvokeNamed[pss.Factory](n.injector, ring.Pss)
-	preFactory, err2 := do.InvokeNamed[pre.Factory](n.injector, ring.Pre)
+	dkgFactory, err := do.InvokeNamed[dkg.Factory](n.injector, ring.Dkg)
+	pssFactory, err := do.InvokeNamed[pss.Factory](n.injector, ring.Pss)
+	preFactory, err := do.InvokeNamed[pre.Factory](n.injector, ring.Pre)
 
 	// check err group
 
@@ -51,11 +92,11 @@ func (n *node) NewRing(ctx context.Context, manifest []byte, repo db.Repository)
 	p2p, err := do.InvokeNamed[transport.Transport](n.injector, ring.Transport)
 	bb, err := do.InvokeNamed[bulletin.Bulletin](n.injector, ring.Bulletin)
 
-	dkgSrv, err := dkgFactory.New(rid, ring.N, ring.T, p2p, bb, _)
+	dkgSrv, err := dkgFactory.New(rid, ring.N, ring.T, p2p, bb, []types.Node{})
 	// if err
-	preSrv, err := preFactory.New(rid, ring.N, ring.T, p2p, bb, _, dkgSrv)
+	preSrv, err := preFactory.New(rid, ring.N, ring.T, p2p, bb, []types.Node{}, dkgSrv)
 	// if err
-	pssSrv, err := pssFactory.New(rid, ring.N, ring.T, p2p, bb, _, dkgSrv)
+	pssSrv, err := pssFactory.New(rid, ring.N, ring.T, p2p, bb, []types.Node{}, dkgSrv)
 	// if err
 
 	rs := &ringService{

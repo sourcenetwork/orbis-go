@@ -1,8 +1,14 @@
 package orbis
 
-import "context"
+import (
+	"context"
 
-type node struct{}
+	"github.com/samber/do"
+)
+
+type node struct {
+	injector *do.Injector
+}
 
 // NewNode returns a newly instanciated obris node
 // configured with various services
