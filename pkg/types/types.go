@@ -11,7 +11,3 @@ type SecretID string
 type RingID string
 
 // type Node struct{}
-
-func RingFromManifest(manifest []byte) (*Ring, RingID, error) {
-	return nil, "", nil
-}

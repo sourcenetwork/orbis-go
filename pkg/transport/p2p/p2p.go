@@ -65,7 +65,7 @@ func (pt *p2pTransport) Host() transport.Host {
 
 func (pt *p2pTransport) NewMessage(id string, gossip bool, payload []byte, msgType string) (transport.Message, error) {
 	h := pt.host()
-	pubkeyBytes, err := h.PublicKey().MarshalBinary()
+	pubkeyBytes, err := h.PublicKey().Raw()
 	if err != nil {
 		return transport.Message{}, err // todo: wrap
 	}

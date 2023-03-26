@@ -21,7 +21,6 @@ var (
 // PublicKey
 type PublicKey interface {
 	ic.PubKey
-
 	Point() kyber.Point
 }
 
@@ -65,7 +64,6 @@ func (p *pubKey) Point() kyber.Point {
 
 type PrivateKey interface {
 	ic.PrivKey
-
 	Scalar() kyber.Scalar
 }
 

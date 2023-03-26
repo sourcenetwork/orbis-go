@@ -68,14 +68,15 @@ func (e *ThesholdDealer) Name() string {
 // u: key share commit
 func (e *ThesholdDealer) Reencrypt(pk crypto.PublicKey, u kyber.Point) (pre.ReencryptReply, error) {
 	// ui = (u ^ ski) * (pk ^ ski)
+	pkPoint := pk.Point()
 	ski := e.pss.Share().V
 	uski := e.suite.Point().Mul(ski, u)
-	pkski := e.suite.Point().Mul(ski, pk)
+	pkski := e.suite.Point().Mul(ski, pkPoint)
 	ui := uski.Add(uski, pkski)
 
-	si := e.suite.Scalar().Pick(e.suite.RandomStream())          // si = random scalar
-	uiHat := e.suite.Point().Mul(si, e.suite.Point().Add(u, pk)) // uiHat = (u * pk) ^ si
-	hiHat := e.suite.Point().Mul(si, nil)                        // hiHat = g^si (nil implies default base g)
+	si := e.suite.Scalar().Pick(e.suite.RandomStream())               // si = random scalar
+	uiHat := e.suite.Point().Mul(si, e.suite.Point().Add(u, pkPoint)) // uiHat = (u * pk) ^ si
+	hiHat := e.suite.Point().Mul(si, nil)                             // hiHat = g^si (nil implies default base g)
 
 	// ei = H(ui + uiHat + hiHat)
 	hash := sha256.New()
@@ -99,13 +100,14 @@ func (e *ThesholdDealer) Reencrypt(pk crypto.PublicKey, u kyber.Point) (pre.Reen
 // Process verifies an incoming Re-encryption reply from another node.
 func (e *ThesholdDealer) Process(from pss.Node, r pre.ReencryptReply) error {
 	// verify
+	pkPoint := e.pk.Point()
 	fi := r.Proof()
 	ei := r.Challenge()
 	ui := r.Share()
 
-	ufi := e.suite.Point().Mul(fi, e.suite.Point().Add(e.u, e.pk)) // ufi = (u*pk)^fi
-	uiei := e.suite.Point().Mul(e.suite.Scalar().Neg(ei), ui.V)    // uiei = ui^-ei
-	uiHat := e.suite.Point().Add(ufi, uiei)                        // uihat = uiei ^ ufi
+	ufi := e.suite.Point().Mul(fi, e.suite.Point().Add(e.u, pkPoint)) // ufi = (u*pk)^fi
+	uiei := e.suite.Point().Mul(e.suite.Scalar().Neg(ei), ui.V)       // uiei = ui^-ei
+	uiHat := e.suite.Point().Add(ufi, uiei)                           // uihat = uiei ^ ufi
 
 	gfi := e.suite.Point().Mul(fi, nil)                        // gfi = g^fi
 	gxi := e.pss.PublicPoly().Eval(from.Index()).V             // gxi = f(i)
