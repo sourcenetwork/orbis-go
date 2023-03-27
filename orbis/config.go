@@ -1,10 +1,5 @@
 package orbis
 
-import (
-	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
-	"github.com/sourcenetwork/orbis-go/pkg/pss"
-)
-
 type Config struct{}
 
 type Option func(cfg *Config) error
@@ -14,7 +9,7 @@ func DefaultOptions() Option {
 }
 
 // WithBulletinService registers a BulletinBoard Service into the config
-func WithBulletinService(bulletin.ProviderFn) Option
+// func WithBulletinService(bulletin.WithProof) Option
 
 // WithSharingService regisers a Proactive Sharing Service into the config
-func WithSharingService(pss.ProviderFn) Option
+// func WithSharingService(pss.ProviderFn) Option

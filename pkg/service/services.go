@@ -27,7 +27,7 @@ type RingService interface {
 
 type SecretsManagerService interface {
 	// Create(context.Context) types.Secret
-	Store(context.Context, types.SecretID, types.Secret, proof.VerifiableEncryption) error
+	Store(context.Context, types.SecretID, *types.Secret, proof.VerifiableEncryption) error
 	Get(context.Context, types.SecretID) (types.Secret, error)
 	GetShares(context.Context, types.SecretID) ([]types.PrivSecretShare, error)
 	Delete(context.Context, types.SecretID) error

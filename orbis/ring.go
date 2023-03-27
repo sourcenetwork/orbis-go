@@ -6,6 +6,8 @@ import (
 	"github.com/samber/do"
 
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
+	"github.com/sourcenetwork/orbis-go/pkg/crypto"
+	"github.com/sourcenetwork/orbis-go/pkg/crypto/proof"
 	"github.com/sourcenetwork/orbis-go/pkg/db"
 	"github.com/sourcenetwork/orbis-go/pkg/dkg"
 	"github.com/sourcenetwork/orbis-go/pkg/pre"
@@ -83,21 +85,47 @@ func (n *node) NewRing(ctx context.Context, manifest []byte, repo db.Repository)
 
 	// factories
 	dkgFactory, err := do.InvokeNamed[dkg.Factory](n.injector, ring.Dkg)
+	if err != nil {
+		return nil, err
+	}
+
 	pssFactory, err := do.InvokeNamed[pss.Factory](n.injector, ring.Pss)
+	if err != nil {
+		return nil, err
+	}
+
 	preFactory, err := do.InvokeNamed[pre.Factory](n.injector, ring.Pre)
+	if err != nil {
+		return nil, err
+	}
 
 	// check err group
 
 	// services
 	p2p, err := do.InvokeNamed[transport.Transport](n.injector, ring.Transport)
+	if err != nil {
+		return nil, err
+	}
+
 	bb, err := do.InvokeNamed[bulletin.Bulletin](n.injector, ring.Bulletin)
+	if err != nil {
+		return nil, err
+	}
 
 	dkgSrv, err := dkgFactory.New(rid, ring.N, ring.T, p2p, bb, []types.Node{})
-	// if err
+	if err != nil {
+		return nil, err
+	}
+
 	preSrv, err := preFactory.New(rid, ring.N, ring.T, p2p, bb, []types.Node{}, dkgSrv)
-	// if err
+	if err != nil {
+		return nil, err
+	}
+
 	pssSrv, err := pssFactory.New(rid, ring.N, ring.T, p2p, bb, []types.Node{}, dkgSrv)
-	// if err
+	if err != nil {
+		return nil, err
+	}
 
 	rs := &ringService{
 		ID:        rid,
@@ -112,4 +140,40 @@ func (n *node) NewRing(ctx context.Context, manifest []byte, repo db.Repository)
 	// called in ring.Join() - go rs.handleEvents()
 
 	return rs, nil
+}
+
+func (r *ringService) Store(context.Context, types.SecretID, *types.Secret, proof.VerifiableEncryption) error {
+	return nil
+}
+func (r *ringService) Get(context.Context, types.SecretID) (types.Secret, error) {
+
+	return types.Secret{}, nil
+}
+func (r *ringService) GetShares(context.Context, types.SecretID) ([]types.PrivSecretShare, error) {
+	return nil, nil
+
+}
+func (r *ringService) Delete(context.Context, types.SecretID) error {
+	return nil
+
+}
+
+func (r *ringService) PublicKey() (crypto.PublicKey, error) {
+	return nil, nil
+
+}
+func (r *ringService) Refresh(context.Context, pss.Config) (pss.RefreshState, error) {
+	return pss.RefreshState{}, nil
+
+}
+func (r *ringService) Threshold() int {
+	return 0
+}
+
+func (r *ringService) State() pss.State {
+	return pss.State{}
+}
+
+func (r *ringService) Nodes() []pss.Node {
+	return nil
 }

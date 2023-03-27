@@ -5,11 +5,12 @@ import (
 
 	ma "github.com/multiformats/go-multiaddr"
 
-	repov1alpha "github.com/sourcenetwork/orbis-go/gen/proto/orbis/repo/v1alpha"
+	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/ring/v1alpha1"
+	secretv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/secret/v1alpha1"
 )
 
 type Ring struct {
-	repov1alpha.Ring
+	ringv1alpha1.Ring
 }
 
 func RingFromManifest(manifest []byte) (*Ring, RingID, error) {
@@ -17,12 +18,12 @@ func RingFromManifest(manifest []byte) (*Ring, RingID, error) {
 }
 
 type Secret struct {
-	repov1alpha.Secret
+	secretv1alpha1.Secret
 }
 
 type Node struct {
 	index int // -1 means invalid index
-	repov1alpha.Node
+	ringv1alpha1.Node
 }
 
 func (n *Node) Index() int {
@@ -34,5 +35,5 @@ func (n *Node) Address() (ma.Multiaddr, error) {
 }
 
 func (n *Node) PublicKey() crypto.PublicKey {
-
+	return nil
 }
