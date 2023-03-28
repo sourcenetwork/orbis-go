@@ -35,6 +35,14 @@ func PublicKeyFromLibP2P(pubkey ic.PubKey) (PublicKey, error) {
 	return publicKeyFromLibP2P(pubkey)
 }
 
+func PublicKeyFromProto(pk *icpb.PublicKey) (PublicKey, error) {
+	icpk, err := ic.PublicKeyFromProto(pk)
+	if err != nil {
+		return nil, err
+	}
+	return publicKeyFromLibP2P(icpk)
+}
+
 func publicKeyFromLibP2P(pubkey ic.PubKey) (*pubKey, error) {
 	var pk pubKey
 	switch pubkey.Type() {
