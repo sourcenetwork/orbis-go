@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.3.0
 // - protoc             (unknown)
-// source: ring/v1alpha1/ring.proto
+// source: orbis/ring/v1alpha1/ring.proto
 
-package ringv1alpha1
+package v1alpha1
 
 import (
 	context "context"
@@ -217,5 +217,5 @@ var RingService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "ring/v1alpha1/ring.proto",
+	Metadata: "orbis/ring/v1alpha1/ring.proto",
 }
