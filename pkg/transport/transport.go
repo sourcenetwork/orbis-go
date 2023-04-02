@@ -6,7 +6,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/protocol"
 	ma "github.com/multiformats/go-multiaddr"
 
-	transportv1alpha "github.com/sourcenetwork/orbis-go/gen/orbis/transport/v1alpha1"
+	transportv1alpha "github.com/sourcenetwork/orbis-go/gen/proto/transport/v1alpha1"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 )
 
