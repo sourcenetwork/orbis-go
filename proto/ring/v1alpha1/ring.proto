@@ -2,11 +2,9 @@ syntax = "proto3";
 
 package ring.v1alpha1;
 
-import "libp2p/crypto/crypto.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
-
-option go_package = "github.com/sourcenetwork/orbis-go/gen/orbis/ring/v1alpha1";
+import "libp2p/crypto/v1alpha1/crypto.proto";
 
 service RingService {
   rpc ListRings(ListRingsRequest) returns (ListRingsResponse) {
@@ -73,5 +71,5 @@ message Ring {
 message Node {
   string id = 1;
   string address = 2; // multiaddress
-  libp2p.crypto.PublicKey public_key = 3;
+  libp2p.crypto.v1alpha1.PublicKey public_key = 3;
 }

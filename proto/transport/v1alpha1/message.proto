@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package transport.v1alpha1;
 
-option go_package = "github.com/sourcenetwork/orbis-go/gen/orbis/transport/v1alpha1";
-
 message Message {
   int64 timestamp = 1; // unix time
   string id = 2; // message id
