@@ -3,8 +3,8 @@ package grpcserver
 import (
 	"context"
 
-	"github.com/sourcenetwork/orbis-go/app"
 	secretv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/secret/v1alpha1"
+	"github.com/sourcenetwork/orbis-go/infra/logger"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -12,18 +12,18 @@ import (
 // secretService wraps application to provides gRPCs.
 type secretService struct {
 	secretv1alpha1.UnimplementedSecretServiceServer
-	app *app.App
+	lg logger.Logger
 }
 
-func newSecretService(app *app.App) *secretService {
+func newSecretService(lg logger.Logger) *secretService {
 	return &secretService{
-		app: app,
+		lg: lg,
 	}
 }
 
 func (s *secretService) ListSecrets(ctx context.Context, req *secretv1alpha1.ListSecretsRequest) (*secretv1alpha1.ListSecretsResponse, error) {
 
-	s.app.Logger().Debugf("ListSecret()")
+	s.lg.Debugf("ListSecret()")
 
 	// err := s.app.ListSecrets(...)
 	// if err != nil {
@@ -37,7 +37,7 @@ func (s *secretService) ListSecrets(ctx context.Context, req *secretv1alpha1.Lis
 
 func (s *secretService) StoreSecret(ctx context.Context, req *secretv1alpha1.StoreSecretRequest) (*secretv1alpha1.StoreSecretResponse, error) {
 
-	s.app.Logger().Debugf("StoreSecret()")
+	s.lg.Debugf("StoreSecret()")
 
 	// err := s.app.StoreSecret(...)
 	// if err != nil {
@@ -51,7 +51,7 @@ func (s *secretService) StoreSecret(ctx context.Context, req *secretv1alpha1.Sto
 
 func (s *secretService) GetSecret(ctx context.Context, req *secretv1alpha1.GetSecretRequest) (*secretv1alpha1.GetSecretResponse, error) {
 
-	s.app.Logger().Debugf("GetSecret()")
+	s.lg.Debugf("GetSecret()")
 
 	// value, err := s.app.GetSecret(...)
 	// if err != nil {
@@ -65,7 +65,7 @@ func (s *secretService) GetSecret(ctx context.Context, req *secretv1alpha1.GetSe
 
 func (s *secretService) DeleteSecret(ctx context.Context, req *secretv1alpha1.DeleteSecretRequest) (*emptypb.Empty, error) {
 
-	s.app.Logger().Debugf("DeleteSecret()")
+	s.lg.Debugf("DeleteSecret()")
 
 	// err := s.app.DeleteSecret(...)
 	// if err != nil {

@@ -9,6 +9,7 @@ import (
 	"github.com/sourcenetwork/orbis-go/config"
 	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/ring/v1alpha1"
 	secretv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/secret/v1alpha1"
+	transportv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/transport/v1alpha1"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
@@ -23,11 +24,13 @@ var (
 
 func NewGRPCServer(app *app.App) *grpc.Server {
 
+	lg := app.Logger()
 	s := grpc.NewServer()
 
 	// Setup orbis service handlers to the server.
-	ringv1alpha1.RegisterRingServiceServer(s, newRingService(app))
-	secretv1alpha1.RegisterSecretServiceServer(s, newSecretService(app))
+	transportv1alpha1.RegisterTransportServiceServer(s, newTransportService(lg, app.Transport()))
+	ringv1alpha1.RegisterRingServiceServer(s, newRingService(lg))
+	secretv1alpha1.RegisterSecretServiceServer(s, newSecretService(lg))
 
 	return s
 }

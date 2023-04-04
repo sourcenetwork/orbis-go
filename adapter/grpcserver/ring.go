@@ -3,8 +3,8 @@ package grpcserver
 import (
 	"context"
 
-	"github.com/sourcenetwork/orbis-go/app"
 	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/ring/v1alpha1"
+	"github.com/sourcenetwork/orbis-go/infra/logger"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -12,27 +12,17 @@ import (
 // ringService wraps application to provides gRPCs.
 type ringService struct {
 	ringv1alpha1.UnimplementedRingServiceServer
-	app *app.App
+	lg logger.Logger
 }
 
-func newRingService(app *app.App) *ringService {
+func newRingService(lg logger.Logger) *ringService {
 	return &ringService{
-		app: app,
+		lg: lg,
 	}
 }
 
 func (s *ringService) ListRings(ctx context.Context, req *ringv1alpha1.ListRingsRequest) (*ringv1alpha1.ListRingsResponse, error) {
 
-	s.app.Logger().Debugf("ListRing()")
-
-	// err := s.app.ListRings(...)
-	// if err != nil {
-	// 	return nil, status.Error(codes.Internal, err.Error())
-	// }
-
-	// For demo purpose.
-	// All processing should be done in the app.
-	// One day, all these stubs code/files will be generated.
 	rings := []*ringv1alpha1.Ring{
 		{
 			Id: "ring1",
@@ -51,8 +41,6 @@ func (s *ringService) ListRings(ctx context.Context, req *ringv1alpha1.ListRings
 
 func (s *ringService) CreateRing(ctx context.Context, req *ringv1alpha1.CreateRingRequest) (*ringv1alpha1.CreateRingResponse, error) {
 
-	s.app.Logger().Debugf("CreateRing()")
-
 	// err := s.app.CreatRing(...)
 	// if err != nil {
 	// 	return nil, status.Error(codes.Internal, err.Error())
@@ -65,8 +53,6 @@ func (s *ringService) CreateRing(ctx context.Context, req *ringv1alpha1.CreateRi
 
 func (s *ringService) GetRing(ctx context.Context, req *ringv1alpha1.GetRingRequest) (*ringv1alpha1.GetRingResponse, error) {
 
-	s.app.Logger().Debugf("GetRing()")
-
 	// value, err := s.app.GetRing()
 	// if err != nil {
 	// 	return nil, status.Error(codes.Internal, err.Error())
@@ -78,8 +64,6 @@ func (s *ringService) GetRing(ctx context.Context, req *ringv1alpha1.GetRingRequ
 }
 
 func (s *ringService) DeleteRing(ctx context.Context, req *ringv1alpha1.DeleteRingRequest) (*emptypb.Empty, error) {
-
-	s.app.Logger().Debugf("DeleteRing()")
 
 	// err := s.app.DeleteRing()
 	// if err != nil {
