@@ -1,0 +1,116 @@
+syntax = "proto3";
+
+package transport.v1alpha1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "libp2p/crypto/v1alpha1/crypto.proto";
+
+service TransportService {
+  // GetHost returns the information about the host node.
+  rpc GetHost(GetHostRequest) returns (GetHostResponse) {
+    option (google.api.http) = {get: "/v1alpha1/host"};
+  }
+
+  // ListNodes lists information about connected peer nodes.
+  rpc ListNodes(ListNodesRequest) returns (ListNodesResponse) {
+    option (google.api.http) = {get: "/v1alpha1/nodes"};
+  }
+
+  // Connect connects to a peer node.
+  rpc Connect(ConnectRequest) returns (ConnectResponse) {
+    option (google.api.http) = {
+      post: "/v1alpha1/node:connect"
+      body: "*"
+    };
+  }
+
+  // Send sends a message to a peer node.
+  rpc Send(SendRequest) returns (SendResponse) {
+    option (google.api.http) = {
+      post: "/v1alpha1/node:send"
+      body: "*"
+    };
+  }
+
+  // Gossip broadcasts a message to a topic.
+  rpc Gossip(GossipRequest) returns (GossipResponse) {
+    option (google.api.http) = {
+      post: "/v1alpha1:gossip"
+      body: "*"
+    };
+  }
+
+  // NewMessage returns a formated messages.
+  rpc NewMessage(NewMessageRequest) returns (NewMessageResponse) {
+    option (google.api.http) = {
+      post: "/v1alpha1:new_message"
+      body: "*"
+    };
+  }
+}
+
+message GetHostRequest {}
+
+message GetHostResponse {
+  Node node = 1;
+}
+
+message ListNodesRequest {
+  string key = 1;
+}
+
+message ListNodesResponse {
+  repeated Node nodes = 1;
+}
+
+message SendRequest {
+  Node node = 1;
+  Message message = 2;
+}
+
+message SendResponse {}
+
+message ConnectRequest {
+  Node node = 1;
+}
+
+message ConnectResponse {}
+
+message GossipRequest {
+  string topic = 1;
+  Message message = 2;
+}
+
+message GossipResponse {
+  Node node = 1;
+}
+
+message NewMessageRequest {
+  string id = 1;
+  bool gossip = 2;
+  bytes payload = 3;
+  string type = 4;
+}
+
+message NewMessageResponse {
+  Message message = 1;
+}
+
+message Node {
+  string id = 1;
+  string address = 2; // multiaddress
+  libp2p.crypto.v1alpha1.PublicKey public_key = 3;
+}
+
+message Message {
+  int64 timestamp = 1; // unix time
+  string id = 2; // message id
+  string type = 3; // message type
+  bytes payload = 4; // generic payload
+  bool gossip = 5; // gossip message over pubsub
+  string node_id = 6; // author node id (peer.ID)
+  bytes node_pub_key = 7; // authoring node pubkey (32bytes)
+  string ring_id = 8; //
+  bytes signature = 9; // signature of the message (including payload)
+}
