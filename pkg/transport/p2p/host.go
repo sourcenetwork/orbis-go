@@ -1,16 +1,16 @@
 package p2p
 
 import (
+	"github.com/sourcenetwork/orbis-go/pkg/crypto"
+
 	"github.com/libp2p/go-libp2p-core/peer"
 	ic "github.com/libp2p/go-libp2p/core/crypto"
-	libp2p "github.com/libp2p/go-libp2p/core/host"
+	libp2phost "github.com/libp2p/go-libp2p/core/host"
 	ma "github.com/multiformats/go-multiaddr"
-
-	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 )
 
 type host struct {
-	host libp2p.Host // libp2p
+	host libp2phost.Host
 }
 
 func (h *host) ID() string {
@@ -31,6 +31,10 @@ func (h *host) Sign(data []byte) ([]byte, error) {
 	key := h.host.Peerstore().PrivKey(h.host.ID())
 	res, err := key.Sign(data)
 	return res, err
+}
+
+func (h *host) Close() error {
+	return h.Close()
 }
 
 type node struct {
