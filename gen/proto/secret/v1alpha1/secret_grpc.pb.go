@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.3.0
 // - protoc             (unknown)
-// source: orbis/secret/v1alpha1/secret.proto
+// source: secret/v1alpha1/secret.proto
 
-package v1alpha1
+package secretv1alpha1
 
 import (
 	context "context"
@@ -217,5 +217,5 @@ var SecretService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "orbis/secret/v1alpha1/secret.proto",
+	Metadata: "secret/v1alpha1/secret.proto",
 }
