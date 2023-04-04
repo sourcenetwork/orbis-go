@@ -10,7 +10,21 @@ import (
 
 func setupApp(ctx context.Context, cfg config.Config) (*app.App, error) {
 
-	opts := configToAppOptions(cfg)
+	lg, err := setupLogger(ctx, cfg.Logger)
+	if err != nil {
+		return nil, err
+	}
+
+	t, err := setupTransport(ctx, lg, cfg.Transport)
+	if err != nil {
+		return nil, err
+	}
+
+	opts := []app.Option{
+		app.DefaultOptions(),
+		app.WithLogger(lg),
+		app.WithTransport(t),
+	}
 
 	app, err := app.New(ctx, opts...)
 	if err != nil {
@@ -18,14 +32,4 @@ func setupApp(ctx context.Context, cfg config.Config) (*app.App, error) {
 	}
 
 	return app, nil
-}
-
-func configToAppOptions(cfg config.Config) []app.Option {
-
-	opts := []app.Option{
-		app.DefaultOptions(),
-		app.WithLogger(cfg.Logger),
-	}
-
-	return opts
 }

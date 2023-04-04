@@ -25,5 +25,5 @@ func main() {
 	// Setup client commands for the Orbis client.
 	rootCmd.AddCommand(startCmd)
 
-	rootCmd.Execute()
+	rootCmd.Execute() // nolint:errcheck
 }
