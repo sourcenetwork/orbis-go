@@ -9,6 +9,10 @@ import (
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
 )
 
+const (
+	ProtocolName = "dkg"
+)
+
 // enum?
 type State struct{}
 

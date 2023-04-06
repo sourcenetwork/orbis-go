@@ -7,6 +7,7 @@ import (
 	"go.dedis.ch/kyber/v3"
 	rabindkg "go.dedis.ch/kyber/v3/share/dkg/rabin"
 	"go.dedis.ch/kyber/v3/suites"
+	"go.dedis.ch/protobuf"
 
 	"github.com/sourcenetwork/orbis-go/infra/logger"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
@@ -104,6 +105,9 @@ func (d *dkg) Init(ctx context.Context, nodes []orbisdkg.Node, n int, threshold 
 	d.num = n
 	d.threshold = threshold
 
+	// setup stream handler for transport
+	d.transport.AddHandler()
+
 	return nil
 }
 
@@ -143,11 +147,25 @@ func (d *dkg) Start(ctx context.Context) error {
 
 	for _, deal := range deals {
 		if deal.Index == uint32(d.index) {
-			// deliver to ourselves
+			// todo: deliver to ourselves
+			continue
+		}
+		buf, err := protobuf.Encode(deal)
+		if err != nil {
+			return err
 		}
 
-		d.transport.NewMessage(d.dealID(deal), false, dealpb, DEAL_SEND)
-		d.transport.Send()
+		cid, err := types.CidFromBytes(buf)
+		if err != nil {
+			return err
+		}
+		msg, err := d.transport.NewMessage(d.ringID, cid.String(), false, buf, string(ProtocolRabinDeal))
+		if err != nil {
+			return err
+		}
+		if err := d.transport.Send(ctx, d.participants[deal.Index], msg); err != nil {
+			return err
+		}
 	}
 
 	return nil

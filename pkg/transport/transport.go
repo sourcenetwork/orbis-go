@@ -3,11 +3,12 @@ package transport
 import (
 	"context"
 
-	transportv1alpha "github.com/sourcenetwork/orbis-go/gen/proto/orbis/transport/v1alpha1"
-	"github.com/sourcenetwork/orbis-go/pkg/crypto"
-
 	"github.com/libp2p/go-libp2p/core/protocol"
 	ma "github.com/multiformats/go-multiaddr"
+
+	transportv1alpha "github.com/sourcenetwork/orbis-go/gen/proto/orbis/transport/v1alpha1"
+	"github.com/sourcenetwork/orbis-go/pkg/crypto"
+	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
 
 type Message = transportv1alpha.Message
@@ -19,7 +20,7 @@ type Transport interface {
 	Gossip(ctx context.Context, topic string, msg *Message) error
 	Connect(ctx context.Context, node Node) error
 	Host() Host
-	NewMessage(id string, gossip bool, payload []byte, msgType string) (*Message, error)
+	NewMessage(rid types.RingID, id string, gossip bool, payload []byte, msgType string) (*Message, error)
 	AddHandler(pid protocol.ID, handler Handler)
 	RemoveHandler(pid protocol.ID)
 }
