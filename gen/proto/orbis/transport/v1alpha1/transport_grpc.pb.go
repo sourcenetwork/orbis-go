@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.3.0
 // - protoc             (unknown)
-// source: transport/v1alpha1/transport.proto
+// source: orbis/transport/v1alpha1/transport.proto
 
-package transportv1alpha1
+package v1alpha1
 
 import (
 	context "context"
@@ -302,5 +302,5 @@ var TransportService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "transport/v1alpha1/transport.proto",
+	Metadata: "orbis/transport/v1alpha1/transport.proto",
 }
