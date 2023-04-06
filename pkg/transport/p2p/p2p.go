@@ -30,8 +30,10 @@ func (t *Transport) Send(ctx context.Context, node transport.Node, msg *transpor
 
 	// todo: verify msg is of type p2p.message
 
+	// todo sign message
+
 	peerID := peer.ID(node.ID())
-	protocolID := protocol.ConvertFromStrings([]string{msg.GetType()})
+	protocolID := protocol.ConvertFromStrings([]string{msg.GetRingId(), msg.GetType()})
 	stream, err := t.h.NewStream(ctx, peerID, protocolID...)
 	if err != nil {
 		return err // todo: wrap
@@ -47,7 +49,7 @@ func (t *Transport) Send(ctx context.Context, node transport.Node, msg *transpor
 	return err
 }
 
-func (t *Transport) Gossip(ctx context.Context, topic string, msg transport.Message) error {
+func (t *Transport) Gossip(ctx context.Context, topic string, msg *transport.Message) error {
 	panic("not implemented") // TODO: Implement
 }
 
@@ -63,14 +65,15 @@ func (t *Transport) Host() transport.Host {
 	return t.host()
 }
 
-func (t *Transport) NewMessage(id string, gossip bool, payload []byte, msgType string) (transport.Message, error) {
+func (t *Transport) NewMessage(id string, gossip bool, payload []byte, msgType string) (*transport.Message, error) {
 	h := t.host()
 	pubkeyBytes, err := h.PublicKey().Raw()
 	if err != nil {
-		return transport.Message{}, err // todo: wrap
+		return nil, err // todo: wrap
 	}
-	// todo: Signature
-	return transport.Message{
+	// todo: Signature (should be done on send)
+	// replay? nonce?
+	return &transport.Message{
 		Timestamp:  time.Now().Unix(),
 		Id:         id,
 		NodeId:     h.ID(),

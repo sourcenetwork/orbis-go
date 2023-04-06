@@ -11,5 +11,9 @@ type Logger interface {
 	// If the level is not recognized, the default level is "debug".
 	SetLevel(lv string)
 
+	// Get a named version of the logger
+	// with the same configuration
+	Named(name string) Logger
+
 	Sync() error
 }

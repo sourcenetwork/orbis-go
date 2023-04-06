@@ -32,6 +32,7 @@ type PSS interface {
 	// Aggregate public key of the PSS/DKG
 	PublicKey() crypto.PublicKey
 	// Public polynomial
+	// might not need on interface
 	PublicPoly() crypto.PubPoly
 
 	// Private share of this node

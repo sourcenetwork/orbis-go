@@ -1,18 +1,40 @@
 package dkg
 
 import (
-	"github.com/samber/do"
+	"context"
+
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
+	"github.com/sourcenetwork/orbis-go/pkg/crypto"
+	"github.com/sourcenetwork/orbis-go/pkg/db"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
-	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
 
-type DKG interface{}
+// enum?
+type State struct{}
+
+type Node = transport.Node
+
+type DKG interface {
+	Init(ctx context.Context, nodes []transport.Node, n int, threshold int) error
+	Name() string
+
+	PublicKey() crypto.PublicKey
+	Share() crypto.PriShare
+
+	State() State
+
+	Start(context.Context) error
+	Close(context.Context) error
+
+	ProcessMessage(*transport.Message) error
+
+	// hooks?
+}
 
 type Factory interface {
-	New(types.RingID, int32, int32, transport.Transport, bulletin.Bulletin, []types.Node) (DKG, error)
+	New(db.Repository, transport.Transport, bulletin.Bulletin, crypto.PrivateKey) (DKG, error)
 }
 
 // ProvideFactory
 // or FactoryProvider??
-type ProvideFactory func(*do.Injector) Factory
+// type ProvideFactory func(*do.Injector) Factory

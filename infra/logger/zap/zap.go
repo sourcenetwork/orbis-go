@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/sourcenetwork/orbis-go/config"
+	"github.com/sourcenetwork/orbis-go/infra/logger"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -57,6 +58,14 @@ func (l *zapLogger) Panicf(fmt string, args ...interface{}) {
 
 func (l *zapLogger) Fatalf(fmt string, args ...interface{}) {
 	l.sugarLogger.Fatalf(fmt, args...)
+}
+
+func (l *zapLogger) Named(name string) logger.Logger {
+	return &zapLogger{
+		level:       l.level,
+		encoding:    l.encoding,
+		sugarLogger: l.sugarLogger.Named(name),
+	}
 }
 
 func (l *zapLogger) Sync() error {

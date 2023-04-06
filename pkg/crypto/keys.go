@@ -6,11 +6,8 @@ import (
 	ic "github.com/libp2p/go-libp2p/core/crypto"
 	icpb "github.com/libp2p/go-libp2p/core/crypto/pb"
 	"go.dedis.ch/kyber/v3"
-	"go.dedis.ch/kyber/v3/group/edwards25519"
 	"go.dedis.ch/kyber/v3/share"
 	"go.dedis.ch/kyber/v3/suites"
-
-	"github.com/sourcenetwork/orbis-go/pkg/crypto/suites/secp256k1"
 )
 
 var (
@@ -43,24 +40,21 @@ func PublicKeyFromProto(pk *icpb.PublicKey) (PublicKey, error) {
 	return publicKeyFromLibP2P(icpk)
 }
 
+func PublicKeyFromPoint(point kyber.Point) (PublicKey, error) {
+	panic("todo")
+}
+
 func publicKeyFromLibP2P(pubkey ic.PubKey) (*pubKey, error) {
-	var pk pubKey
-	switch pubkey.Type() {
-	case icpb.KeyType_Secp256k1:
-		pk = pubKey{
-			PubKey: pubkey,
-			suite:  secp256k1.NewBlakeKeccackSecp256k1(),
-		}
-	case icpb.KeyType_Ed25519:
-		pk = pubKey{
-			PubKey: pubkey,
-			suite:  edwards25519.NewBlakeSHA256Ed25519(),
-		}
-	default:
-		return nil, ErrBadKeyType
+	suite, err := SuiteForType(pubkey.Type())
+	if err != nil {
+		return nil, err
 	}
 
-	return &pk, nil
+	return &pubKey{
+		PubKey: pubkey,
+		suite:  suite,
+	}, nil
+
 }
 
 func (p *pubKey) Point() kyber.Point {
