@@ -6,6 +6,8 @@ import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
 import "libp2p/crypto/v1alpha1/crypto.proto";
 
+option go_package = "github.com/sourcenetwork/orbis-go/gen/proto/orbis/ring/v1alpha1";
+
 service RingService {
   rpc ListRings(ListRingsRequest) returns (ListRingsResponse) {
     option (google.api.http) = {get: "/v1alpha1/rings"};

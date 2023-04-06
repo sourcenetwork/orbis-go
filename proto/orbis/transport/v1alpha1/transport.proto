@@ -6,6 +6,8 @@ import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
 import "libp2p/crypto/v1alpha1/crypto.proto";
 
+option go_package = "github.com/sourcenetwork/orbis-go/gen/proto/orbis/transport/v1alpha1";
+
 service TransportService {
   // GetHost returns the information about the host node.
   rpc GetHost(GetHostRequest) returns (GetHostResponse) {
