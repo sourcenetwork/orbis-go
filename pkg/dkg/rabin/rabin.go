@@ -106,7 +106,7 @@ func (d *dkg) Init(ctx context.Context, nodes []orbisdkg.Node, n int, threshold 
 	d.threshold = threshold
 
 	// setup stream handler for transport
-	d.transport.AddHandler()
+	d.setupHandlers()
 
 	return nil
 }
@@ -155,15 +155,8 @@ func (d *dkg) Start(ctx context.Context) error {
 			return err
 		}
 
-		cid, err := types.CidFromBytes(buf)
+		err = d.send(ctx, string(ProtocolRabinDeal), buf, d.participants[deal.Index])
 		if err != nil {
-			return err
-		}
-		msg, err := d.transport.NewMessage(d.ringID, cid.String(), false, buf, string(ProtocolRabinDeal))
-		if err != nil {
-			return err
-		}
-		if err := d.transport.Send(ctx, d.participants[deal.Index], msg); err != nil {
 			return err
 		}
 	}
@@ -171,11 +164,33 @@ func (d *dkg) Start(ctx context.Context) error {
 	return nil
 }
 
+func (d *dkg) send(ctx context.Context, msgType string, buf []byte, node transport.Node) error {
+	cid, err := types.CidFromBytes(buf)
+	if err != nil {
+		return err
+	}
+	msg, err := d.transport.NewMessage(d.ringID, cid.String(), false, buf, msgType)
+	if err != nil {
+		return err
+	}
+	if err := d.transport.Send(ctx, node, msg); err != nil {
+		return err
+	}
+}
+
 func (d *dkg) Close(_ context.Context) error {
 	panic("not implemented") // TODO: Implement
 }
 
-func (d *dkg) ProcessMessage(_ *transport.Message) error {
+func (d *dkg) ProcessMessage(msg *transport.Message) error {
 	// todo maybe?: validate msg.PublicKey matches payload pubkeys
-	panic("not implemented") // TODO: Implement
+
+	switch msg.GetType() {
+	case string(ProtocolRabinDeal):
+		//
+	case string(ProtocolRabinResponse):
+		//
+	}
+
+	return nil
 }
