@@ -3,7 +3,7 @@ package grpcserver
 import (
 	"context"
 
-	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/ring/v1alpha1"
+	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/ring/v1alpha1"
 	"github.com/sourcenetwork/orbis-go/infra/logger"
 
 	"google.golang.org/protobuf/types/known/emptypb"

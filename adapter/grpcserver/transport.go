@@ -34,8 +34,8 @@ func (s *transportService) GetHost(ctx context.Context, req *transportv1alpha1.G
 		Node: &transportv1alpha1.Node{
 			Id:      h.ID(),
 			Address: h.Address().String(),
-			PublicKey: &cryptov1alpha1.PublicKey{
-				Type: cryptov1alpha1.KeyType_KEY_TYPE_ED25519,
+			PublicKey: &libp2pcrypto.PublicKey{
+				Type: libp2pcrypto.KeyType_Ed25519.Enum(),
 				Data: raw,
 			},
 		},

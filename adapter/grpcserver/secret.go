@@ -3,7 +3,7 @@ package grpcserver
 import (
 	"context"
 
-	secretv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/secret/v1alpha1"
+	secretv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/secret/v1alpha1"
 	"github.com/sourcenetwork/orbis-go/infra/logger"
 
 	"google.golang.org/protobuf/types/known/emptypb"
