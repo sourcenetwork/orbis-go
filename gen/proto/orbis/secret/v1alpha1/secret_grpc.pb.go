@@ -4,7 +4,7 @@
 // - protoc             (unknown)
 // source: orbis/secret/v1alpha1/secret.proto
 
-package v1alpha1
+package secretv1alpha1
 
 import (
 	context "context"
@@ -20,10 +20,10 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	SecretService_ListSecrets_FullMethodName  = "/secret.v1alpha1.SecretService/ListSecrets"
-	SecretService_StoreSecret_FullMethodName  = "/secret.v1alpha1.SecretService/StoreSecret"
-	SecretService_GetSecret_FullMethodName    = "/secret.v1alpha1.SecretService/GetSecret"
-	SecretService_DeleteSecret_FullMethodName = "/secret.v1alpha1.SecretService/DeleteSecret"
+	SecretService_ListSecrets_FullMethodName  = "/orbis.secret.v1alpha1.SecretService/ListSecrets"
+	SecretService_StoreSecret_FullMethodName  = "/orbis.secret.v1alpha1.SecretService/StoreSecret"
+	SecretService_GetSecret_FullMethodName    = "/orbis.secret.v1alpha1.SecretService/GetSecret"
+	SecretService_DeleteSecret_FullMethodName = "/orbis.secret.v1alpha1.SecretService/DeleteSecret"
 )
 
 // SecretServiceClient is the client API for SecretService service.
@@ -196,7 +196,7 @@ func _SecretService_DeleteSecret_Handler(srv interface{}, ctx context.Context, d
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var SecretService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "secret.v1alpha1.SecretService",
+	ServiceName: "orbis.secret.v1alpha1.SecretService",
 	HandlerType: (*SecretServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

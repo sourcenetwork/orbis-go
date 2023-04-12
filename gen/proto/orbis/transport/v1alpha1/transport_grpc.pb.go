@@ -4,7 +4,7 @@
 // - protoc             (unknown)
 // source: orbis/transport/v1alpha1/transport.proto
 
-package v1alpha1
+package transportv1alpha1
 
 import (
 	context "context"
@@ -19,12 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	TransportService_GetHost_FullMethodName    = "/transport.v1alpha1.TransportService/GetHost"
-	TransportService_ListNodes_FullMethodName  = "/transport.v1alpha1.TransportService/ListNodes"
-	TransportService_Connect_FullMethodName    = "/transport.v1alpha1.TransportService/Connect"
-	TransportService_Send_FullMethodName       = "/transport.v1alpha1.TransportService/Send"
-	TransportService_Gossip_FullMethodName     = "/transport.v1alpha1.TransportService/Gossip"
-	TransportService_NewMessage_FullMethodName = "/transport.v1alpha1.TransportService/NewMessage"
+	TransportService_GetHost_FullMethodName    = "/orbis.transport.v1alpha1.TransportService/GetHost"
+	TransportService_Connect_FullMethodName    = "/orbis.transport.v1alpha1.TransportService/Connect"
+	TransportService_Send_FullMethodName       = "/orbis.transport.v1alpha1.TransportService/Send"
+	TransportService_Gossip_FullMethodName     = "/orbis.transport.v1alpha1.TransportService/Gossip"
+	TransportService_NewMessage_FullMethodName = "/orbis.transport.v1alpha1.TransportService/NewMessage"
 )
 
 // TransportServiceClient is the client API for TransportService service.
@@ -33,8 +32,6 @@ const (
 type TransportServiceClient interface {
 	// GetHost returns the information about the host node.
 	GetHost(ctx context.Context, in *GetHostRequest, opts ...grpc.CallOption) (*GetHostResponse, error)
-	// ListNodes lists information about connected peer nodes.
-	ListNodes(ctx context.Context, in *ListNodesRequest, opts ...grpc.CallOption) (*ListNodesResponse, error)
 	// Connect connects to a peer node.
 	Connect(ctx context.Context, in *ConnectRequest, opts ...grpc.CallOption) (*ConnectResponse, error)
 	// Send sends a message to a peer node.
@@ -56,15 +53,6 @@ func NewTransportServiceClient(cc grpc.ClientConnInterface) TransportServiceClie
 func (c *transportServiceClient) GetHost(ctx context.Context, in *GetHostRequest, opts ...grpc.CallOption) (*GetHostResponse, error) {
 	out := new(GetHostResponse)
 	err := c.cc.Invoke(ctx, TransportService_GetHost_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *transportServiceClient) ListNodes(ctx context.Context, in *ListNodesRequest, opts ...grpc.CallOption) (*ListNodesResponse, error) {
-	out := new(ListNodesResponse)
-	err := c.cc.Invoke(ctx, TransportService_ListNodes_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -113,8 +101,6 @@ func (c *transportServiceClient) NewMessage(ctx context.Context, in *NewMessageR
 type TransportServiceServer interface {
 	// GetHost returns the information about the host node.
 	GetHost(context.Context, *GetHostRequest) (*GetHostResponse, error)
-	// ListNodes lists information about connected peer nodes.
-	ListNodes(context.Context, *ListNodesRequest) (*ListNodesResponse, error)
 	// Connect connects to a peer node.
 	Connect(context.Context, *ConnectRequest) (*ConnectResponse, error)
 	// Send sends a message to a peer node.
@@ -132,9 +118,6 @@ type UnimplementedTransportServiceServer struct {
 
 func (UnimplementedTransportServiceServer) GetHost(context.Context, *GetHostRequest) (*GetHostResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetHost not implemented")
-}
-func (UnimplementedTransportServiceServer) ListNodes(context.Context, *ListNodesRequest) (*ListNodesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListNodes not implemented")
 }
 func (UnimplementedTransportServiceServer) Connect(context.Context, *ConnectRequest) (*ConnectResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Connect not implemented")
@@ -175,24 +158,6 @@ func _TransportService_GetHost_Handler(srv interface{}, ctx context.Context, dec
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(TransportServiceServer).GetHost(ctx, req.(*GetHostRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _TransportService_ListNodes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListNodesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(TransportServiceServer).ListNodes(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: TransportService_ListNodes_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TransportServiceServer).ListNodes(ctx, req.(*ListNodesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -273,16 +238,12 @@ func _TransportService_NewMessage_Handler(srv interface{}, ctx context.Context, 
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var TransportService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "transport.v1alpha1.TransportService",
+	ServiceName: "orbis.transport.v1alpha1.TransportService",
 	HandlerType: (*TransportServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "GetHost",
 			Handler:    _TransportService_GetHost_Handler,
-		},
-		{
-			MethodName: "ListNodes",
-			Handler:    _TransportService_ListNodes_Handler,
 		},
 		{
 			MethodName: "Connect",
