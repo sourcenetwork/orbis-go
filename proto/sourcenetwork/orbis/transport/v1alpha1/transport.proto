@@ -1,69 +1,32 @@
 syntax = "proto3";
 
-package transport.v1alpha1;
+package orbis.transport.v1alpha1;
 
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
-import "libp2p/crypto/v1alpha1/crypto.proto";
-
-option go_package = "github.com/sourcenetwork/orbis-go/gen/proto/orbis/transport/v1alpha1";
+import "libp2p/crypto/v1/crypto.proto";
 
 service TransportService {
   // GetHost returns the information about the host node.
-  rpc GetHost(GetHostRequest) returns (GetHostResponse) {
-    option (google.api.http) = {get: "/v1alpha1/host"};
-  }
-
-  // ListNodes lists information about connected peer nodes.
-  rpc ListNodes(ListNodesRequest) returns (ListNodesResponse) {
-    option (google.api.http) = {get: "/v1alpha1/nodes"};
-  }
+  rpc GetHost(GetHostRequest) returns (GetHostResponse) {}
 
   // Connect connects to a peer node.
-  rpc Connect(ConnectRequest) returns (ConnectResponse) {
-    option (google.api.http) = {
-      post: "/v1alpha1/node:connect"
-      body: "*"
-    };
-  }
+  rpc Connect(ConnectRequest) returns (ConnectResponse) {}
 
   // Send sends a message to a peer node.
-  rpc Send(SendRequest) returns (SendResponse) {
-    option (google.api.http) = {
-      post: "/v1alpha1/node:send"
-      body: "*"
-    };
-  }
+  rpc Send(SendRequest) returns (SendResponse) {}
 
   // Gossip broadcasts a message to a topic.
-  rpc Gossip(GossipRequest) returns (GossipResponse) {
-    option (google.api.http) = {
-      post: "/v1alpha1:gossip"
-      body: "*"
-    };
-  }
+  rpc Gossip(GossipRequest) returns (GossipResponse) {}
 
   // NewMessage returns a formated messages.
-  rpc NewMessage(NewMessageRequest) returns (NewMessageResponse) {
-    option (google.api.http) = {
-      post: "/v1alpha1:new_message"
-      body: "*"
-    };
-  }
+  rpc NewMessage(NewMessageRequest) returns (NewMessageResponse) {}
 }
 
 message GetHostRequest {}
 
 message GetHostResponse {
   Node node = 1;
-}
-
-message ListNodesRequest {
-  string key = 1;
-}
-
-message ListNodesResponse {
-  repeated Node nodes = 1;
 }
 
 message SendRequest {
@@ -74,7 +37,8 @@ message SendRequest {
 message SendResponse {}
 
 message ConnectRequest {
-  Node node = 1;
+  string id = 1;
+  string address = 2; // multiaddress
 }
 
 message ConnectResponse {}
@@ -84,15 +48,14 @@ message GossipRequest {
   Message message = 2;
 }
 
-message GossipResponse {
-  Node node = 1;
-}
+message GossipResponse {}
 
 message NewMessageRequest {
   string id = 1;
   bool gossip = 2;
   bytes payload = 3;
   string type = 4;
+  string ring_id = 5;
 }
 
 message NewMessageResponse {
@@ -102,7 +65,7 @@ message NewMessageResponse {
 message Node {
   string id = 1;
   string address = 2; // multiaddress
-  libp2p.crypto.v1alpha1.PublicKey public_key = 3;
+  libp2p.crypto.v1.PublicKey public_key = 3;
 }
 
 message Message {

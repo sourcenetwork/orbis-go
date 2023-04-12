@@ -1,0 +1,8 @@
+version: v1
+name: buf.build/sourcenetwork/go-libp2p
+breaking:
+  use:
+    - FILE
+lint:
+  use:
+    - DEFAULT

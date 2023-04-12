@@ -1,4 +1,13 @@
 version: v1
+managed:
+  enabled: true
+  go_package_prefix:
+    default: github.com/sourcenetwork/orbis-go/gen/proto
+    except:
+      - buf.build/googleapis/googleapis
+  override:
+    GO_PACKAGE:
+      libp2p/crypto/v1/crypto.proto: github.com/libp2p/go-libp2p/core/crypto/pb
 plugins:
   - plugin: buf.build/protocolbuffers/go
     out: gen/proto
