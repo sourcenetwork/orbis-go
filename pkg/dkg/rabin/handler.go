@@ -41,6 +41,8 @@ func (d *dkg) processDeal(deal *rabindkg.Deal, nodes []transport.Node) error {
 		}
 	}
 
+	_ = response
+
 	return nil
 }
 
