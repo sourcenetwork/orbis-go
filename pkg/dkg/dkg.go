@@ -13,8 +13,14 @@ const (
 	ProtocolName = "dkg"
 )
 
-// enum?
-type State struct{}
+const (
+	INITIALIZED State = iota // DKG group has initialized but not started the generation
+	STARTED                  // Started the distributed key generation
+	CERTIFIED                // Generated and cerified the shared key
+)
+
+// enum
+type State uint8
 
 type Node = transport.Node
 

@@ -90,7 +90,7 @@ func (p *privKey) GetPublic() PublicKey {
 
 // PriShare
 type PriShare struct {
-	share.PriShare
+	*share.PriShare
 }
 
 // PubPoly

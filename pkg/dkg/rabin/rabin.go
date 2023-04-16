@@ -45,6 +45,7 @@ type dkg struct {
 	transport transport.Transport
 	bulletin  bulletin.Bulletin
 
+	state       orbisdkg.State
 	initialized bool
 }
 
@@ -107,6 +108,7 @@ func (d *dkg) Init(ctx context.Context, nodes []orbisdkg.Node, n int, threshold 
 
 	// setup stream handler for transport
 	d.setupHandlers()
+	d.state = orbisdkg.INITIALIZED
 
 	return nil
 }
@@ -125,13 +127,14 @@ func (d *dkg) Share() crypto.PriShare {
 }
 
 func (d *dkg) State() orbisdkg.State {
-	panic("not implemented") // TODO: Implement
+	return d.state
 }
 
 // Start the DKG setup process.
 func (d *dkg) Start(ctx context.Context) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	d.state = orbisdkg.STARTED
 
 	if !d.initialized {
 		return orbisdkg.ErrNotInitialized
@@ -155,7 +158,7 @@ func (d *dkg) Start(ctx context.Context) error {
 			return err
 		}
 
-		err = d.send(ctx, string(ProtocolRabinDeal), buf, d.participants[deal.Index])
+		err = d.send(ctx, string(ProtocolDeal), buf, d.participants[deal.Index])
 		if err != nil {
 			return err
 		}
@@ -176,6 +179,8 @@ func (d *dkg) send(ctx context.Context, msgType string, buf []byte, node transpo
 	if err := d.transport.Send(ctx, node, msg); err != nil {
 		return err
 	}
+
+	return nil
 }
 
 func (d *dkg) Close(_ context.Context) error {
@@ -186,10 +191,12 @@ func (d *dkg) ProcessMessage(msg *transport.Message) error {
 	// todo maybe?: validate msg.PublicKey matches payload pubkeys
 
 	switch msg.GetType() {
-	case string(ProtocolRabinDeal):
+	case string(ProtocolDeal):
 		//
-	case string(ProtocolRabinResponse):
+	case string(ProtocolResponse):
 		//
+	default:
+		panic("bad message type") //todo
 	}
 
 	return nil

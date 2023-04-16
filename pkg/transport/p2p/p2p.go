@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
+	"github.com/sourcenetwork/orbis-go/pkg/types"
 
 	libp2phost "github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -33,7 +34,8 @@ func (t *Transport) Send(ctx context.Context, node transport.Node, msg *transpor
 	// todo sign message
 
 	peerID := peer.ID(node.ID())
-	protocolID := protocol.ConvertFromStrings([]string{msg.GetRingId(), msg.GetType()})
+	// todo protocol formatting
+	protocolID := protocol.ConvertFromStrings([]string{msg.GetType()})
 	stream, err := t.h.NewStream(ctx, peerID, protocolID...)
 	if err != nil {
 		return err // todo: wrap
@@ -65,7 +67,7 @@ func (t *Transport) Host() transport.Host {
 	return t.host()
 }
 
-func (t *Transport) NewMessage(id string, gossip bool, payload []byte, msgType string) (*transport.Message, error) {
+func (t *Transport) NewMessage(ringID types.RingID, id string, gossip bool, payload []byte, msgType string) (*transport.Message, error) {
 	h := t.host()
 	pubkeyBytes, err := h.PublicKey().Raw()
 	if err != nil {
@@ -76,6 +78,7 @@ func (t *Transport) NewMessage(id string, gossip bool, payload []byte, msgType s
 	return &transport.Message{
 		Timestamp:  time.Now().Unix(),
 		Id:         id,
+		RingId:     string(ringID),
 		NodeId:     h.ID(),
 		NodePubKey: pubkeyBytes,
 		Type:       msgType,
@@ -124,6 +127,6 @@ func streamHandlerFrom(handler transport.Handler) func(network.Stream) {
 			return
 		}
 
-		handler(*data)
+		handler(data)
 	}
 }
