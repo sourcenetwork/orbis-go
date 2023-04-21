@@ -1,6 +1,6 @@
 grpc:
-  grpcURL: "0.0.0.0:8080"
-  restURL: "0.0.0.0:8090"
+  grpcURL: "0.0.0.0:8081"
+  restURL: "0.0.0.0:8091"
   logging: true
 
 logger:
@@ -10,10 +10,11 @@ logger:
 
 p2p:
   crypto:
-    seed: 0
+    seed: 1
   listenAddresses:
-    - /ip4/0.0.0.0/tcp/9000
+    - /ip4/0.0.0.0/tcp/9001
   bootstrap_peers:
+    - /ip4/127.0.0.1/tcp/9000/p2p/12D3KooWB1b3qZxWJanuhtseF3DmPggHCtG36KZ9ixkqHtdKH9fh
 
 bulletin:
   rendezvous: "orbis-bulletin"
