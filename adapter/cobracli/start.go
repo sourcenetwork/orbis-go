@@ -5,11 +5,12 @@ import (
 	"log"
 	"path"
 	"reflect"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/sourcenetwork/orbis-go/config"
 
-	"github.com/iancoleman/strcase"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -53,10 +54,9 @@ func StartCmd(setup func(config.Config) error) (*cobra.Command, error) {
 func buildCmdFlags(cmd *cobra.Command) error {
 
 	cfg := &config.Config{}
-	var err error
 
-	var traverse func(v reflect.Value, path string)
-	traverse = func(v reflect.Value, path string) {
+	var traverse func(v reflect.Value, path string) error
+	traverse = func(v reflect.Value, path string) error {
 
 		for i := 0; i < v.NumField(); i++ {
 
@@ -67,31 +67,74 @@ func buildCmdFlags(cmd *cobra.Command) error {
 			}
 
 			f := v.Field(i)
-			// TODO: is map handeled properly?
-			if f.Kind().String() == "struct" {
-				x := reflect.ValueOf(f.Interface())
-				traverse(x, name)
-				continue
-			}
+			kind := f.Kind()
 
-			snake := strcase.ToSnakeWithIgnore(name, ".")
+			snake := toSnakeCase(name)
 
 			// Generate the Cobra command flag.
-			// TODO: reflect on the type of the field and set the appropriate flag type.
-			cmd.Flags().String(snake, tag.Get("default"), tag.Get("description"))
+			val, desc := tag.Get("default"), tag.Get("description")
+
+			switch kind {
+			case reflect.Struct:
+				x := reflect.ValueOf(f.Interface())
+				err := traverse(x, name)
+				if err != nil {
+					return fmt.Errorf("traverse: %w", err)
+				}
+				continue
+			case reflect.Bool:
+				parsed, err := strconv.ParseBool(val)
+				if err != nil {
+					return fmt.Errorf("parseBool: %q, %w", val, err)
+				}
+				cmd.Flags().Bool(snake, parsed, desc)
+			case reflect.String:
+				cmd.Flags().String(snake, val, desc)
+			case reflect.Int:
+				parsed, err := strconv.Atoi(val)
+				if err != nil {
+					return fmt.Errorf("parseBool: %q, %w", val, err)
+				}
+				cmd.Flags().Int(snake, parsed, desc)
+			case reflect.Uint:
+				parsed, err := strconv.ParseUint(val, 10, 64)
+				if err != nil {
+					return fmt.Errorf("parseBool: %q, %w", val, err)
+				}
+				cmd.Flags().Uint(snake, uint(parsed), desc)
+			case reflect.Float64:
+				parsed, err := strconv.ParseFloat(val, 64)
+				if err != nil {
+					return fmt.Errorf("parseBool: %q, %w", val, err)
+				}
+				cmd.Flags().Float64(snake, parsed, desc)
+			case reflect.Slice:
+				// TODO: support other slice types.
+				elmType := f.Type().Elem().Kind()
+				if elmType != reflect.String {
+					return fmt.Errorf("unsupported slice type: %q, for entry: %q", elmType, name)
+				}
+				cmd.Flags().StringSlice(snake, strings.Split(val, ","), desc)
+			default:
+				return fmt.Errorf("unsupported type: %q, for entry: %q", kind, name)
+			}
 
 			// Bind the flag to the viper config.
-			err = viper.BindPFlag(snake, cmd.Flags().Lookup(snake))
+			err := viper.BindPFlag(snake, cmd.Flags().Lookup(snake))
 			if err != nil {
-				return
+				return fmt.Errorf("bind flag: %w", err)
 			}
 		}
+		return nil
 	}
 
 	x := reflect.ValueOf(cfg).Elem()
-	traverse(x, "")
+	err := traverse(x, "")
+	if err != nil {
+		return fmt.Errorf("traverse: %w", err)
+	}
 
-	return err
+	return nil
 }
 
 func readConfigFile(file string) (config.Config, error) {
@@ -132,10 +175,6 @@ func readConfigFile(file string) (config.Config, error) {
 		log.Printf("no config file found")
 	}
 
-	if viper.ConfigFileUsed() != "" {
-		log.Printf("using %s", viper.ConfigFileUsed())
-	}
-
 	// Unmarshal the config file into the config.Config struct.
 	err = viper.Unmarshal(&cfg)
 	if err != nil {
@@ -143,4 +182,10 @@ func readConfigFile(file string) (config.Config, error) {
 	}
 
 	return cfg, nil
+}
+
+func toSnakeCase(str string) string {
+	var matchAllCap = regexp.MustCompile("([a-z])([A-Z])")
+	snake := matchAllCap.ReplaceAllString(str, "${1}_${2}")
+	return strings.ToLower(snake)
 }

@@ -44,7 +44,7 @@ func setupServer(cfg config.Config) error {
 		var sig os.Signal
 		select {
 		case sig = <-sigs:
-			app.Logger().Infof("Received signal %q", sig)
+			log.Infof("Received signal %q", sig)
 		case <-errGrpCtx.Done():
 			// At least 1 managed goroutines returns an error.
 		}

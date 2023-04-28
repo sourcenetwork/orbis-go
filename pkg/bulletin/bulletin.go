@@ -3,17 +3,15 @@ package bulletin
 import (
 	"context"
 	"fmt"
-	// "github.com/samber/do"
-)
 
-// type BaseService = Bulletin[string, []byte]
+	"github.com/samber/do"
+	"github.com/sourcenetwork/orbis-go/config"
+)
 
 var (
 	ErrDuplicateMessage = fmt.Errorf("bulletin: duplicate message")
 	ErrMessageNotFound  = fmt.Errorf("bulletin: message not found")
 )
-
-// type ProviderFn[Query any] func(*do.Injector) Bulletin[Query, []byte]
 
 type Message []byte
 
@@ -42,9 +40,6 @@ type Bulletin interface {
 
 	// EventBus
 	// Events() eventbus.Bus
-
-	Start()
-	Shutdown()
 }
 
 type Config struct {
@@ -57,4 +52,8 @@ func WithProof(p bool) Option {
 	return func(c *Config) {
 		c.Proof = p
 	}
+}
+
+type Factory interface {
+	New(ctx context.Context, inj *do.Injector, cfg config.Bulletin) (Bulletin, error)
 }

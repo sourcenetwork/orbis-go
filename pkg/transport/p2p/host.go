@@ -3,55 +3,78 @@ package p2p
 import (
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 
-	"github.com/libp2p/go-libp2p-core/peer"
 	ic "github.com/libp2p/go-libp2p/core/crypto"
 	libp2phost "github.com/libp2p/go-libp2p/core/host"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
-type host struct {
+type Host struct {
 	host libp2phost.Host
 }
 
-func (h *host) ID() string {
+func (h *Host) ID() string {
 	return h.host.ID().String()
 }
 
-func (h *host) PublicKey() crypto.PublicKey {
+func (h *Host) PublicKey() crypto.PublicKey {
 	libp2pPubKey := h.host.Peerstore().PubKey(h.host.ID())
 	pubkey, _ := crypto.PublicKeyFromLibP2P(libp2pPubKey)
 	return pubkey
 }
 
-func (h *host) Address() ma.Multiaddr {
+func (h *Host) Address() ma.Multiaddr {
 	return h.host.Addrs()[0]
 }
 
-func (h *host) Sign(data []byte) ([]byte, error) {
+func (h *Host) Sign(data []byte) ([]byte, error) {
 	key := h.host.Peerstore().PrivKey(h.host.ID())
 	res, err := key.Sign(data)
 	return res, err
 }
 
-func (h *host) Close() error {
-	return h.Close()
+func (h *Host) Peers() ([]Node, error) {
+	var nodes []Node
+	s := h.host.Network().Peerstore()
+	for _, p := range h.host.Network().Peers() {
+		a := s.PeerInfo(p)
+		n := Node{
+			id:      p.String(),
+			address: a.Addrs[0],
+		}
+		nodes = append(nodes, n)
+
+	}
+
+	return nodes, nil
 }
 
-type node struct {
-	id        peer.ID
+func (h *Host) Close() error {
+	return h.host.Close()
+}
+
+type Node struct {
+	id        string
 	publicKey ic.PubKey
 	address   ma.Multiaddr
 }
 
-func (n node) ID() string {
-	return n.id.String()
+func NewNode(id string, publicKey ic.PubKey, address ma.Multiaddr) *Node {
+	return &Node{
+		id:        id,
+		publicKey: publicKey,
+		address:   address,
+	}
 }
 
-func (n node) PublicKey() crypto.PublicKey {
+func (n Node) ID() string {
+	return n.id
+}
+
+func (n Node) PublicKey() crypto.PublicKey {
 	pubkey, _ := crypto.PublicKeyFromLibP2P(n.publicKey)
 	return pubkey
 }
 
-func (n node) Address() ma.Multiaddr {
+func (n Node) Address() ma.Multiaddr {
 	return n.address
 }

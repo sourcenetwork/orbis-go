@@ -9,6 +9,7 @@ import (
 )
 
 const (
+	ProviderName      = "simpledb"
 	ringRepoTableID   = 1
 	ringRepoTableName = "ring_repo_table"
 )
@@ -27,6 +28,8 @@ type Repository struct {
 }
 
 func New() (*Repository, error) {
+	return &Repository{}, nil
+
 	opts := bond.DefaultOptions()
 	opts.Serializer = protoSerializer{}
 	bdb, err := bond.Open("~/.orbis/data", opts)

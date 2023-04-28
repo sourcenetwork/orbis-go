@@ -9,7 +9,6 @@ import (
 	"go.dedis.ch/kyber/v3/suites"
 	"go.dedis.ch/protobuf"
 
-	"github.com/sourcenetwork/orbis-go/infra/logger"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	"github.com/sourcenetwork/orbis-go/pkg/db"
@@ -20,8 +19,6 @@ import (
 
 type dkg struct {
 	mu sync.Mutex
-
-	log logger.Logger
 
 	ringID types.RingID
 
@@ -49,11 +46,7 @@ type dkg struct {
 	initialized bool
 }
 
-func New(lg logger.Logger, repo *db.Repository, t transport.Transport, b bulletin.Bulletin, pk crypto.PrivateKey) (orbisdkg.DKG, error) {
-	return newDKG(lg, repo, t, b, pk)
-}
-
-func newDKG(lg logger.Logger, repo *db.Repository, t transport.Transport, b bulletin.Bulletin, pk crypto.PrivateKey) (*dkg, error) {
+func New(repo db.Repository, t transport.Transport, b bulletin.Bulletin, pk crypto.PrivateKey) (*dkg, error) {
 	suite, err := crypto.SuiteForType(pk.Type())
 	if err != nil {
 		return nil, err
@@ -63,8 +56,7 @@ func newDKG(lg logger.Logger, repo *db.Repository, t transport.Transport, b bull
 	pubPoint := suite.Point().Mul(scalar, nil) // public point for scalar
 
 	return &dkg{
-		log:       lg,
-		repo:      repo,
+		repo:      &repo,
 		transport: t,
 		bulletin:  b,
 		suite:     suite,

@@ -14,10 +14,10 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-func setupGRPCServer(cfg config.GRPC, errGrp *errgroup.Group, clnr *cleaner.Cleaner, app *app.App) error {
+func setupGRPCServer(cfg config.GRPC, errGrp *errgroup.Group, clnr *cleaner.Cleaner, o *app.App) error {
 
 	// Create a gRPC server object
-	s := grpcserver.NewGRPCServer(app)
+	s := grpcserver.NewGRPCServer(cfg, o)
 
 	reflection.Register(s)
 
@@ -29,7 +29,7 @@ func setupGRPCServer(cfg config.GRPC, errGrp *errgroup.Group, clnr *cleaner.Clea
 
 	// Start the gRPC Server.
 	errGrp.Go(func() error {
-		app.Logger().Infof("Serving gRPC on %s", cfg.GRPCURL)
+		log.Infof("Serving gRPC on %s", cfg.GRPCURL)
 		return s.Serve(lis)
 	})
 
@@ -39,19 +39,19 @@ func setupGRPCServer(cfg config.GRPC, errGrp *errgroup.Group, clnr *cleaner.Clea
 		return fmt.Errorf("create gRPC gateway server: %w", err)
 	}
 	errGrp.Go(func() error {
-		app.Logger().Infof("Serving gRPC-Gateway on http://%s", cfg.RESTURL)
+		log.Infof("Serving gRPC-Gateway on http://%s", cfg.RESTURL)
 		return gwServer.ListenAndServe()
 	})
 
 	clnr.Regster(func() {
 
-		app.Logger().Infof("Shutting down gRPC-Gateway server")
+		log.Infof("Shutting down gRPC-Gateway server")
 		err := gwServer.Shutdown(context.Background())
 		if err != nil {
-			app.Logger().Errorf("Shutting down gRPC-Gateway, server error: %s", err)
+			log.Errorf("Shutting down gRPC-Gateway, server error: %s", err)
 		}
 
-		app.Logger().Infof("Shutting down gRPC server")
+		log.Infof("Shutting down gRPC server")
 		s.GracefulStop()
 	})
 

@@ -3,6 +3,8 @@ package transport
 import (
 	"context"
 
+	"github.com/samber/do"
+	"github.com/sourcenetwork/orbis-go/config"
 	transportv1alpha "github.com/sourcenetwork/orbis-go/gen/proto/orbis/transport/v1alpha1"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	"github.com/sourcenetwork/orbis-go/pkg/types"
@@ -34,4 +36,8 @@ type Node interface {
 type Host interface {
 	Node
 	Sign(msg []byte) ([]byte, error)
+}
+
+type Factory interface {
+	New(ctx context.Context, inj *do.Injector, cfg config.Transport) (Transport, error)
 }

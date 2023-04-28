@@ -3,21 +3,23 @@ package grpcserver
 import (
 	"context"
 
-	cryptov1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/libp2p/crypto/v1alpha1"
-	transportv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/transport/v1alpha1"
-	"github.com/sourcenetwork/orbis-go/infra/logger"
+	transportv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/transport/v1alpha1"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
+	"github.com/sourcenetwork/orbis-go/pkg/transport/p2p"
+
+	libp2pcrypto "github.com/libp2p/go-libp2p/core/crypto/pb"
+	"github.com/multiformats/go-multiaddr"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type transportService struct {
 	transportv1alpha1.UnimplementedTransportServiceServer
-	lg logger.Logger
 	tp transport.Transport
 }
 
-func newTransportService(lg logger.Logger, tp transport.Transport) *transportService {
+func newTransportService(tp transport.Transport) *transportService {
 	return &transportService{
-		lg: lg,
 		tp: tp,
 	}
 }
@@ -44,29 +46,7 @@ func (s *transportService) GetHost(ctx context.Context, req *transportv1alpha1.G
 	return resp, nil
 }
 
-func (s *transportService) ListNodes(ctx context.Context, req *transportv1alpha1.ListNodesRequest) (*transportv1alpha1.ListNodesResponse, error) {
-
-	s.lg.Debugf("ListNode()")
-
-	Nodes := []*transportv1alpha1.Node{
-		{
-			Id: "Node1",
-		},
-		{
-			Id: "Node2",
-		},
-	}
-
-	resp := &transportv1alpha1.ListNodesResponse{
-		Nodes: Nodes,
-	}
-
-	return resp, nil
-}
-
 func (s *transportService) Send(ctx context.Context, req *transportv1alpha1.SendRequest) (*transportv1alpha1.SendResponse, error) {
-
-	s.lg.Debugf("Send()")
 
 	resp := &transportv1alpha1.SendResponse{}
 
@@ -75,25 +55,63 @@ func (s *transportService) Send(ctx context.Context, req *transportv1alpha1.Send
 
 func (s *transportService) Connect(ctx context.Context, req *transportv1alpha1.ConnectRequest) (*transportv1alpha1.ConnectResponse, error) {
 
-	s.lg.Debugf("Connect()")
+	addr, err := multiaddr.NewMultiaddr(req.GetAddress())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	n := p2p.NewNode(req.GetId(), nil, addr)
+
+	err = s.tp.Connect(ctx, n)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
 
 	resp := &transportv1alpha1.ConnectResponse{}
 
-	return resp, errUnimplemented
+	return resp, nil
 }
 
 func (s *transportService) Gossip(ctx context.Context, req *transportv1alpha1.GossipRequest) (*transportv1alpha1.GossipResponse, error) {
 
-	s.lg.Debugf("Gossip()")
+	err := s.tp.Gossip(ctx, req.GetTopic(), req.GetMessage())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
 
 	resp := &transportv1alpha1.GossipResponse{}
 
-	return resp, errUnimplemented
+	return resp, nil
 }
 
 func (s *transportService) NewMessage(ctx context.Context, req *transportv1alpha1.NewMessageRequest) (*transportv1alpha1.NewMessageResponse, error) {
 
-	s.lg.Debugf("NewMessage()")
+	pubkey, err := s.tp.Host().PublicKey().Raw()
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
 
-	return nil, errUnimplemented
+	// TODO: Check what else needs to be signed.
+	sig, err := s.tp.Host().Sign(req.Payload)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	msg := &transportv1alpha1.Message{
+		Id:      req.Id,
+		Type:    req.Type,
+		Payload: req.Payload,
+		Gossip:  req.Gossip,
+		RingId:  req.RingId,
+
+		NodeId:     s.tp.Host().ID(),
+		NodePubKey: pubkey,
+		Signature:  sig,
+	}
+
+	resp := &transportv1alpha1.NewMessageResponse{
+		Message: msg,
+	}
+
+	return resp, nil
 }

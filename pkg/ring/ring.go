@@ -1,10 +1,10 @@
-package orbis
+package ring
 
 import (
 	"context"
 
+	logging "github.com/ipfs/go-log"
 	"github.com/samber/do"
-
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto/proof"
@@ -12,12 +12,13 @@ import (
 	"github.com/sourcenetwork/orbis-go/pkg/dkg"
 	"github.com/sourcenetwork/orbis-go/pkg/pre"
 	"github.com/sourcenetwork/orbis-go/pkg/pss"
-	"github.com/sourcenetwork/orbis-go/pkg/service"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
 	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
 
-type ringService struct {
+var log = logging.Logger("orbis/ring")
+
+type Ring struct {
 	ID types.RingID
 
 	DKG dkg.DKG
@@ -71,48 +72,42 @@ manifest := {
 }
 */
 
-// NewRing creates a new instance of a ring with all the depedant components
-// and services wired together.
-func (n *node) NewRing(ctx context.Context, manifest []byte, repo db.Repository) (service.RingService, error) {
-	ring, rid, err := types.RingFromManifest(manifest)
-	if err != nil {
-		return nil, err
-	}
+func NewRing(ctx context.Context, inj *do.Injector, ring *types.Ring, repo db.Repository) (*Ring, error) {
+
+	rid := types.RingID(ring.Id)
 
 	if err := repo.Rings.Create(ctx, ring); err != nil {
 		return nil, err // todo wrap
 	}
 
 	// factories
-	dkgFactory, err := do.InvokeNamed[dkg.Factory](n.injector, ring.Dkg)
+	dkgFactory, err := do.InvokeNamed[dkg.Factory](inj, ring.Dkg)
 	if err != nil {
 		return nil, err
 	}
 
-	pssFactory, err := do.InvokeNamed[pss.Factory](n.injector, ring.Pss)
+	pssFactory, err := do.InvokeNamed[pss.Factory](inj, ring.Pss)
 	if err != nil {
 		return nil, err
 	}
 
-	preFactory, err := do.InvokeNamed[pre.Factory](n.injector, ring.Pre)
+	preFactory, err := do.InvokeNamed[pre.Factory](inj, ring.Pre)
 	if err != nil {
 		return nil, err
 	}
-
-	// check err group
 
 	// services
-	p2p, err := do.InvokeNamed[transport.Transport](n.injector, ring.Transport)
+	p2p, err := do.InvokeNamed[transport.Transport](inj, ring.Transport)
+	if err != nil {
+		return nil, err
+	}
+	bb, err := do.InvokeNamed[bulletin.Bulletin](inj, ring.Bulletin)
 	if err != nil {
 		return nil, err
 	}
 
-	bb, err := do.InvokeNamed[bulletin.Bulletin](n.injector, ring.Bulletin)
-	if err != nil {
-		return nil, err
-	}
-
-	dkgSrv, err := dkgFactory.New(rid, ring.N, ring.T, p2p, bb, []types.Node{})
+	// dkgSrv, err := dkgFactory.New(rid, ring.N, ring.T, p2p, bb, []types.Node{})
+	dkgSrv, err := dkgFactory.New(repo, p2p, bb, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +122,7 @@ func (n *node) NewRing(ctx context.Context, manifest []byte, repo db.Repository)
 		return nil, err
 	}
 
-	rs := &ringService{
+	rs := &Ring{
 		ID:        rid,
 		DKG:       dkgSrv,
 		PSS:       pssSrv,
@@ -142,38 +137,40 @@ func (n *node) NewRing(ctx context.Context, manifest []byte, repo db.Repository)
 	return rs, nil
 }
 
-func (r *ringService) Store(context.Context, types.SecretID, *types.Secret, proof.VerifiableEncryption) error {
+func (r *Ring) Store(context.Context, types.SecretID, *types.Secret, proof.VerifiableEncryption) error {
 	return nil
 }
-func (r *ringService) Get(context.Context, types.SecretID) (types.Secret, error) {
+
+func (r *Ring) Get(context.Context, types.SecretID) (types.Secret, error) {
 
 	return types.Secret{}, nil
 }
-func (r *ringService) GetShares(context.Context, types.SecretID) ([]types.PrivSecretShare, error) {
-	return nil, nil
 
+func (r *Ring) GetShares(context.Context, types.SecretID) ([]types.PrivSecretShare, error) {
+	return nil, nil
 }
-func (r *ringService) Delete(context.Context, types.SecretID) error {
+
+func (r *Ring) Delete(context.Context, types.SecretID) error {
 	return nil
-
 }
 
-func (r *ringService) PublicKey() (crypto.PublicKey, error) {
+func (r *Ring) PublicKey() (crypto.PublicKey, error) {
 	return nil, nil
 
 }
-func (r *ringService) Refresh(context.Context, pss.Config) (pss.RefreshState, error) {
-	return pss.RefreshState{}, nil
 
+func (r *Ring) Refresh(context.Context, pss.Config) (pss.RefreshState, error) {
+	return pss.RefreshState{}, nil
 }
-func (r *ringService) Threshold() int {
+
+func (r *Ring) Threshold() int {
 	return 0
 }
 
-func (r *ringService) State() pss.State {
+func (r *Ring) State() pss.State {
 	return pss.State{}
 }
 
-func (r *ringService) Nodes() []pss.Node {
+func (r *Ring) Nodes() []pss.Node {
 	return nil
 }

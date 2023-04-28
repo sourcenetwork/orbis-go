@@ -20,6 +20,10 @@ type Bulletin struct {
 	messages map[string][]byte
 }
 
+func (b *Bulletin) Name() string {
+	return "memtest"
+}
+
 // Post
 func (b *Bulletin) Post(ctx context.Context, identifier string, msg bulletin.Message) (bulletin.Response, error) {
 	b.mu.Lock()
@@ -70,10 +74,10 @@ func (b *Bulletin) Start() {}
 func (b *Bulletin) Shutdown() {}
 
 /*
-p2ptransport := p2p.NewTransport()
+p2ptp := p2p.NewTransport()
 rabin := dkg.Service(rabin)
 
-ring.New(rabin, avpss, cosmosBulletin, p2ptransport)
+ring.New(rabin, avpss, cosmosBulletin, p2ptp)
 
 manifest := {
 	"N": 9,

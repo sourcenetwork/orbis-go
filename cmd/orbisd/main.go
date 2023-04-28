@@ -1,14 +1,17 @@
 package main
 
 import (
-	"log"
-
 	"github.com/sourcenetwork/orbis-go/adapter/cobracli"
 
+	logging "github.com/ipfs/go-log"
 	"github.com/spf13/cobra"
 )
 
+var log = logging.Logger("orbis")
+
 func main() {
+
+	logging.SetAllLoggers(logging.LevelInfo)
 
 	rootCmd := &cobra.Command{
 		Use:          "orbisd",

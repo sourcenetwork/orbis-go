@@ -8,9 +8,13 @@ import (
 	"go.dedis.ch/kyber/v3/share"
 	"go.dedis.ch/kyber/v3/suites"
 
+	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
+	"github.com/sourcenetwork/orbis-go/pkg/dkg"
 	"github.com/sourcenetwork/orbis-go/pkg/pre"
 	"github.com/sourcenetwork/orbis-go/pkg/pss"
+	"github.com/sourcenetwork/orbis-go/pkg/transport"
+	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
 
 var (
@@ -58,6 +62,11 @@ type ThesholdDealer struct {
 	verifiedShares *int64
 
 	finished bool
+}
+
+func New(types.RingID, int32, int32, transport.Transport, bulletin.Bulletin, []types.Node, dkg.DKG) (pre.PRE, error) {
+	// FIXME: implement this
+	return &ThesholdDealer{}, nil
 }
 
 func (e *ThesholdDealer) Name() string {

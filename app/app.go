@@ -4,38 +4,43 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/sourcenetwork/orbis-go/infra/logger"
-	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
-	"github.com/sourcenetwork/orbis-go/pkg/pss"
+	"github.com/samber/do"
+
+	"github.com/sourcenetwork/orbis-go/pkg/p2p"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
 )
 
-// App implements Orbis all services.
+// App implements App all services.
 type App struct {
-	lg  logger.Logger
-	bn  bulletin.Bulletin
-	pss pss.PSS
-	tp  transport.Transport
+	p  *p2p.Host
+	tp transport.Transport
+
+	inj *do.Injector
 }
 
-func (a *App) Logger() logger.Logger {
-	return a.lg
+func (a *App) P2P() *p2p.Host {
+	return a.p
 }
-
 func (a *App) Transport() transport.Transport {
 	return a.tp
 }
 
+func (a *App) Injector() *do.Injector {
+	return a.inj
+}
+
 func New(ctx context.Context, opts ...Option) (*App, error) {
 
-	app := &App{}
+	a := &App{
+		inj: do.New(),
+	}
 
 	for _, opt := range opts {
-		err := opt(app)
+		err := opt(a)
 		if err != nil {
-			return nil, fmt.Errorf("apply app option: %w", err)
+			return nil, fmt.Errorf("apply orbis option: %w", err)
 		}
 	}
 
-	return app, nil
+	return a, nil
 }
