@@ -9,7 +9,7 @@ import (
 	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
 
-const ProviderName = "elgamal"
+const ProviderName = "avpss"
 
 func Provider(i *do.Injector) (pss.Factory, error) {
 	return factory{}, nil
