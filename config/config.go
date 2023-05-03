@@ -5,7 +5,7 @@ package config
 // This implies only native types, and no external dependencies.
 type Config struct {
 	GRPC      GRPC
-	P2P       P2P
+	Host      Host
 	DKG       DKG
 	Logger    Logger
 	Ring      Ring
@@ -48,13 +48,13 @@ type Bulletin struct {
 	Rendezvous string `default:"orbis-bulletin" description:"Rendezvous string"`
 }
 
-type P2P struct {
+type Host struct {
 	Crypto struct {
 		Type string `default:"ed25519" description:"crypto type"`
 		Bits int    `default:"-1" description:"crypto bits, if selectable"`
 		Seed int    `default:"0" description:"crypto seed"`
 	}
-	ListenAddresses []string `default:"/ip4/0.0.0.0/tcp/9000" description:"P2P listen address string"`
+	ListenAddresses []string `default:"/ip4/0.0.0.0/tcp/9000" description:"Host listen address string"`
 	BootstrapPeers  []string `mapstructure:"bootstrap_peers" default:"" description:"Comma separated multiaddr strings of bootstrap peers. If empty, the node will run in bootstrap mode"`
 	// Rendezvous      string   `default:"orbis" description:"Rendezvous string"`
 }

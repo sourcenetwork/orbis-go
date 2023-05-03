@@ -4,7 +4,7 @@ import (
 	"context"
 
 	p2pv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/p2p/v1alpha1"
-	"github.com/sourcenetwork/orbis-go/pkg/p2p"
+	"github.com/sourcenetwork/orbis-go/pkg/host"
 
 	libp2ppeer "github.com/libp2p/go-libp2p/core/peer"
 	"google.golang.org/grpc/codes"
@@ -14,10 +14,10 @@ import (
 type p2pService struct {
 	p2pv1alpha1.UnimplementedP2PServiceServer
 
-	h *p2p.Host
+	h *host.Host
 }
 
-func newP2PService(h *p2p.Host) *p2pService {
+func newP2PService(h *host.Host) *p2pService {
 	return &p2pService{
 		h: h,
 	}

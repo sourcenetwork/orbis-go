@@ -10,6 +10,7 @@ import (
 	p2pbb "github.com/sourcenetwork/orbis-go/pkg/bulletin/p2p"
 	"github.com/sourcenetwork/orbis-go/pkg/db"
 	"github.com/sourcenetwork/orbis-go/pkg/dkg/rabin"
+	"github.com/sourcenetwork/orbis-go/pkg/host"
 	"github.com/sourcenetwork/orbis-go/pkg/pre/elgamal"
 	"github.com/sourcenetwork/orbis-go/pkg/pss/avpss"
 	"github.com/sourcenetwork/orbis-go/pkg/ring"
@@ -27,7 +28,7 @@ func setupApp(ctx context.Context, cfg config.Config) (*app.App, error) {
 
 	opts := []app.Option{
 		app.DefaultOptions(),
-		// app.WithP2P(p2p.ProviderName, p2p.Provider),
+		app.WithHost(host.Factory{}),
 		app.WithTransport(p2ptp.Factory),
 		app.WithBulletin(p2pbb.Factory),
 

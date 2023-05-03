@@ -35,7 +35,7 @@ type Host struct {
 	topics map[string]*pubsub.Topic
 }
 
-func New(ctx context.Context, cfg config.P2P) (*Host, error) {
+func New(ctx context.Context, cfg config.Host) (*Host, error) {
 
 	// Convert string to libp2p crypto type.
 	// Invalid types and/or bits are handled by libp2p.
@@ -185,7 +185,7 @@ func (h *Host) join(topic string) (*pubsub.Topic, error) {
 	return t, nil
 }
 
-func (h *Host) Bootstrap(ctx context.Context, cfg config.P2P) {
+func (h *Host) Bootstrap(ctx context.Context, cfg config.Host) {
 	var wg sync.WaitGroup
 	for _, peerAddr := range cfg.BootstrapPeers {
 		pi, err := libp2ppeer.AddrInfoFromString(peerAddr)

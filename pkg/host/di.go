@@ -9,21 +9,21 @@ import (
 
 const name = "libp2p"
 
-func Provider(i *do.Injector) (Factory, error) {
-	return factory{}, nil
-}
+// type Factory interface {
+// 	Name() string
+// 	New(ctx context.Context, inj *do.Injector, cfg config.Host) (Host, error)
+// }
 
-type Factory interface {
-	Name() string
-	New(ctx context.Context, cfg config.P2P) (*Host, error)
-}
+// var (
+// 	Factory = factory{}
+// )
 
-type factory struct{}
+type Factory struct{}
 
-func (factory) New(ctx context.Context, cfg config.P2P) (*Host, error) {
+func (Factory) New(ctx context.Context, inj *do.Injector, cfg config.Host) (*Host, error) {
 	return New(ctx, cfg)
 }
 
-func (factory) Name() string {
+func (Factory) Name() string {
 	return name
 }

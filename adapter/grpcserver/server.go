@@ -34,7 +34,7 @@ func NewGRPCServer(cfg config.GRPC, a *app.App) *grpc.Server {
 	s := grpc.NewServer(opts...)
 
 	// Setup orbis service handlers to the server.
-	p2pv1alpha1.RegisterP2PServiceServer(s, newP2PService(a.P2P()))
+	p2pv1alpha1.RegisterP2PServiceServer(s, newP2PService(a.Host()))
 	transportv1alpha1.RegisterTransportServiceServer(s, newTransportService(a.Transport()))
 	ringv1alpha1.RegisterRingServiceServer(s, newRingService())
 	secretv1alpha1.RegisterSecretServiceServer(s, newSecretService())

@@ -4,6 +4,7 @@ import (
 	"github.com/samber/do"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/dkg"
+	"github.com/sourcenetwork/orbis-go/pkg/host"
 	"github.com/sourcenetwork/orbis-go/pkg/pre"
 	"github.com/sourcenetwork/orbis-go/pkg/pss"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
@@ -19,12 +20,12 @@ func DefaultOptions() Option {
 	}
 }
 
-// func WithP2P(name string, p do.Provider[p2p.Factory]) Option {
-// 	return func(a *App) error {
-// 		do.ProvideNamed(a.inj, name, p)
-// 		return nil
-// 	}
-// }
+func WithHost(f host.Factory) Option {
+	return func(a *App) error {
+		do.ProvideNamedValue(a.inj, f.Name(), f)
+		return nil
+	}
+}
 
 func WithTransport(f transport.Factory) Option {
 	return func(a *App) error {
