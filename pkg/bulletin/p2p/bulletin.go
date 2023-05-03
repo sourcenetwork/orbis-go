@@ -6,7 +6,7 @@ import (
 	"github.com/samber/do"
 	"github.com/sourcenetwork/orbis-go/config"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
-	"github.com/sourcenetwork/orbis-go/pkg/p2p"
+	"github.com/sourcenetwork/orbis-go/pkg/host"
 
 	logging "github.com/ipfs/go-log"
 	libp2phost "github.com/libp2p/go-libp2p/core/host"
@@ -25,7 +25,7 @@ type Bulletin struct {
 }
 
 func New(ctx context.Context, inj *do.Injector, cfg config.Bulletin) (*Bulletin, error) {
-	h, err := do.Invoke[*p2p.Host](inj)
+	h, err := do.Invoke[*host.Host](inj)
 	if err != nil {
 		return nil, err
 	}
