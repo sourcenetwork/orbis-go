@@ -3,16 +3,26 @@ package avpss
 import (
 	"context"
 
+	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
+	"github.com/sourcenetwork/orbis-go/pkg/dkg"
 	"github.com/sourcenetwork/orbis-go/pkg/pss"
+	"github.com/sourcenetwork/orbis-go/pkg/transport"
+	"github.com/sourcenetwork/orbis-go/pkg/types"
 	"go.dedis.ch/kyber/v3/suites"
 )
+
+const name = "avpss"
 
 type AVPSS struct {
 }
 
+func New(types.RingID, int32, int32, transport.Transport, bulletin.Bulletin, []types.Node, dkg.DKG) (*AVPSS, error) {
+	return &AVPSS{}, nil
+}
+
 func (a *AVPSS) Name() string {
-	return "avpss"
+	return name
 }
 
 func (a *AVPSS) Suite() suites.Suite {

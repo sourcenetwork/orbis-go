@@ -4,7 +4,6 @@ import (
 	"github.com/samber/do"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/dkg"
-	"github.com/sourcenetwork/orbis-go/pkg/p2p"
 	"github.com/sourcenetwork/orbis-go/pkg/pre"
 	"github.com/sourcenetwork/orbis-go/pkg/pss"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
@@ -12,53 +11,55 @@ import (
 
 type Option func(a *App) error
 
+type Provider[T any] func(*do.Injector)
+
 func DefaultOptions() Option {
 	return func(o *App) error {
 		return nil
 	}
 }
 
-func WithP2PService(name string, p do.Provider[p2p.Factory]) Option {
+// func WithP2P(name string, p do.Provider[p2p.Factory]) Option {
+// 	return func(a *App) error {
+// 		do.ProvideNamed(a.inj, name, p)
+// 		return nil
+// 	}
+// }
+
+func WithTransport(f transport.Factory) Option {
 	return func(a *App) error {
-		do.ProvideNamed(a.inj, name, p)
+		do.ProvideNamedValue(a.inj, f.Name(), f)
 		return nil
 	}
 }
 
-func WithTransportService(name string, p do.Provider[transport.Factory]) Option {
+// WithBulletin registers BulletinBoard factory.
+func WithBulletin(f bulletin.Factory) Option {
 	return func(a *App) error {
-		do.ProvideNamed(a.inj, name, p)
+		do.ProvideNamedValue(a.inj, f.Name(), f)
 		return nil
 	}
 }
 
-// WithBulletinService registers o BulletinBoard Service.
-func WithBulletinService(name string, p do.Provider[bulletin.Factory]) Option {
+func WithDistKeyGenerator(f dkg.Factory) Option {
 	return func(a *App) error {
-		do.ProvideNamed(a.inj, name, p)
-		return nil
-	}
-}
-
-func WithDistKeyGenerator(name string, p do.Provider[dkg.Factory]) Option {
-	return func(a *App) error {
-		do.ProvideNamed(a.inj, name, p)
+		do.ProvideNamedValue(a.inj, f.Name(), f)
 		return nil
 	}
 }
 
 // WithProxyReencryption registers o Proxy-Reencryption Service.
-func WithProxyReencryption(name string, p do.Provider[pre.Factory]) Option {
+func WithProxyReencryption(f pre.Factory) Option {
 	return func(a *App) error {
-		do.ProvideNamed(a.inj, name, p)
+		do.ProvideNamedValue(a.inj, f.Name(), f)
 		return nil
 	}
 }
 
 // WithProactiveSecretSharing registers o Proactive Secret Sharing Service.
-func WithProactiveSecretSharing(name string, p do.Provider[pss.Factory]) Option {
+func WithProactiveSecretSharing(f pss.Factory) Option {
 	return func(a *App) error {
-		do.ProvideNamed(a.inj, name, p)
+		do.ProvideNamedValue(a.inj, f.Name(), f)
 		return nil
 	}
 }

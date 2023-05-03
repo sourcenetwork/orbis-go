@@ -10,7 +10,6 @@ import (
 	p2pbb "github.com/sourcenetwork/orbis-go/pkg/bulletin/p2p"
 	"github.com/sourcenetwork/orbis-go/pkg/db"
 	"github.com/sourcenetwork/orbis-go/pkg/dkg/rabin"
-	"github.com/sourcenetwork/orbis-go/pkg/p2p"
 	"github.com/sourcenetwork/orbis-go/pkg/pre/elgamal"
 	"github.com/sourcenetwork/orbis-go/pkg/pss/avpss"
 	"github.com/sourcenetwork/orbis-go/pkg/ring"
@@ -28,16 +27,15 @@ func setupApp(ctx context.Context, cfg config.Config) (*app.App, error) {
 
 	opts := []app.Option{
 		app.DefaultOptions(),
-		app.WithP2PService(p2p.ProviderName, p2p.Provider),
-		app.WithTransportService(p2ptp.ProviderName, p2ptp.Provider),
-		app.WithBulletinService(p2pbb.ProviderName, p2pbb.Provider),
-		// app.WithBulletinService(tmbb.Provider),
+		// app.WithP2P(p2p.ProviderName, p2p.Provider),
+		app.WithTransport(p2ptp.Factory),
+		app.WithBulletin(p2pbb.Factory),
 
-		app.WithDistKeyGenerator(rabin.ProviderName, rabin.Provider),
-		app.WithProxyReencryption(elgamal.ProviderName, elgamal.Provider),
+		app.WithDistKeyGenerator(rabin.Factory),
+		app.WithProxyReencryption(elgamal.Factory),
 
 		// Enable support the AVPSS, ECPSS, and CHURP based PSS systems.
-		app.WithProactiveSecretSharing(avpss.ProviderName, avpss.Provider),
+		app.WithProactiveSecretSharing(avpss.Factory),
 
 		// Also enable basic VSS for testing (no networking/bulleting required).
 		// app.WithProactiveSecretSharing(vss.Provider),

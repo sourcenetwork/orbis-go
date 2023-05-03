@@ -52,4 +52,5 @@ type Node interface {
 
 type Factory interface {
 	New(types.RingID, int32, int32, transport.Transport, bulletin.Bulletin, []types.Node, dkg.DKG) (PSS, error)
+	Name() string
 }

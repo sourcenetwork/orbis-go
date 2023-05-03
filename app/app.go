@@ -6,19 +6,19 @@ import (
 
 	"github.com/samber/do"
 
-	"github.com/sourcenetwork/orbis-go/pkg/p2p"
+	"github.com/sourcenetwork/orbis-go/pkg/host"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
 )
 
 // App implements App all services.
 type App struct {
-	p  *p2p.Host
+	p  *host.Host
 	tp transport.Transport
 
 	inj *do.Injector
 }
 
-func (a *App) P2P() *p2p.Host {
+func (a *App) Host() *host.Host {
 	return a.p
 }
 func (a *App) Transport() transport.Transport {

@@ -1,7 +1,6 @@
 package avpss
 
 import (
-	"github.com/samber/do"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/dkg"
 	"github.com/sourcenetwork/orbis-go/pkg/pss"
@@ -11,9 +10,9 @@ import (
 
 const ProviderName = "avpss"
 
-func Provider(i *do.Injector) (pss.Factory, error) {
-	return factory{}, nil
-}
+var (
+	Factory = factory{}
+)
 
 type factory struct{}
 
@@ -21,6 +20,6 @@ func (factory) New(rid types.RingID, n int32, t int32, tp transport.Transport, b
 	return New(rid, n, t, tp, bb, nodes, d)
 }
 
-func New(types.RingID, int32, int32, transport.Transport, bulletin.Bulletin, []types.Node, dkg.DKG) (*AVPSS, error) {
-	return &AVPSS{}, nil
+func (factory) Name() string {
+	return name
 }

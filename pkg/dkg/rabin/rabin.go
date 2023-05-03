@@ -17,6 +17,8 @@ import (
 	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
 
+const name = "rabin"
+
 type dkg struct {
 	mu sync.Mutex
 
@@ -106,7 +108,7 @@ func (d *dkg) Init(ctx context.Context, nodes []orbisdkg.Node, n int, threshold 
 }
 
 func (d *dkg) Name() string {
-	return "rabin"
+	return name
 }
 
 func (d *dkg) PublicKey() crypto.PublicKey {

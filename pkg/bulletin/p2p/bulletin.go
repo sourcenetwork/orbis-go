@@ -17,6 +17,7 @@ var log = logging.Logger("orbis/bulletin/p2p")
 
 const (
 	ProtocolID = "/orbis-bulletion/1.0.0"
+	name       = "p2pbb"
 )
 
 type Bulletin struct {
@@ -24,7 +25,7 @@ type Bulletin struct {
 }
 
 func New(ctx context.Context, inj *do.Injector, cfg config.Bulletin) (*Bulletin, error) {
-	h, err := do.InvokeNamed[*p2p.Host](inj, p2p.ProviderName)
+	h, err := do.Invoke[*p2p.Host](inj)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +43,7 @@ func New(ctx context.Context, inj *do.Injector, cfg config.Bulletin) (*Bulletin,
 }
 
 func (bb *Bulletin) Name() string {
-	return "libp2p"
+	return name
 }
 
 func (bb *Bulletin) Post(ctx context.Context, path string, msg bulletin.Message) (bulletin.Response, error) {

@@ -8,7 +8,7 @@ import (
 
 	"github.com/samber/do"
 	"github.com/sourcenetwork/orbis-go/config"
-	"github.com/sourcenetwork/orbis-go/pkg/p2p"
+	"github.com/sourcenetwork/orbis-go/pkg/host"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
 	"github.com/sourcenetwork/orbis-go/pkg/types"
 
@@ -22,20 +22,29 @@ import (
 
 var log = logging.Logger("orbis/transport/p2p")
 
+var (
+	_ transport.Transport = (*Transport)(nil)
+)
+
 const (
 	ProtocolID = "/orbis-transport/1.0.0"
+	name       = "p2p"
 )
 
 type Transport struct {
-	h *p2p.Host
+	h *host.Host
 }
 
 func New(ctx context.Context, inj *do.Injector, cfg config.Transport) (*Transport, error) {
-	h, err := do.InvokeNamed[*p2p.Host](inj, p2p.ProviderName)
+	h, err := do.Invoke[*host.Host](inj)
 	if err != nil {
 		return nil, fmt.Errorf("do invoke host: %w", err)
 	}
 	return &Transport{h: h}, nil
+}
+
+func (t *Transport) Name() string {
+	return name
 }
 
 func (t *Transport) Send(ctx context.Context, node transport.Node, msg *transport.Message) error {

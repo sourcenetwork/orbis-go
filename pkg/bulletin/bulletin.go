@@ -56,4 +56,5 @@ func WithProof(p bool) Option {
 
 type Factory interface {
 	New(ctx context.Context, inj *do.Injector, cfg config.Bulletin) (Bulletin, error)
+	Name() string
 }

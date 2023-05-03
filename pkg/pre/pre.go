@@ -4,7 +4,6 @@ import (
 	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/kyber/v3/share"
 
-	"github.com/samber/do"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	"github.com/sourcenetwork/orbis-go/pkg/dkg"
@@ -33,6 +32,5 @@ type PRE interface {
 
 type Factory interface {
 	New(types.RingID, int32, int32, transport.Transport, bulletin.Bulletin, []types.Node, dkg.DKG) (PRE, error)
+	Name() string
 }
-
-type ProvideFactory func(*do.Injector) (Factory, error)

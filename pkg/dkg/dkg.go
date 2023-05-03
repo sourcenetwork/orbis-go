@@ -45,6 +45,7 @@ type DKG interface {
 
 type Factory interface {
 	New(db.Repository, transport.Transport, bulletin.Bulletin, crypto.PrivateKey) (DKG, error)
+	Name() string
 }
 
 type ProviderFactory func(*do.Injector) Factory

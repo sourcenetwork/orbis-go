@@ -18,6 +18,7 @@ type Message = transportv1alpha.Message
 type Handler func(*Message) error
 
 type Transport interface {
+	Name() string
 	Send(ctx context.Context, node Node, msg *Message) error
 	Gossip(ctx context.Context, topic string, msg *Message) error
 	Connect(ctx context.Context, node Node) error
@@ -39,5 +40,6 @@ type Host interface {
 }
 
 type Factory interface {
+	Name() string
 	New(ctx context.Context, inj *do.Injector, cfg config.Transport) (Transport, error)
 }

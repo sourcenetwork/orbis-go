@@ -17,6 +17,8 @@ import (
 	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
 
+const name = "elgamal"
+
 var (
 	_ pre.ReencryptReply = (*ReencryptReply)(nil)
 	_ pre.PRE            = (*ThesholdDealer)(nil)
@@ -70,7 +72,7 @@ func New(types.RingID, int32, int32, transport.Transport, bulletin.Bulletin, []t
 }
 
 func (e *ThesholdDealer) Name() string {
-	return "elgamal"
+	return name
 }
 
 // pk: reciever public key
