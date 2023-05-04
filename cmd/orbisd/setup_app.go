@@ -40,6 +40,9 @@ func setupApp(ctx context.Context, cfg config.Config) (*app.App, error) {
 
 		// Also enable basic VSS for testing (no networking/bulleting required).
 		// app.WithProactiveSecretSharing(vss.Provider),
+
+		// mount DB Tables
+		// app.WithTable()
 	}
 
 	app, err := app.New(ctx, opts...)

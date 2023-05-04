@@ -35,8 +35,8 @@ type dkg struct {
 	pubKey  kyber.Point
 	privKey kyber.Scalar
 
-	deals map[int]*rabindkg.Deal //db.Table[rabinv1alpha1.Deals]
-	resps []*rabindkg.Response   // db.Table[rabinv1alpha1.Response]
+	deals db.Repository[rabinv1alpha1.Deals]
+	resps []*rabindkg.Response // db.Table[rabinv1alpha1.Response]
 
 	share crypto.PriShare
 

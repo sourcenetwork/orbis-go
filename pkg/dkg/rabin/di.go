@@ -18,10 +18,16 @@ var (
 
 type factory struct{}
 
-func (factory) New(repo db.Repository, t transport.Transport, b bulletin.Bulletin, pk crypto.PrivateKey) (orbisdkg.DKG, error) {
+func (factory) New(repo db.DB, t transport.Transport, b bulletin.Bulletin, pk crypto.PrivateKey) (orbisdkg.DKG, error) {
 	return New(repo, t, b, pk)
 }
 
 func (factory) Name() string {
 	return name
 }
+
+func (factory) Tables() []string {
+	return []string{"deals", "shares"}
+}
+
+// /orbis/rabin/{deals,shares}

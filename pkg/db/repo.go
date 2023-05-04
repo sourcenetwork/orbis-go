@@ -6,16 +6,23 @@ import (
 	"hash/fnv"
 
 	"github.com/go-bond/bond"
+	"google.golang.org/protobuf/proto"
 )
 
-const (
-	ringRepoTableID = 1
-)
+type Record interface {
+	proto.Message
+	GetId() string
+}
+
+type RingIDGetter interface {
+	GetRingID() string
+}
 
 type Repository[T Record] interface {
 	Create(context.Context, T) error
 	Get(context.Context, T) (T, error)
 	GetAll(context.Context) ([]T, error)
+	Query() Query[T]
 }
 
 type simpleRepo[T Record] struct {
@@ -31,7 +38,15 @@ func newSimpleRepo[T Record](bdb bond.DB) *simpleRepo[T] {
 		TableID:   bond.TableID(hash(name)),
 		TableName: name,
 		TablePrimaryKeyFunc: func(b bond.KeyBuilder, t T) []byte {
-			return []byte(t.GetId())
+			// if possible, primary keys are:
+			// /<ring_id>/<record_id>
+			// otherwise:
+			// /<record_id>
+			if getter, ok := any(t).(RingIDGetter); ok {
+				b = b.AddStringField(getter.GetRingID())
+			}
+			b = b.AddStringField(t.GetId())
+			return b.Bytes()
 		},
 	})
 	return rr
@@ -51,6 +66,10 @@ func (rr *simpleRepo[T]) GetAll(ctx context.Context) ([]T, error) {
 		return nil, err
 	}
 	return *ts, nil
+}
+
+func (rr *simpleRepo[T]) Query() Query[T] {
+	return rawQuery[T]{rr.table.Query()}
 }
 
 func getTableName(r Record) string {
