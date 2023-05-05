@@ -29,7 +29,19 @@ type simpleRepo[T Record] struct {
 	table bond.Table[T]
 }
 
-func newSimpleRepo[T Record](bdb bond.DB) *simpleRepo[T] {
+type RepoOption func(*RepoOptions)
+
+type RepoOptions struct {
+	ringID string
+}
+
+func WithRingID(rid string) RepoOption {
+	return func(opt *RepoOptions) {
+		opt.ringID = rid
+	}
+}
+
+func newSimpleRepo[T Record](bdb bond.DB, opts ...RepoOption) *simpleRepo[T] {
 	var t T
 	name := getTableName(t)
 	rr := &simpleRepo[T]{}

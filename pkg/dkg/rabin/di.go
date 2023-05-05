@@ -30,4 +30,4 @@ func (factory) Tables() []string {
 	return []string{"deals", "shares"}
 }
 
-// /orbis/rabin/{deals,shares}
+// /orbis/dkg/rabin/{deals,shares}

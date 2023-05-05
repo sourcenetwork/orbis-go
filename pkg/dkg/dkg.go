@@ -3,7 +3,7 @@ package dkg
 import (
 	"context"
 
-	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
+	"github.com/samber/do"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	"github.com/sourcenetwork/orbis-go/pkg/db"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
@@ -21,9 +21,9 @@ type State uint8
 type Node = transport.Node
 
 type DKG interface {
-	Name() string
+	Init(ctx context.Context, pk crypto.PrivateKey, nodes []transport.Node, n int, threshold int) error
 
-	Init(ctx context.Context, nodes []transport.Node, n int, threshold int) error
+	Name() string
 
 	PublicKey() crypto.PublicKey
 	Share() crypto.PriShare
@@ -39,7 +39,7 @@ type DKG interface {
 }
 
 type Factory interface {
-	New([]*db.RepoKey, transport.Transport, bulletin.Bulletin, crypto.PrivateKey) (DKG, error)
+	New(*do.Injector, []*db.RepoKey) (DKG, error)
 	Name() string
-	TableKeys() []string
+	Repos() []string
 }

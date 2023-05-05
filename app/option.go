@@ -3,12 +3,19 @@ package app
 import (
 	"github.com/samber/do"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
+	"github.com/sourcenetwork/orbis-go/pkg/db"
 	"github.com/sourcenetwork/orbis-go/pkg/dkg"
 	"github.com/sourcenetwork/orbis-go/pkg/host"
 	"github.com/sourcenetwork/orbis-go/pkg/pre"
 	"github.com/sourcenetwork/orbis-go/pkg/pss"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
 )
+
+type Factory[T any] interface {
+	New(*do.Injector, []*db.RepoKey) (T, error)
+	Name() string
+	Repos() []string
+}
 
 type Option func(a *App) error
 
@@ -42,7 +49,7 @@ func WithBulletin(f bulletin.Factory) Option {
 	}
 }
 
-func WithDistKeyGenerator(f dkg.Factory) Option {
+func WithDistKeyGenerator(f Factory[dkg.DKG]) Option {
 	return func(a *App) error {
 		do.ProvideNamedValue(a.inj, f.Name(), f)
 		return nil
