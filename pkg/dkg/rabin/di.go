@@ -1,8 +1,8 @@
 package rabin
 
 import (
+	"github.com/samber/do"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
-	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	"github.com/sourcenetwork/orbis-go/pkg/db"
 	orbisdkg "github.com/sourcenetwork/orbis-go/pkg/dkg"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
@@ -18,8 +18,20 @@ var (
 
 type factory struct{}
 
-func (factory) New(repo db.DB, t transport.Transport, b bulletin.Bulletin, pk crypto.PrivateKey) (orbisdkg.DKG, error) {
-	return New(repo, t, b, pk)
+func (factory) New(inj *do.Injector, rkeys []*db.RepoKey) (orbisdkg.DKG, error) {
+	db, err := do.Invoke[*db.DB](inj)
+	if err != nil {
+		return nil, err
+	}
+	t, err := do.Invoke[transport.Transport](inj)
+	if err != nil {
+		return nil, err
+	}
+	b, err := do.Invoke[bulletin.Bulletin](inj)
+	if err != nil {
+		return nil, err
+	}
+	return New(db, rkeys, t, b)
 }
 
 func (factory) Name() string {

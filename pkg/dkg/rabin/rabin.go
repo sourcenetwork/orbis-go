@@ -7,8 +7,9 @@ import (
 	"go.dedis.ch/kyber/v3"
 	rabindkg "go.dedis.ch/kyber/v3/share/dkg/rabin"
 	"go.dedis.ch/kyber/v3/suites"
-	"go.dedis.ch/protobuf"
+	"google.golang.org/protobuf/proto"
 
+	rabinv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/rabin/v1alpha1"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	"github.com/sourcenetwork/orbis-go/pkg/db"
@@ -35,12 +36,12 @@ type dkg struct {
 	pubKey  kyber.Point
 	privKey kyber.Scalar
 
-	deals db.Repository[rabinv1alpha1.Deals]
-	resps []*rabindkg.Response // db.Table[rabinv1alpha1.Response]
+	deals db.Repository[*rabinv1alpha1.Deal]
+	resps db.Repository[*rabinv1alpha1.Response]
 
 	share crypto.PriShare
 
-	repo      *db.Repository
+	db        *db.DB
 	transport transport.Transport
 	bulletin  bulletin.Bulletin
 
@@ -48,30 +49,31 @@ type dkg struct {
 	initialized bool
 }
 
-func New(repo db.Repository, t transport.Transport, b bulletin.Bulletin, pk crypto.PrivateKey) (*dkg, error) {
-	suite, err := crypto.SuiteForType(pk.Type())
-	if err != nil {
-		return nil, err
-	}
+func New(repo *db.DB, rkeys []*db.RepoKey, t transport.Transport, b bulletin.Bulletin) (*dkg, error) {
 
-	scalar := pk.Scalar()
-	pubPoint := suite.Point().Mul(scalar, nil) // public point for scalar
-
+	//dealsRepo, err := db.GetRepo[db.Record](repo, rkeys[0])
+	//sharesRepo, err := db.GetRepo[db.Record](repo, rkeys[1])
 	return &dkg{
-		repo:      &repo,
+		db:        repo,
 		transport: t,
 		bulletin:  b,
-		suite:     suite,
-		privKey:   scalar,
-		pubKey:    pubPoint,
 		index:     -1,
 	}, nil
 }
 
 // Init initializes the DKG with the target nodes
-func (d *dkg) Init(ctx context.Context, nodes []orbisdkg.Node, n int, threshold int) error {
+func (d *dkg) Init(ctx context.Context, pk crypto.PrivateKey, nodes []orbisdkg.Node, n int, threshold int) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
+	suite, err := crypto.SuiteForType(pk.Type())
+	if err != nil {
+		return err
+	}
+
+	d.suite = suite
+	d.privKey = pk.Scalar()
+	d.pubKey = suite.Point().Mul(d.privKey, nil) // public point for scalar
 
 	if len(nodes) != n {
 		return orbisdkg.ErrBadNodeSet
@@ -140,14 +142,26 @@ func (d *dkg) Start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	d.deals = deals
-
+	dealprotos := make([]*Deal, len(deals))
+	i := 0
 	for _, deal := range deals {
+		dealprotos[i], err = d.dealToProto(deal)
+		if err != nil {
+			return err
+		}
+		if err := d.deals.Create(ctx, dealprotos[i]); err != nil {
+			return err
+		}
+		i++
+	}
+	// d.deals = deals
+
+	for _, deal := range dealprotos {
 		if deal.Index == uint32(d.index) {
 			// todo: deliver to ourselves
 			continue
 		}
-		buf, err := protobuf.Encode(deal)
+		buf, err := proto.Marshal(deal)
 		if err != nil {
 			return err
 		}

@@ -13,6 +13,8 @@ const (
 	INITIALIZED State = iota // DKG group has initialized but not started the generation
 	STARTED                  // Started the distributed key generation
 	CERTIFIED                // Generated and cerified the shared key
+
+	ProtocolName = "dkg"
 )
 
 // enum
@@ -21,7 +23,7 @@ type State uint8
 type Node = transport.Node
 
 type DKG interface {
-	Init(ctx context.Context, pk crypto.PrivateKey, nodes []transport.Node, n int, threshold int) error
+	Init(ctx context.Context, pk crypto.PrivateKey, nodes []Node, n int, threshold int) error
 
 	Name() string
 
