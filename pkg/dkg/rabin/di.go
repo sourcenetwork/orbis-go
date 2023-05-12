@@ -8,10 +8,6 @@ import (
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
 )
 
-// func Provider(i *do.Injector) (orbisdkg.Factory, error) {
-// 	return factory{}, nil
-// }
-
 var (
 	Factory = factory{}
 )
@@ -38,7 +34,7 @@ func (factory) Name() string {
 	return name
 }
 
-func (factory) Tables() []string {
+func (factory) Repos() []string {
 	return []string{"deals", "shares"}
 }
 

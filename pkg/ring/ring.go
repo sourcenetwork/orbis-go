@@ -8,7 +8,6 @@ import (
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto/proof"
-	"github.com/sourcenetwork/orbis-go/pkg/db"
 	"github.com/sourcenetwork/orbis-go/pkg/dkg"
 	"github.com/sourcenetwork/orbis-go/pkg/pre"
 	"github.com/sourcenetwork/orbis-go/pkg/pss"
@@ -27,8 +26,6 @@ type Ring struct {
 
 	Transport transport.Transport
 	Bulletin  bulletin.Bulletin
-
-	repo db.Repository
 }
 
 /*
@@ -72,13 +69,9 @@ manifest := {
 }
 */
 
-func NewRing(ctx context.Context, inj *do.Injector, ring *types.Ring, repo db.Repository) (*Ring, error) {
+func NewRing(ctx context.Context, inj *do.Injector, ring *types.Ring) (*Ring, error) {
 
 	rid := types.RingID(ring.Id)
-
-	if err := repo.Rings.Create(ctx, ring); err != nil {
-		return nil, err // todo wrap
-	}
 
 	// factories
 	dkgFactory, err := do.InvokeNamed[dkg.Factory](inj, ring.Dkg)
@@ -106,8 +99,7 @@ func NewRing(ctx context.Context, inj *do.Injector, ring *types.Ring, repo db.Re
 		return nil, err
 	}
 
-	// dkgSrv, err := dkgFactory.New(rid, ring.N, ring.T, p2p, bb, []types.Node{})
-	dkgSrv, err := dkgFactory.New(repo, p2p, bb, nil)
+	dkgSrv, err := dkgFactory.New(inj, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +121,6 @@ func NewRing(ctx context.Context, inj *do.Injector, ring *types.Ring, repo db.Re
 		PRE:       preSrv,
 		Transport: p2p,
 		Bulletin:  bb,
-		repo:      repo,
 	}
 
 	// called in ring.Join() - go rs.handleEvents()
