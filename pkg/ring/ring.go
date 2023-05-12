@@ -9,7 +9,6 @@ import (
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto/proof"
-	"github.com/sourcenetwork/orbis-go/pkg/db"
 	"github.com/sourcenetwork/orbis-go/pkg/dkg"
 	"github.com/sourcenetwork/orbis-go/pkg/pre"
 	"github.com/sourcenetwork/orbis-go/pkg/pss"
@@ -66,16 +65,22 @@ manifest := {
 	"dkg": "rabin",
 	"pss": "avpss",
 	"pre": "elgamal",
-	"bulletin": "sourcehub",
+	"bulletin": "cosmos:sourcehub",
 	"transport": "libp2p"
 }
 */
 
-type Factory[T any] interface {
-	New(*do.Injector, []*db.RepoKey) (T, error)
-	Name() string
-	Repos() []string
+/*
+
+nodeconfig {
+	bulletin:
+		cosmos:
+			sourcehub:
+				rpcURL: 'localhost:1234/rpc'
+				chainID: sourcehub-1
 }
+
+*/
 
 func NewRing(ctx context.Context, inj *do.Injector, ring *types.Ring) (*Ring, error) {
 
