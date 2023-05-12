@@ -3,9 +3,7 @@ package dkg
 import (
 	"context"
 
-	"github.com/samber/do"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
-	"github.com/sourcenetwork/orbis-go/pkg/db"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
 )
 
@@ -38,10 +36,4 @@ type DKG interface {
 	ProcessMessage(*transport.Message) error
 
 	// hooks?
-}
-
-type Factory interface {
-	New(*do.Injector, []*db.RepoKey) (DKG, error)
-	Name() string
-	Repos() []string
 }

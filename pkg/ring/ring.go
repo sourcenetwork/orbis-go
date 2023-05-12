@@ -9,6 +9,7 @@ import (
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto/proof"
+	"github.com/sourcenetwork/orbis-go/pkg/db"
 	"github.com/sourcenetwork/orbis-go/pkg/dkg"
 	"github.com/sourcenetwork/orbis-go/pkg/pre"
 	"github.com/sourcenetwork/orbis-go/pkg/pss"
@@ -70,12 +71,18 @@ manifest := {
 }
 */
 
+type Factory[T any] interface {
+	New(*do.Injector, []*db.RepoKey) (T, error)
+	Name() string
+	Repos() []string
+}
+
 func NewRing(ctx context.Context, inj *do.Injector, ring *types.Ring) (*Ring, error) {
 
 	rid := types.RingID(ring.Id)
 
 	// factories
-	dkgFactory, err := do.InvokeNamed[dkg.Factory](inj, ring.Dkg)
+	dkgFactory, err := do.InvokeNamed[types.Factory[dkg.DKG]](inj, ring.Dkg)
 	if err != nil {
 		return nil, fmt.Errorf("invoke dkg factory: %w", err)
 	}
