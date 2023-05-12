@@ -6,15 +6,12 @@ import (
 
 	"github.com/sourcenetwork/orbis-go/app"
 	"github.com/sourcenetwork/orbis-go/config"
-	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/ring/v1alpha1"
 	p2pbb "github.com/sourcenetwork/orbis-go/pkg/bulletin/p2p"
 	"github.com/sourcenetwork/orbis-go/pkg/dkg/rabin"
 	"github.com/sourcenetwork/orbis-go/pkg/host"
 	"github.com/sourcenetwork/orbis-go/pkg/pre/elgamal"
 	"github.com/sourcenetwork/orbis-go/pkg/pss/avpss"
-	"github.com/sourcenetwork/orbis-go/pkg/ring"
 	p2ptp "github.com/sourcenetwork/orbis-go/pkg/transport/p2p"
-	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
 
 func setupApp(ctx context.Context, cfg config.Config) (*app.App, error) {
@@ -48,31 +45,6 @@ func setupApp(ctx context.Context, cfg config.Config) (*app.App, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create app: %w", err)
 	}
-
-	manifest := &types.Ring{
-		Ring: ringv1alpha1.Ring{
-			Id:        "40b086ef",
-			N:         3,
-			T:         2,
-			Dkg:       "",
-			Pss:       "",
-			Pre:       "",
-			Bulletin:  "p2pbb",
-			Transport: "p2ptp",
-			Nodes:     nil,
-		},
-	}
-
-	// repo, err := db.New()
-	// if err != nil {
-	// 	return nil, fmt.Errorf("create ring repo: %w", err)
-	// }
-
-	rr, err := ring.NewRing(ctx, app.Injector(), manifest)
-	if err != nil {
-		return nil, fmt.Errorf("create ring: %w", err)
-	}
-	_ = rr
 
 	return app, nil
 }

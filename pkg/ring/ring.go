@@ -2,6 +2,7 @@ package ring
 
 import (
 	"context"
+	"fmt"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/samber/do"
@@ -76,12 +77,12 @@ func NewRing(ctx context.Context, inj *do.Injector, ring *types.Ring) (*Ring, er
 	// factories
 	dkgFactory, err := do.InvokeNamed[dkg.Factory](inj, ring.Dkg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invoke dkg factory: %w", err)
 	}
 
 	pssFactory, err := do.InvokeNamed[pss.Factory](inj, ring.Pss)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invoke pss factory: %w", err)
 	}
 
 	preFactory, err := do.InvokeNamed[pre.Factory](inj, ring.Pre)
@@ -92,26 +93,26 @@ func NewRing(ctx context.Context, inj *do.Injector, ring *types.Ring) (*Ring, er
 	// services
 	p2p, err := do.InvokeNamed[transport.Transport](inj, ring.Transport)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invoke p2p factory: %w", err)
 	}
 	bb, err := do.InvokeNamed[bulletin.Bulletin](inj, ring.Bulletin)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invoke bulletin factory: %w", err)
 	}
 
 	dkgSrv, err := dkgFactory.New(inj, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create dkg service: %w", err)
 	}
 
 	preSrv, err := preFactory.New(rid, ring.N, ring.T, p2p, bb, []types.Node{}, dkgSrv)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create pre service: %w", err)
 	}
 
 	pssSrv, err := pssFactory.New(rid, ring.N, ring.T, p2p, bb, []types.Node{}, dkgSrv)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create pss service: %w", err)
 	}
 
 	rs := &Ring{

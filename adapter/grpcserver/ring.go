@@ -2,19 +2,26 @@ package grpcserver
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/sourcenetwork/orbis-go/app"
 	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/ring/v1alpha1"
+	"github.com/sourcenetwork/orbis-go/pkg/ring"
+	"github.com/sourcenetwork/orbis-go/pkg/types"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 // ringService wraps application to provides gRPCs.
 type ringService struct {
+	app *app.App
 	ringv1alpha1.UnimplementedRingServiceServer
 }
 
-func newRingService() *ringService {
-	return &ringService{}
+func newRingService(app *app.App) *ringService {
+	return &ringService{
+		app: app,
+	}
 }
 
 func (s *ringService) ListRings(ctx context.Context, req *ringv1alpha1.ListRingsRequest) (*ringv1alpha1.ListRingsResponse, error) {
@@ -31,9 +38,33 @@ func (s *ringService) CreateRing(ctx context.Context, req *ringv1alpha1.CreateRi
 	// 	return nil, status.Error(codes.Internal, err.Error())
 	// }
 
+	manifest := &types.Ring{
+		Ring: ringv1alpha1.Ring{
+			Id:        "40b086ef",
+			N:         3,
+			T:         2,
+			Dkg:       "rabin",
+			Pss:       "avpss",
+			Pre:       "elgamal",
+			Bulletin:  "p2pbb",
+			Transport: "p2ptp",
+			Nodes:     nil,
+		},
+	}
+
+	// repo, err := db.New()
+	// if err != nil {
+	// 	return nil, fmt.Errorf("create ring repo: %w", err)
+	// }
+
+	rr, err := ring.NewRing(ctx, s.app.Injector(), manifest)
+	if err != nil {
+		return nil, fmt.Errorf("create ring: %w", err)
+	}
+	_ = rr
 	resp := &ringv1alpha1.CreateRingResponse{}
 
-	return resp, errUnimplemented
+	return resp, nil
 }
 
 func (s *ringService) GetRing(ctx context.Context, req *ringv1alpha1.GetRingRequest) (*ringv1alpha1.GetRingResponse, error) {

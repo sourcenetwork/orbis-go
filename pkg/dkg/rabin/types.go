@@ -55,7 +55,7 @@ func (d *dkg) responseToProto(response *rabindkg.Response) *Response {
 	return &Response{
 		Index: response.Index,
 		Response: &rabinv1alpha1.VerifiableResponse{
-			SessionID: response.Response.SessionID,
+			SessionId: response.Response.SessionID,
 			Index:     response.Response.Index,
 			Approved:  response.Response.Approved,
 			Signature: response.Response.Signature,
@@ -67,7 +67,7 @@ func (d *dkg) responseFromProto(response *Response) *rabindkg.Response {
 	return &rabindkg.Response{
 		Index: response.Index,
 		Response: &rabinvss.Response{
-			SessionID: response.Response.SessionID,
+			SessionID: response.Response.SessionId,
 			Index:     response.Response.Index,
 			Approved:  response.Response.Approved,
 			Signature: response.Response.Signature,
