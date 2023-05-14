@@ -6,7 +6,6 @@ import (
 
 	"github.com/sourcenetwork/orbis-go/app"
 	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/ring/v1alpha1"
-	"github.com/sourcenetwork/orbis-go/pkg/ring"
 	"github.com/sourcenetwork/orbis-go/pkg/types"
 
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -47,7 +46,7 @@ func (s *ringService) CreateRing(ctx context.Context, req *ringv1alpha1.CreateRi
 			Pss:       "avpss",
 			Pre:       "elgamal",
 			Bulletin:  "p2pbb",
-			Transport: "p2ptp",
+			Transport: "p2p",
 			Nodes:     nil,
 		},
 	}
@@ -57,7 +56,7 @@ func (s *ringService) CreateRing(ctx context.Context, req *ringv1alpha1.CreateRi
 	// 	return nil, fmt.Errorf("create ring repo: %w", err)
 	// }
 
-	rr, err := ring.NewRing(ctx, s.app.Injector(), manifest)
+	rr, err := s.app.NewRing(ctx, manifest)
 	if err != nil {
 		return nil, fmt.Errorf("create ring: %w", err)
 	}

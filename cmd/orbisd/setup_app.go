@@ -6,12 +6,10 @@ import (
 
 	"github.com/sourcenetwork/orbis-go/app"
 	"github.com/sourcenetwork/orbis-go/config"
-	p2pbb "github.com/sourcenetwork/orbis-go/pkg/bulletin/p2p"
 	"github.com/sourcenetwork/orbis-go/pkg/dkg/rabin"
 	"github.com/sourcenetwork/orbis-go/pkg/host"
 	"github.com/sourcenetwork/orbis-go/pkg/pre/elgamal"
 	"github.com/sourcenetwork/orbis-go/pkg/pss/avpss"
-	p2ptp "github.com/sourcenetwork/orbis-go/pkg/transport/p2p"
 )
 
 func setupApp(ctx context.Context, cfg config.Config) (*app.App, error) {
@@ -22,11 +20,16 @@ func setupApp(ctx context.Context, cfg config.Config) (*app.App, error) {
 	// }
 	// tp.AddHandler(p2ptp.ProtocolID, testingStreamHandler)
 
+	host, err := host.New(ctx, cfg.Host)
+	if err != nil {
+		return nil, fmt.Errorf("creating host: %w", err)
+	}
+
 	opts := []app.Option{
 		app.DefaultOptions(),
-		app.WithHost(host.Factory{}),
-		app.WithTransport(p2ptp.Factory),
-		app.WithBulletin(p2pbb.Factory),
+		// app.WithHost(host),
+		// app.WithTransport(tp),
+		// app.WithBulletin(p2pbb.Factory),
 
 		app.WithDistKeyGenerator(rabin.Factory),
 		app.WithProxyReencryption(elgamal.Factory),
@@ -41,7 +44,7 @@ func setupApp(ctx context.Context, cfg config.Config) (*app.App, error) {
 		// app.WithTable()
 	}
 
-	app, err := app.New(ctx, opts...)
+	app, err := app.New(ctx, host, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("create app: %w", err)
 	}

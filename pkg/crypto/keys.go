@@ -64,14 +64,32 @@ func (p *pubKey) Point() kyber.Point {
 	return point
 }
 
+type libp2pPrivKey interface {
+	ic.Key
+	Sign([]byte) ([]byte, error)
+}
+
 type PrivateKey interface {
-	ic.PrivKey
+	libp2pPrivKey
 	Scalar() kyber.Scalar
+	GetPublic() PublicKey
 }
 
 type privKey struct {
 	ic.PrivKey
 	suite suites.Suite
+}
+
+func PrivateKeyFromLibP2P(privkey ic.PrivKey) (PrivateKey, error) {
+	suite, err := SuiteForType(privkey.Type())
+	if err != nil {
+		return nil, err
+	}
+
+	return &privKey{
+		PrivKey: privkey,
+		suite:   suite,
+	}, nil
 }
 
 func (p *privKey) Scalar() kyber.Scalar {
