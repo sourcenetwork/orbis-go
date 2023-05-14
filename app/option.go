@@ -52,8 +52,11 @@ func WithBulletin(f bulletin.Bulletin) Option {
 
 func WithDistKeyGenerator(f types.Factory[dkg.DKG]) Option {
 	return func(a *App) error {
+		if f.Name() == "" {
+			return ErrFactoryEmptyName
+		}
 		do.ProvideNamedValue(a.inj, f.Name(), f)
-		return nil
+		return a.setupRepoKeysForService(f.Name(), f.Repos())
 	}
 }
 
@@ -61,7 +64,7 @@ func WithDistKeyGenerator(f types.Factory[dkg.DKG]) Option {
 func WithProxyReencryption(f types.Factory[pre.PRE]) Option {
 	return func(a *App) error {
 		do.ProvideNamedValue(a.inj, f.Name(), f)
-		return nil
+		return a.setupRepoKeysForService(f.Name(), f.Repos())
 	}
 }
 
@@ -69,6 +72,6 @@ func WithProxyReencryption(f types.Factory[pre.PRE]) Option {
 func WithProactiveSecretSharing(f types.Factory[pss.PSS]) Option {
 	return func(a *App) error {
 		do.ProvideNamedValue(a.inj, f.Name(), f)
-		return nil
+		return a.setupRepoKeysForService(f.Name(), f.Repos())
 	}
 }

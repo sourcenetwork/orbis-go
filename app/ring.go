@@ -128,25 +128,19 @@ func (app *App) NewRing(ctx context.Context, ring *types.Ring) (*Ring, error) {
 	do.ProvideValue(inj, bb) // // register configured generic bulletin locally
 
 	// setup and register local services
-	dkgSrv, err := dkgFactory.New(inj, nil) // @todo repokeys
+	dkgRepoKeys := app.repoKeysForService(dkgFactory.Name())
+	dkgSrv, err := dkgFactory.New(inj, dkgRepoKeys)
 	if err != nil {
 		return nil, fmt.Errorf("create dkg service: %w", err)
 	}
 
-	// get the privkey for host
-	h := app.Host()
-	hpk := h.Peerstore().PrivKey(h.ID())
-	cpk, err := crypto.PrivateKeyFromLibP2P(hpk)
-	if err != nil {
-		return nil, fmt.Errorf("converting libp2p private key: %w", err)
-	}
-
-	if err := dkgSrv.Init(ctx, cpk /* private key */, nil /* nodes */, ring.N, ring.T); err != nil {
+	if err := dkgSrv.Init(ctx, app.privateKey /* private key */, nil /* nodes */, ring.N, ring.T); err != nil {
 		return nil, fmt.Errorf("initializing dkg: %w", err)
 	}
 	do.ProvideValue(inj, dkgSrv)
 
-	preSrv, err := preFactory.New(inj, nil) // @todo repokeys
+	preRepoKeys := app.repoKeysForService(preFactory.Name())
+	preSrv, err := preFactory.New(inj, preRepoKeys)
 	if err != nil {
 		return nil, fmt.Errorf("create pre service: %w", err)
 	}
@@ -155,7 +149,8 @@ func (app *App) NewRing(ctx context.Context, ring *types.Ring) (*Ring, error) {
 	}
 	do.ProvideValue(inj, preSrv)
 
-	pssSrv, err := pssFactory.New(inj, nil) // @todo repokeys
+	pssRepoKeys := app.repoKeysForService(pssFactory.Name())
+	pssSrv, err := pssFactory.New(inj, pssRepoKeys) // @todo repokeys
 	if err != nil {
 		return nil, fmt.Errorf("create pss service: %w", err)
 	}

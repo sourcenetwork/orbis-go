@@ -13,6 +13,11 @@ import (
 // 	Secrets() Repository[*types.Secret]
 // }
 
+var (
+	ErrRepoKeyInvalid = fmt.Errorf("invalid key")
+	ErrDuplicateKey   = fmt.Errorf("duplicate keys")
+)
+
 type RepoKey interface {
 	Name() string
 }
@@ -60,15 +65,33 @@ func New() (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	path := filepath.Join(dirname, "/.orbis/data")
-	bdb, err := bond.Open(path, opts) //todo: Parameterize location
+	path := filepath.Join(dirname, "/.orbis/data") //todo: Parameterize path
+	bdb, err := bond.Open(path, opts)
 	if err != nil {
 		return nil, err
 	}
 
 	return &DB{
-		bond: bdb,
+		bond:  bdb,
+		repos: make(map[RepoKey]any),
 	}, nil
+}
+
+// MountRepo will create and mount a typed repo under the given
+// RepoKey
+//
+// The last parameter ...T is an *optional* generic type
+// inference, if the call site can't be explicit
+func MountRepo[T Record](db *DB, key RepoKey, _ ...T) error {
+	if key == nil {
+		return ErrRepoKeyInvalid
+	}
+	if _, exists := db.repos[key]; exists {
+		return ErrDuplicateKey
+	}
+	repo := newSimpleRepo[T](db.bond)
+	db.repos[key] = repo
+	return nil
 }
 
 // func thing() {
