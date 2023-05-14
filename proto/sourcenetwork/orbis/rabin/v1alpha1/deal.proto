@@ -13,15 +13,3 @@ message Deal {
   uint32 index = 1;
   EncryptedDeal deal = 2;
 }
-
-message Response {
-  uint32 index = 1;
-  VerifiableResponse response = 2;
-}
-
-message VerifiableResponse {
-  bytes session_id = 1;
-  uint32 index = 2;
-  bool approved = 3;
-  bytes signature = 4;
-}
