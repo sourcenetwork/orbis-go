@@ -6,7 +6,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/samber/do"
 	"github.com/sourcenetwork/orbis-go/config"
 	"github.com/sourcenetwork/orbis-go/pkg/host"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
@@ -35,12 +34,8 @@ type Transport struct {
 	h *host.Host
 }
 
-func New(ctx context.Context, inj *do.Injector, cfg config.Transport) (*Transport, error) {
-	h, err := do.Invoke[*host.Host](inj)
-	if err != nil {
-		return nil, fmt.Errorf("do invoke host: %w", err)
-	}
-	return &Transport{h: h}, nil
+func New(ctx context.Context, host *host.Host, cfg config.Transport) (*Transport, error) {
+	return &Transport{h: host}, nil
 }
 
 func (t *Transport) Name() string {

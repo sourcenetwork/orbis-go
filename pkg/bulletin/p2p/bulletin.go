@@ -3,7 +3,6 @@ package p2p
 import (
 	"context"
 
-	"github.com/samber/do"
 	"github.com/sourcenetwork/orbis-go/config"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/host"
@@ -24,22 +23,15 @@ type Bulletin struct {
 	h libp2phost.Host
 }
 
-func New(ctx context.Context, inj *do.Injector, cfg config.Bulletin) (*Bulletin, error) {
-	h, err := do.Invoke[*host.Host](inj)
-	if err != nil {
-		return nil, err
-	}
-
+func New(ctx context.Context, host *host.Host, cfg config.Bulletin) (*Bulletin, error) {
 	bb := &Bulletin{
-		h: h,
+		h: host,
 	}
 
-	h.SetStreamHandler(ProtocolID, bb.HandleStream)
-	h.Discover(ctx, cfg.Rendezvous)
+	host.SetStreamHandler(ProtocolID, bb.HandleStream)
+	host.Discover(ctx, cfg.Rendezvous)
 
-	return &Bulletin{
-		h: h,
-	}, nil
+	return bb, nil
 }
 
 func (bb *Bulletin) Name() string {
