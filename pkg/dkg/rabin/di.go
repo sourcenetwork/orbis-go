@@ -2,6 +2,7 @@ package rabin
 
 import (
 	"github.com/samber/do"
+	rabinv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/rabin/v1alpha1"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/db"
 	orbisdkg "github.com/sourcenetwork/orbis-go/pkg/dkg"
@@ -36,8 +37,8 @@ func (factory) Name() string {
 	return name
 }
 
-func (factory) Repos() []string {
-	return []string{"/rabin/deals", "shares"}
+func (factory) Repos() []db.Record {
+	return []db.Record{&rabinv1alpha1.Deal{}, &rabinv1alpha1.Response{}}
 }
 
 // /rabin/{deals,shares}
