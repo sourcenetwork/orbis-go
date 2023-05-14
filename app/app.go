@@ -34,8 +34,17 @@ type App struct {
 
 	privateKey crypto.PrivateKey
 
-	repoParams   map[string]repoParam
-	repoKeys     map[string]db.RepoKey
+	// namespaced key => repoParam
+	// collected during app initialization
+	repoParams map[string]repoParam
+
+	// namespaced key => repo key
+	// mounted repos after initialization
+	repoKeys map[string]db.RepoKey
+
+	// service name => []namespace keys
+	// index for which keys are for which
+	// service
 	serviceRepos map[string][]string
 }
 
