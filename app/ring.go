@@ -29,6 +29,8 @@ type Ring struct {
 	Transport transport.Transport
 	Bulletin  bulletin.Bulletin
 	DB        *db.DB
+
+	inj *do.Injector
 }
 
 /*
@@ -166,6 +168,7 @@ func (app *App) NewRing(ctx context.Context, ring *types.Ring) (*Ring, error) {
 		Transport: tp,
 		Bulletin:  bb,
 		DB:        db,
+		inj:       inj,
 	}
 
 	// called in ring.Join() - go rs.handleEvents()
