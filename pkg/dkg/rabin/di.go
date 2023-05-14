@@ -6,15 +6,17 @@ import (
 	"github.com/sourcenetwork/orbis-go/pkg/db"
 	orbisdkg "github.com/sourcenetwork/orbis-go/pkg/dkg"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
+	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
 
 var (
-	Factory = factory{}
+	_       types.Factory[orbisdkg.DKG] = (*factory)(nil)
+	Factory                             = factory{}
 )
 
 type factory struct{}
 
-func (factory) New(inj *do.Injector, rkeys []*db.RepoKey) (orbisdkg.DKG, error) {
+func (factory) New(inj *do.Injector, rkeys []db.RepoKey) (orbisdkg.DKG, error) {
 	db, err := do.Invoke[*db.DB](inj)
 	if err != nil {
 		return nil, err
@@ -35,7 +37,7 @@ func (factory) Name() string {
 }
 
 func (factory) Repos() []string {
-	return []string{"deals", "shares"}
+	return []string{"/rabin/deals", "shares"}
 }
 
-// /orbis/dkg/rabin/{deals,shares}
+// /rabin/{deals,shares}

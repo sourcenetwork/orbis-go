@@ -21,7 +21,7 @@ type State uint8
 type Node = transport.Node
 
 type DKG interface {
-	Init(ctx context.Context, pk crypto.PrivateKey, nodes []Node, n int, threshold int) error
+	Init(ctx context.Context, pk crypto.PrivateKey, nodes []Node, n int32, threshold int32) error
 
 	Name() string
 

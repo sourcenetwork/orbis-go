@@ -5,9 +5,7 @@ import (
 
 	"go.dedis.ch/kyber/v3/suites"
 
-	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
-	"github.com/sourcenetwork/orbis-go/pkg/dkg"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
 	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
@@ -15,6 +13,8 @@ import (
 type Message interface{}
 
 type PSS interface {
+	// Initialze a new PSS
+	Init(types.RingID, int32, int32, []types.Node) error
 	// Name of the PSS Algorithm
 	Name() string
 	// Cryptographic suite
@@ -48,9 +48,4 @@ type PSS interface {
 type Node interface {
 	transport.Node
 	Index() int
-}
-
-type Factory interface {
-	New(types.RingID, int32, int32, transport.Transport, bulletin.Bulletin, []types.Node, dkg.DKG) (PSS, error)
-	Name() string
 }

@@ -13,7 +13,7 @@ import (
 )
 
 // type Factory[T any] interface {
-// 	New(*do.Injector, []*db.RepoKey) (T, error)
+// 	New(*do.Injector, []db.RepoKey) (T, error)
 // 	Name() string
 // 	Repos() []string
 // }
@@ -28,14 +28,14 @@ func DefaultOptions() Option {
 	}
 }
 
-func WithHost(f host.Factory) Option {
+func WithHost(f *host.Host) Option {
 	return func(a *App) error {
-		do.ProvideNamedValue(a.inj, f.Name(), f)
+		do.ProvideValue(a.inj, f)
 		return nil
 	}
 }
 
-func WithTransport(f transport.Factory) Option {
+func WithTransport(f transport.Transport) Option {
 	return func(a *App) error {
 		do.ProvideNamedValue(a.inj, f.Name(), f)
 		return nil
@@ -43,7 +43,7 @@ func WithTransport(f transport.Factory) Option {
 }
 
 // WithBulletin registers BulletinBoard factory.
-func WithBulletin(f bulletin.Factory) Option {
+func WithBulletin(f bulletin.Bulletin) Option {
 	return func(a *App) error {
 		do.ProvideNamedValue(a.inj, f.Name(), f)
 		return nil
@@ -58,7 +58,7 @@ func WithDistKeyGenerator(f types.Factory[dkg.DKG]) Option {
 }
 
 // WithProxyReencryption registers o Proxy-Reencryption Service.
-func WithProxyReencryption(f pre.Factory) Option {
+func WithProxyReencryption(f types.Factory[pre.PRE]) Option {
 	return func(a *App) error {
 		do.ProvideNamedValue(a.inj, f.Name(), f)
 		return nil
@@ -66,7 +66,7 @@ func WithProxyReencryption(f pre.Factory) Option {
 }
 
 // WithProactiveSecretSharing registers o Proactive Secret Sharing Service.
-func WithProactiveSecretSharing(f pss.Factory) Option {
+func WithProactiveSecretSharing(f types.Factory[pss.PSS]) Option {
 	return func(a *App) error {
 		do.ProvideNamedValue(a.inj, f.Name(), f)
 		return nil

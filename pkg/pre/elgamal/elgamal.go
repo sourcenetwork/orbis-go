@@ -10,6 +10,7 @@ import (
 
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
+	"github.com/sourcenetwork/orbis-go/pkg/db"
 	"github.com/sourcenetwork/orbis-go/pkg/dkg"
 	"github.com/sourcenetwork/orbis-go/pkg/pre"
 	"github.com/sourcenetwork/orbis-go/pkg/pss"
@@ -66,9 +67,13 @@ type ThesholdDealer struct {
 	finished bool
 }
 
-func New(types.RingID, int32, int32, transport.Transport, bulletin.Bulletin, []types.Node, dkg.DKG) (pre.PRE, error) {
+func New(*db.DB, []db.RepoKey, transport.Transport, bulletin.Bulletin, dkg.DKG) (pre.PRE, error) {
 	// FIXME: implement this
 	return &ThesholdDealer{}, nil
+}
+
+func (e *ThesholdDealer) Init(types.RingID, int32, int32, []types.Node) error {
+	return nil
 }
 
 func (e *ThesholdDealer) Name() string {

@@ -2,6 +2,7 @@ package rabin
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"go.dedis.ch/kyber/v3"
@@ -29,8 +30,8 @@ type dkg struct {
 	participants []orbisdkg.Node
 
 	index     int
-	num       int
-	threshold int
+	num       int32
+	threshold int32
 
 	suite   suites.Suite
 	pubKey  kyber.Point
@@ -49,7 +50,7 @@ type dkg struct {
 	initialized bool
 }
 
-func New(repo *db.DB, rkeys []*db.RepoKey, t transport.Transport, b bulletin.Bulletin) (*dkg, error) {
+func New(repo *db.DB, rkeys []db.RepoKey, t transport.Transport, b bulletin.Bulletin) (*dkg, error) {
 
 	//dealsRepo, err := db.GetRepo[db.Record](repo, rkeys[0])
 	//sharesRepo, err := db.GetRepo[db.Record](repo, rkeys[1])
@@ -62,9 +63,13 @@ func New(repo *db.DB, rkeys []*db.RepoKey, t transport.Transport, b bulletin.Bul
 }
 
 // Init initializes the DKG with the target nodes
-func (d *dkg) Init(ctx context.Context, pk crypto.PrivateKey, nodes []orbisdkg.Node, n int, threshold int) error {
+func (d *dkg) Init(ctx context.Context, pk crypto.PrivateKey, nodes []orbisdkg.Node, n int32, threshold int32) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
+	if pk == nil {
+		return fmt.Errorf("missing private key")
+	}
 
 	suite, err := crypto.SuiteForType(pk.Type())
 	if err != nil {
@@ -74,8 +79,10 @@ func (d *dkg) Init(ctx context.Context, pk crypto.PrivateKey, nodes []orbisdkg.N
 	d.suite = suite
 	d.privKey = pk.Scalar()
 	d.pubKey = suite.Point().Mul(d.privKey, nil) // public point for scalar
+	d.num = n
+	d.threshold = threshold
 
-	if len(nodes) != n {
+	if len(nodes) != int(n) {
 		return orbisdkg.ErrBadNodeSet
 	}
 
@@ -92,15 +99,13 @@ func (d *dkg) Init(ctx context.Context, pk crypto.PrivateKey, nodes []orbisdkg.N
 		return orbisdkg.ErrMissingSelf
 	}
 
-	rdkg, err := rabindkg.NewDistKeyGenerator(d.suite, d.privKey, points, d.threshold)
+	rdkg, err := rabindkg.NewDistKeyGenerator(d.suite, d.privKey, points, int(d.threshold))
 	if err != nil {
 		return err
 	}
 
 	d.participants = nodes
 	d.rdkg = rdkg
-	d.num = n
-	d.threshold = threshold
 
 	// setup stream handler for transport
 	d.setupHandlers()

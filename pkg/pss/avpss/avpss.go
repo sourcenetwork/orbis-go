@@ -5,6 +5,7 @@ import (
 
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
+	"github.com/sourcenetwork/orbis-go/pkg/db"
 	"github.com/sourcenetwork/orbis-go/pkg/dkg"
 	"github.com/sourcenetwork/orbis-go/pkg/pss"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
@@ -14,11 +15,16 @@ import (
 
 const name = "avpss"
 
-type AVPSS struct {
+var _ pss.PSS = (*AVPSS)(nil)
+
+type AVPSS struct{}
+
+func New(*db.DB, []db.RepoKey, transport.Transport, bulletin.Bulletin, dkg.DKG) (*AVPSS, error) {
+	return &AVPSS{}, nil
 }
 
-func New(types.RingID, int32, int32, transport.Transport, bulletin.Bulletin, []types.Node, dkg.DKG) (*AVPSS, error) {
-	return &AVPSS{}, nil
+func (a *AVPSS) Init(rid types.RingID, n int32, t int32, nodes []types.Node) error {
+	return nil
 }
 
 func (a *AVPSS) Name() string {
