@@ -2,6 +2,8 @@ package db
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/go-bond/bond"
 )
@@ -11,19 +13,36 @@ import (
 // 	Secrets() Repository[*types.Secret]
 // }
 
-type RepoKey struct {
+type RepoKey interface {
+	Name() string
+}
+
+type repoKey struct {
 	name string
+}
+
+func (rk *repoKey) Name() string {
+	return rk.name
+}
+
+// NewRepoKey returns a new pointer to
+// a RepoKey.
+func NewRepoKey(name string) RepoKey {
+	if name == "" {
+		panic("empty key name not allowed")
+	}
+	return &repoKey{name}
 }
 
 type DB struct {
 	bond  bond.DB
-	repos map[*RepoKey]any // map[tableKey]Repository
+	repos map[RepoKey]any // map[tableKey]Repository
 }
 
-func GetRepo[R Record](db DB, rkey *RepoKey) (Repository[R], error) {
+func GetRepo[R Record](db *DB, rkey RepoKey) (Repository[R], error) {
 	repo, ok := db.repos[rkey]
 	if !ok {
-		return nil, fmt.Errorf("no repo exists for %s", rkey.name)
+		return nil, fmt.Errorf("no repo exists for %s", rkey.Name())
 	}
 
 	repoTyped, ok := repo.(Repository[R])
@@ -36,7 +55,13 @@ func GetRepo[R Record](db DB, rkey *RepoKey) (Repository[R], error) {
 func New() (*DB, error) {
 	opts := bond.DefaultOptions()
 	opts.Serializer = protoSerializer{}
-	bdb, err := bond.Open("~/.orbis/data", opts) //todo: Parameterize location
+
+	dirname, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+	path := filepath.Join(dirname, "/.orbis/data")
+	bdb, err := bond.Open(path, opts) //todo: Parameterize location
 	if err != nil {
 		return nil, err
 	}
