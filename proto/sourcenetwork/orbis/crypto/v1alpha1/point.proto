@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package orbis.crypto.v1alpha1;
+
+// kyber point
+message Point {
+    bytes data = 1 [(gogoproto.customtype) = "github.com/sourcenetwork/orbis-go/pkg/crypto.Point"];
+}

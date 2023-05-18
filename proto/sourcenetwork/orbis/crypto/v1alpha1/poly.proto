@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package orbis.crypto.v1alpha1;
+
+message PubPoly {
+    bytes b = 1 [(gogoproto.customtype) = "github.com/sourcenetwork/orbis-go/pkg/crypto.Point"];
+    repeated bytes commits = 2 [(gogoproto.customtype) = "github.com/sourcenetwork/orbis-go/pkg/crypto.Point"];
+}

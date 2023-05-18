@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package orbis.crypto.v1alpha1;
+
+message PriShare {
+    int i = 1;
+    bytes v = 2 [(gogoproto.customtype) = "github.com/sourcenetwork/orbis-go/pkg/crypto.Point"];
+}
