@@ -1,6 +1,6 @@
 grpc:
-  grpcURL: "0.0.0.0:8082"
-  restURL: "0.0.0.0:8092"
+  grpcURL: "0.0.0.0:8083"
+  restURL: "0.0.0.0:8093"
   logging: true
 
 logger:
@@ -10,9 +10,9 @@ logger:
 
 host:
   crypto:
-    seed: 2
+    seed: 3
   listenAddresses:
-    - /ip4/0.0.0.0/tcp/9002
+    - /ip4/0.0.0.0/tcp/9003
   bootstrap_peers:
     - /ip4/127.0.0.1/tcp/9001/p2p/12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqu
 
@@ -23,4 +23,4 @@ transport:
   rendezvous: "orbis-transport"
 
 db:
-  path: "data2"
+  path: "data3"
