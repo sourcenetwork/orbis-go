@@ -91,12 +91,6 @@ func New(ctx context.Context, host *host.Host, opts ...Option) (*App, error) {
 	}
 	do.ProvideNamedValue[bulletin.Bulletin](inj, bb.Name(), bb)
 
-	d, err := db.New()
-	if err != nil {
-		return nil, fmt.Errorf("creating db: %w", err)
-	}
-	do.ProvideValue(inj, d)
-
 	do.ProvideValue(inj, host)
 
 	a := &App{
@@ -104,7 +98,6 @@ func New(ctx context.Context, host *host.Host, opts ...Option) (*App, error) {
 		inj:          inj,
 		tp:           tp,
 		bb:           bb,
-		db:           d,
 		privateKey:   cpk,
 		repoParams:   make(map[string]repoParam),
 		repoKeys:     make(map[string]db.RepoKey),

@@ -12,6 +12,7 @@ type Config struct {
 	Secret    Secret
 	Transport Transport
 	Bulletin  Bulletin
+	DB        DB
 }
 
 type Logger struct {
@@ -57,4 +58,8 @@ type Host struct {
 	ListenAddresses []string `default:"/ip4/0.0.0.0/tcp/9000" description:"Host listen address string"`
 	BootstrapPeers  []string `mapstructure:"bootstrap_peers" default:"" description:"Comma separated multiaddr strings of bootstrap peers. If empty, the node will run in bootstrap mode"`
 	// Rendezvous      string   `default:"orbis" description:"Rendezvous string"`
+}
+
+type DB struct {
+	Path string `default:"data" description:"DB path"`
 }

@@ -41,7 +41,7 @@ func setupApp(ctx context.Context, cfg config.Config) (*app.App, error) {
 		// app.WithProactiveSecretSharing(vss.Provider),
 
 		// mount DB Tables
-		// app.WithTable()
+		app.WithDBData(cfg.DB.Path),
 	}
 
 	app, err := app.New(ctx, host, opts...)

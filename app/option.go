@@ -1,9 +1,12 @@
 package app
 
 import (
+	"fmt"
+
 	"github.com/samber/do"
 
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
+	"github.com/sourcenetwork/orbis-go/pkg/db"
 	"github.com/sourcenetwork/orbis-go/pkg/dkg"
 	"github.com/sourcenetwork/orbis-go/pkg/host"
 	"github.com/sourcenetwork/orbis-go/pkg/pre"
@@ -11,12 +14,6 @@ import (
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
 	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
-
-// type Factory[T any] interface {
-// 	New(*do.Injector, []db.RepoKey) (T, error)
-// 	Name() string
-// 	Repos() []string
-// }
 
 type Option func(a *App) error
 
@@ -31,6 +28,18 @@ func DefaultOptions() Option {
 func WithHost(f *host.Host) Option {
 	return func(a *App) error {
 		do.ProvideValue(a.inj, f)
+		return nil
+	}
+}
+
+func WithDBData(path string) Option {
+	return func(a *App) error {
+		d, err := db.New(path)
+		if err != nil {
+			return fmt.Errorf("creating db: %w", err)
+		}
+		do.ProvideValue(a.inj, d)
+		a.db = d
 		return nil
 	}
 }

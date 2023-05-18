@@ -57,7 +57,7 @@ func GetRepo[R Record](db *DB, rkey RepoKey) (Repository[R], error) {
 	return repoTyped, nil
 }
 
-func New() (*DB, error) {
+func New(path string) (*DB, error) {
 	opts := bond.DefaultOptions()
 	opts.Serializer = protoSerializer{}
 
@@ -65,7 +65,7 @@ func New() (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	path := filepath.Join(dirname, "/.orbis/data") //todo: Parameterize path
+	path = filepath.Join(dirname, ".orbis", path) //todo: Parameterize path
 	bdb, err := bond.Open(path, opts)
 	if err != nil {
 		return nil, err
