@@ -89,12 +89,13 @@ func (d *dkg) Init(ctx context.Context, pk crypto.PrivateKey, nodes []orbisdkg.N
 		return orbisdkg.ErrBadNodeSet
 	}
 
-	points := make([]kyber.Point, len(nodes))
+	points := make([]kyber.Point, 0, len(nodes))
 	for i, n := range nodes {
-		points[i] = n.PublicKey().Point()
-		if points[i] == d.pubKey {
+		point := n.PublicKey().Point()
+		if point.Equal(d.pubKey) {
 			d.index = i
 		}
+		points = append(points, point)
 	}
 
 	// we didn't find ourselves in the list
@@ -104,7 +105,7 @@ func (d *dkg) Init(ctx context.Context, pk crypto.PrivateKey, nodes []orbisdkg.N
 
 	rdkg, err := rabindkg.NewDistKeyGenerator(d.suite, d.privKey, points, int(d.threshold))
 	if err != nil {
-		return err
+		return fmt.Errorf("create DKG: %w", err)
 	}
 
 	d.participants = nodes
@@ -190,6 +191,7 @@ func (d *dkg) send(ctx context.Context, msgType string, buf []byte, node transpo
 	if err != nil {
 		return fmt.Errorf("new message: %w", err)
 	}
+	log.Infof("dkg.send() node id: %s, addr: %s", node.ID(), node.Address())
 	if err := d.transport.Send(ctx, node, msg); err != nil {
 		return fmt.Errorf("send message: %w", err)
 	}
@@ -206,9 +208,39 @@ func (d *dkg) ProcessMessage(msg *transport.Message) error {
 
 	switch msg.GetType() {
 	case string(ProtocolDeal):
-		//
+		log.Infof("dkg.ProcessMessage() ProtocolDeal: id: %s", msg.Id)
+
+		var protoDeal rabinv1alpha1.Deal
+
+		err := proto.Unmarshal(msg.Payload, &protoDeal)
+		if err != nil {
+			return fmt.Errorf("unmarshal deal: %w", err)
+		}
+
+		deal, err := d.dealFromProto(&protoDeal)
+		if err != nil {
+			return fmt.Errorf("deal from proto: %w", err)
+		}
+
+		err = d.processDeal(deal, d.participants)
+		if err != nil {
+			return fmt.Errorf("process deal: %w", err)
+		}
+
 	case string(ProtocolResponse):
-		//
+		log.Infof("dkg.ProcessMessage() ProtocolResponse: id: %s", msg.Id)
+
+		var protoResponse rabinv1alpha1.Response
+		err := proto.Unmarshal(msg.Payload, &protoResponse)
+		if err != nil {
+			return fmt.Errorf("unmarshal response: %w", err)
+		}
+		resp := d.responseFromProto(&protoResponse)
+		err = d.processResponse(resp)
+		if err != nil {
+			return fmt.Errorf("process deal: %w", err)
+		}
+
 	default:
 		panic("bad message type") //todo
 	}

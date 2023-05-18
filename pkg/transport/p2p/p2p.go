@@ -11,6 +11,8 @@ import (
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
 	"github.com/sourcenetwork/orbis-go/pkg/types"
 
+	"github.com/cenkalti/backoff/v4"
+
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -48,12 +50,27 @@ func (t *Transport) Send(ctx context.Context, node transport.Node, msg *transpor
 	// todo: verify msg is of type p2p.message
 	// todo sign message
 
-	peerID := peer.ID(node.ID())
+	peerID, err := peer.Decode(node.ID())
+	if err != nil {
+		return fmt.Errorf("decode peer id: %w", err)
+	}
 	// todo protocol formatting
 	protocolID := protocol.ConvertFromStrings([]string{msg.GetType()})
-	stream, err := t.h.NewStream(ctx, peerID, protocolID...)
+
+	log.Infof("transport.Send(): peerID:%s, ProtocolID:%v", peerID, protocolID)
+	var stream network.Stream
+	newStream := func() error {
+		stream, err = t.h.NewStream(ctx, peerID, protocolID...)
+		return err
+	}
+
+	b := backoff.NewExponentialBackOff()
+	b.MaxElapsedTime = 30 * time.Second
+	bctx := backoff.WithContext(b, ctx)
+
+	err = backoff.Retry(newStream, bctx)
 	if err != nil {
-		return fmt.Errorf("open stream: %w", err)
+		return fmt.Errorf("new stream: %v", err)
 	}
 	defer stream.Close()
 
@@ -158,6 +175,7 @@ func streamHandlerFrom(handler transport.Handler) func(network.Stream) {
 			return
 		}
 
+		log.Infof("received message: id:%s, type: %s", data.Id, data.Type)
 		err = handler(data)
 		if err != nil {
 			log.Errorf("handle data: %s", err)

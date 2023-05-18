@@ -2,6 +2,7 @@ package rabin
 
 import (
 	"context"
+	"fmt"
 
 	rabindkg "go.dedis.ch/kyber/v3/share/dkg/rabin"
 	"go.dedis.ch/protobuf"
@@ -22,7 +23,7 @@ func (d *dkg) setupHandlers() {
 func (d *dkg) processDeal(deal *rabindkg.Deal, nodes []transport.Node) error {
 	response, err := d.rdkg.ProcessDeal(deal)
 	if err != nil {
-		return err
+		return fmt.Errorf("process deal: %w", err)
 	}
 
 	for _, node := range nodes {
@@ -32,12 +33,12 @@ func (d *dkg) processDeal(deal *rabindkg.Deal, nodes []transport.Node) error {
 
 		buf, err := protobuf.Encode(response)
 		if err != nil {
-			return err
+			return fmt.Errorf("encode response: %w", err)
 		}
 
 		// todo: context
 		if err := d.send(context.TODO(), string(ProtocolResponse), buf, node); err != nil {
-			return err
+			return fmt.Errorf("send response: %w", err)
 		}
 	}
 
@@ -59,14 +60,14 @@ func (d *dkg) processResponse(resp *rabindkg.Response) error {
 	// For now, lets just design it assuming all is well (temp)
 	_, err := d.rdkg.ProcessResponse(resp)
 	if err != nil {
-		return err
+		return fmt.Errorf("process response: %w", err)
 	}
 
 	if d.rdkg.Certified() {
 		// interpolate shared public key
 		distkey, err := d.rdkg.DistKeyShare()
 		if err != nil {
-			return err
+			return fmt.Errorf("dist key share: %w", err)
 		}
 
 		d.share = crypto.PriShare{
