@@ -140,41 +140,39 @@ func (d *dkg) Start(ctx context.Context) error {
 	defer d.mu.Unlock()
 	d.state = orbisdkg.STARTED
 
-	if !d.initialized {
-		return orbisdkg.ErrNotInitialized
-	}
+	// TODO
+	// if !d.initialized {
+	// 	return orbisdkg.ErrNotInitialized
+	// }
 
-	// generate deals
-	// send deals to participants (and self)
 	deals, err := d.rdkg.Deals()
 	if err != nil {
-		return err
+		return fmt.Errorf("generate deals: %w", err)
 	}
-	dealprotos := make([]*Deal, len(deals))
-	i := 0
-	for _, deal := range deals {
-		dealprotos[i], err = d.dealToProto(deal)
-		if err != nil {
-			return err
-		}
-		if err := d.deals.Create(ctx, dealprotos[i]); err != nil {
-			return err
-		}
-		i++
-	}
-	// d.deals = deals
 
-	for _, deal := range dealprotos {
-		if deal.Index == uint32(d.index) {
-			// todo: deliver to ourselves
+	for i, deal := range deals {
+		dealproto, err := d.dealToProto(deal)
+		if err != nil {
+			return fmt.Errorf("convert deal to proto: %w", err)
+		}
+
+		// TODO: save deals to db
+		// if err := d.deals.Create(ctx, dealproto); err != nil {
+		// 	return fmt.Errorf("create deal: %w", err)
+		// }
+
+		log.Infof("node %d sending deal to partitipants %d", d.index, i)
+		if i == d.index {
+			// TODO: deliver to ourselves
 			continue
 		}
-		buf, err := proto.Marshal(deal)
+
+		buf, err := proto.Marshal(dealproto)
 		if err != nil {
 			return fmt.Errorf("marshal deal: %w", err)
 		}
 
-		err = d.send(ctx, string(ProtocolDeal), buf, d.participants[deal.Index])
+		err = d.send(ctx, string(ProtocolDeal), buf, d.participants[i])
 		if err != nil {
 			return fmt.Errorf("send deal: %w", err)
 		}
