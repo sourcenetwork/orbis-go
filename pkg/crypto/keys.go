@@ -41,6 +41,10 @@ func PublicKeyFromProto(pk *icpb.PublicKey) (PublicKey, error) {
 	return publicKeyFromLibP2P(icpk)
 }
 
+func PublicKeyToProto(pk PublicKey) (*icpb.PublicKey, error) {
+	return ic.PublicKeyToProto(pk)
+}
+
 func PublicKeyFromPoint(point kyber.Point) (PublicKey, error) {
 	panic("todo")
 }

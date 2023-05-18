@@ -40,8 +40,8 @@ type dkg struct {
 	pubKey  kyber.Point
 	privKey kyber.Scalar
 
-	deals db.Repository[*rabinv1alpha1.Deal]
-	resps db.Repository[*rabinv1alpha1.Response]
+	dealRepo db.Repository[*rabinv1alpha1.Deal]
+	respRepo db.Repository[*rabinv1alpha1.Response]
 
 	share crypto.PriShare
 
