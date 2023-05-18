@@ -1,6 +1,7 @@
 package crypto
 
 import (
+	"crypto/sha512"
 	"fmt"
 
 	ic "github.com/libp2p/go-libp2p/core/crypto"
@@ -92,19 +93,39 @@ func PrivateKeyFromLibP2P(privkey ic.PrivKey) (PrivateKey, error) {
 	}, nil
 }
 
+// Scalar returns a numeric elliptic curve scalar
+// representation of the private key.
+//
+// WARNING: THIS ONLY WORDS WITH Edwards25519 CURVES RIGHT NOW.
 func (p *privKey) Scalar() kyber.Scalar {
+	// There is a discrepency between LibP2P private keys
+	// and "raw" EC scalars. LibP2P private keys is an
+	// (x, y) pair, where x is the given "seed" and y is
+	// the cooresponding publickey. Where y is computed as
+	//
+	// h := sha512.Hash(x)
+	// s := scalar().SetWithClamp(h)
+	// y := point().ScalarBaseMul(x)
+	//
+	// So to make sure future conversions of this scalar
+	// to a public key, like in the DKG setup, we need to
+	// convert this key to a scalar using the Hash and Clamp
+	// method.
+	//
+	// To understand clamping, see here:
+	// https://neilmadden.blog/2020/05/28/whats-the-curve25519-clamping-all-about/
 
 	buf, err := p.PrivKey.Raw()
 	if err != nil {
 		panic(err)
 	}
 
-	scalar := p.suite.Scalar()
-	err = scalar.UnmarshalBinary(buf[:32])
-	if err != nil {
-		panic(err)
-	}
-	return scalar
+	// hash seed and clamp bytes
+	digest := sha512.Sum512(buf[:32])
+	digest[0] &= 0xf8
+	digest[31] &= 0x7f
+	digest[31] |= 0x40
+	return p.suite.Scalar().SetBytes(digest[:32])
 }
 
 func (p *privKey) GetPublic() PublicKey {
@@ -122,4 +143,8 @@ type PriShare struct {
 // PubPoly
 type PubPoly struct {
 	*share.PubPoly
+}
+
+func setScalarWithClamp(s kyber.Scalar, buf []byte) {
+
 }
