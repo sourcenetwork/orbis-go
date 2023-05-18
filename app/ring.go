@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/davecgh/go-spew/spew"
 	logging "github.com/ipfs/go-log"
+	"github.com/libp2p/go-libp2p/core/peer"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/samber/do"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
@@ -14,6 +17,7 @@ import (
 	"github.com/sourcenetwork/orbis-go/pkg/pre"
 	"github.com/sourcenetwork/orbis-go/pkg/pss"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
+	p2ptransport "github.com/sourcenetwork/orbis-go/pkg/transport/p2p"
 	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
 
@@ -117,17 +121,19 @@ func (app *App) NewRing(ctx context.Context, ring *types.Ring) (*Ring, error) {
 		return nil, fmt.Errorf("invoke db: %w", err)
 	}
 
+	// register configured generic transport locally
 	tp, err := do.InvokeNamed[transport.Transport](inj, ring.Transport)
 	if err != nil {
 		return nil, fmt.Errorf("invoke transport: %w", err)
 	}
-	do.ProvideValue(inj, tp) // register configured generic transport locally
+	do.ProvideValue(inj, tp)
 
+	// register configured generic bulletin locally
 	bb, err := do.InvokeNamed[bulletin.Bulletin](inj, ring.Bulletin)
 	if err != nil {
 		return nil, fmt.Errorf("invoke bulletin: %w", err)
 	}
-	do.ProvideValue(inj, bb) // // register configured generic bulletin locally
+	do.ProvideValue(inj, bb)
 
 	// setup and register local services
 	dkgRepoKeys := app.repoKeysForService(dkgFactory.Name())
@@ -136,10 +142,39 @@ func (app *App) NewRing(ctx context.Context, ring *types.Ring) (*Ring, error) {
 		return nil, fmt.Errorf("create dkg service: %w", err)
 	}
 
-	if err := dkgSrv.Init(ctx, app.privateKey /* private key */, nil /* nodes */, ring.N, ring.T); err != nil {
+	var nodes []transport.Node
+	spew.Dump(ring.Nodes)
+	for _, n := range ring.Nodes {
+		id, err := peer.Decode(n.Id)
+		if err != nil {
+			return nil, fmt.Errorf("invalid peer id: %w", err)
+		}
+		pubKey, err := id.ExtractPublicKey()
+		if err != nil {
+			return nil, fmt.Errorf("extract publick key from id: %w", err)
+		}
+		key, err := crypto.PublicKeyFromLibP2P(pubKey)
+		if err != nil {
+			return nil, fmt.Errorf("invalid public key: %w", err)
+		}
+
+		addr, err := ma.NewMultiaddr(n.Address)
+		if err != nil {
+			return nil, fmt.Errorf("invalid address: %w", err)
+		}
+		node := p2ptransport.NewNode(n.Id, key, addr)
+
+		nodes = append(nodes, node)
+	}
+
+	if err := dkgSrv.Init(ctx, app.privateKey, nodes, ring.N, ring.T); err != nil {
 		return nil, fmt.Errorf("initializing dkg: %w", err)
 	}
 	do.ProvideValue(inj, dkgSrv)
+
+	if err := dkgSrv.Start(ctx); err != nil {
+		return nil, fmt.Errorf("starting dkg: %w", err)
+	}
 
 	preRepoKeys := app.repoKeysForService(preFactory.Name())
 	preSrv, err := preFactory.New(inj, preRepoKeys)

@@ -93,9 +93,17 @@ func PrivateKeyFromLibP2P(privkey ic.PrivKey) (PrivateKey, error) {
 }
 
 func (p *privKey) Scalar() kyber.Scalar {
-	buf, _ := p.PrivKey.Raw()
+
+	buf, err := p.PrivKey.Raw()
+	if err != nil {
+		panic(err)
+	}
+
 	scalar := p.suite.Scalar()
-	scalar.UnmarshalBinary(buf)
+	err = scalar.UnmarshalBinary(buf[:32])
+	if err != nil {
+		panic(err)
+	}
 	return scalar
 }
 

@@ -32,11 +32,6 @@ func (s *ringService) ListRings(ctx context.Context, req *ringv1alpha1.ListRings
 
 func (s *ringService) CreateRing(ctx context.Context, req *ringv1alpha1.CreateRingRequest) (*ringv1alpha1.CreateRingResponse, error) {
 
-	// err := s.app.CreatRing(...)
-	// if err != nil {
-	// 	return nil, status.Error(codes.Internal, err.Error())
-	// }
-
 	manifest := &types.Ring{
 		Ring: ringv1alpha1.Ring{
 			Id:        "40b086ef",
@@ -47,14 +42,9 @@ func (s *ringService) CreateRing(ctx context.Context, req *ringv1alpha1.CreateRi
 			Pre:       "elgamal",
 			Bulletin:  "p2pbb",
 			Transport: "p2p",
-			Nodes:     nil,
+			Nodes:     req.Ring.Nodes,
 		},
 	}
-
-	// repo, err := db.New()
-	// if err != nil {
-	// 	return nil, fmt.Errorf("create ring repo: %w", err)
-	// }
 
 	rr, err := s.app.NewRing(ctx, manifest)
 	if err != nil {
@@ -74,11 +64,6 @@ func (s *ringService) GetRing(ctx context.Context, req *ringv1alpha1.GetRingRequ
 }
 
 func (s *ringService) DeleteRing(ctx context.Context, req *ringv1alpha1.DeleteRingRequest) (*emptypb.Empty, error) {
-
-	// err := s.app.DeleteRing()
-	// if err != nil {
-	// 	return nil, status.Error(codes.Internal, err.Error())
-	// }
 
 	return nil, errUnimplemented
 }

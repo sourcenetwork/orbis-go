@@ -20,7 +20,7 @@ func loggingInterceptor() grpc.ServerOption {
 		// Output format favors readability in console over parsability.
 		// Might be changed in the future for ingestors.
 		if err != nil {
-			log.Errorf("gRPC %s(%%+v), error: %v", info.FullMethod, req, err)
+			log.Errorf("gRPC %s(%+v), error: %v", info.FullMethod, req, err)
 		} else {
 			log.Infof("gRPC %s(%+v): %+v", info.FullMethod, req, resp)
 		}

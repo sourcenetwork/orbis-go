@@ -9,15 +9,6 @@ import (
 
 const name = "libp2p"
 
-// type Factory interface {
-// 	Name() string
-// 	New(ctx context.Context, inj *do.Injector, cfg config.Host) (Host, error)
-// }
-
-// var (
-// 	Factory = factory{}
-// )
-
 type Factory struct{}
 
 func (Factory) New(ctx context.Context, inj *do.Injector, cfg config.Host) (*Host, error) {

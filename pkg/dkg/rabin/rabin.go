@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	logging "github.com/ipfs/go-log"
 	"go.dedis.ch/kyber/v3"
 	rabindkg "go.dedis.ch/kyber/v3/share/dkg/rabin"
 	"go.dedis.ch/kyber/v3/suites"
@@ -18,6 +19,8 @@ import (
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
 	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
+
+var log = logging.Logger("dkg/rabin")
 
 const name = "rabin"
 
@@ -168,12 +171,12 @@ func (d *dkg) Start(ctx context.Context) error {
 		}
 		buf, err := proto.Marshal(deal)
 		if err != nil {
-			return err
+			return fmt.Errorf("marshal deal: %w", err)
 		}
 
 		err = d.send(ctx, string(ProtocolDeal), buf, d.participants[deal.Index])
 		if err != nil {
-			return err
+			return fmt.Errorf("send deal: %w", err)
 		}
 	}
 
@@ -183,14 +186,14 @@ func (d *dkg) Start(ctx context.Context) error {
 func (d *dkg) send(ctx context.Context, msgType string, buf []byte, node transport.Node) error {
 	cid, err := types.CidFromBytes(buf)
 	if err != nil {
-		return err
+		return fmt.Errorf("cid from bytes: %w", err)
 	}
 	msg, err := d.transport.NewMessage(d.ringID, cid.String(), false, buf, msgType)
 	if err != nil {
-		return err
+		return fmt.Errorf("new message: %w", err)
 	}
 	if err := d.transport.Send(ctx, node, msg); err != nil {
-		return err
+		return fmt.Errorf("send message: %w", err)
 	}
 
 	return nil
