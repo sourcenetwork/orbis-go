@@ -1,4 +1,4 @@
-package memtest
+package memmap
 
 // credit: https://github.com/ryanuber/go-glob/blob/master/glob.go
 import "strings"

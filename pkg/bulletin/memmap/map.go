@@ -1,4 +1,4 @@
-package memtest
+package memmap
 
 import (
 	"context"
@@ -24,13 +24,24 @@ func (b *Bulletin) Name() string {
 	return "memtest"
 }
 
+func (b *Bulletin) Register(ctx context.Context, namespace string) error {
+	return nil // noop
+}
+
 // Post
-func (b *Bulletin) Post(ctx context.Context, identifier string, msg bulletin.Message) (bulletin.Response, error) {
+func (b *Bulletin) Post(ctx context.Context, identifier bulletin.ID, msg bulletin.Message) (bulletin.Response, error) {
+	idstr := identifier.String()
+	return b.PostByString(ctx, idstr, msg)
+}
+
+func (b *Bulletin) PostByString(ctx context.Context, identifier string, msg bulletin.Message) (bulletin.Response, error) {
+	if identifier == "" {
+		return bulletin.Response{}, bulletin.ErrEmptyID
+	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	// check duplicate
-	_, exists := b.messages[identifier]
-	if exists {
+	if _, exists := b.messages[identifier]; exists {
 		return bulletin.Response{}, bulletin.ErrDuplicateMessage
 	}
 	b.messages[identifier] = msg
@@ -40,10 +51,19 @@ func (b *Bulletin) Post(ctx context.Context, identifier string, msg bulletin.Mes
 }
 
 // Read
-func (b *Bulletin) Read(ctx context.Context, identifer string) (bulletin.Response, error) {
+func (b *Bulletin) Read(ctx context.Context, identifier bulletin.ID) (bulletin.Response, error) {
+	idstr := identifier.String()
+	return b.ReadByString(ctx, idstr)
+}
+
+func (b *Bulletin) ReadByString(ctx context.Context, identifier string) (bulletin.Response, error) {
+	if identifier == "" {
+		return bulletin.Response{}, bulletin.ErrEmptyID
+	}
+
 	b.mu.RLock()
 	defer b.mu.RUnlock()
-	msg, exists := b.messages[identifer]
+	msg, exists := b.messages[identifier]
 	if !exists {
 		return bulletin.Response{}, bulletin.ErrMessageNotFound
 	}
