@@ -283,3 +283,7 @@ func (h *Host) Send(ctx context.Context, pi libp2ppeer.AddrInfo, protocol string
 
 	return nil
 }
+
+func (h *Host) PubSub() *pubsub.PubSub {
+	return h.pubsub
+}
