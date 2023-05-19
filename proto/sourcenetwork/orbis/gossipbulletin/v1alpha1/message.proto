@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package orbis.gossipbulletin.v1alpha1;
+
+message Message {
+    string type = 1;
+    string id = 2;
+    bytes payload = 3;
+    bytes proof = 4;
+}
