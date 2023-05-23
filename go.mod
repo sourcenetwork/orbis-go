@@ -3,7 +3,7 @@ module github.com/sourcenetwork/orbis-go
 go 1.20
 
 require (
-	github.com/NathanBaulch/protoc-gen-cobra v1.2.0
+	github.com/NathanBaulch/protoc-gen-cobra v1.2.1
 	github.com/btcsuite/btcd/btcec/v2 v2.3.0
 	github.com/davecgh/go-spew v1.1.1
 	github.com/ethereum/go-ethereum v1.11.4
@@ -36,6 +36,7 @@ require (
 	github.com/DataDog/zstd v1.5.2 // indirect
 	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cockroachdb/errors v1.9.1 // indirect
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
