@@ -23,11 +23,12 @@ func (d *dkg) setupHandlers() {
 func (d *dkg) processDeal(deal *rabindkg.Deal, nodes []transport.Node) error {
 	response, err := d.rdkg.ProcessDeal(deal)
 	if err != nil {
-		return fmt.Errorf("process deal: %w", err)
+		return fmt.Errorf("process rabin dkg deal: %w", err)
 	}
 
 	for _, node := range nodes {
 		if d.isMe(node) {
+			log.Infof("skipping self: %s", node.ID())
 			continue // skip ourselves
 		}
 
@@ -41,8 +42,6 @@ func (d *dkg) processDeal(deal *rabindkg.Deal, nodes []transport.Node) error {
 			return fmt.Errorf("send response: %w", err)
 		}
 	}
-
-	_ = response
 
 	return nil
 }

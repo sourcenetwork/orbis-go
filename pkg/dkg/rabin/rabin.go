@@ -214,31 +214,33 @@ func (d *dkg) ProcessMessage(msg *transport.Message) error {
 
 		err := proto.Unmarshal(msg.Payload, &protoDeal)
 		if err != nil {
-			return fmt.Errorf("unmarshal deal: %w", err)
+			return fmt.Errorf("unmarshal deal message: %w", err)
 		}
 
 		deal, err := d.dealFromProto(&protoDeal)
 		if err != nil {
-			return fmt.Errorf("deal from proto: %w", err)
+			return fmt.Errorf("deal message from proto: %w", err)
 		}
 
 		err = d.processDeal(deal, d.participants)
 		if err != nil {
-			return fmt.Errorf("process deal: %w", err)
+			return fmt.Errorf("process deal message: %w", err)
 		}
 
 	case string(ProtocolResponse):
 		log.Infof("dkg.ProcessMessage() ProtocolResponse: id: %s", msg.Id)
 
 		var protoResponse rabinv1alpha1.Response
+
 		err := proto.Unmarshal(msg.Payload, &protoResponse)
 		if err != nil {
-			return fmt.Errorf("unmarshal response: %w", err)
+			return fmt.Errorf("unmarshal response message: %w", err)
 		}
+
 		resp := d.responseFromProto(&protoResponse)
 		err = d.processResponse(resp)
 		if err != nil {
-			return fmt.Errorf("process deal: %w", err)
+			return fmt.Errorf("process response message: %w", err)
 		}
 
 	default:
