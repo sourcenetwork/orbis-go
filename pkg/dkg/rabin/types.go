@@ -2,8 +2,10 @@ package rabin
 
 import (
 	"github.com/libp2p/go-libp2p/core/protocol"
+	"go.dedis.ch/kyber/v3"
 	rabindkg "go.dedis.ch/kyber/v3/share/dkg/rabin"
 	rabinvss "go.dedis.ch/kyber/v3/share/vss/rabin"
+	"go.dedis.ch/kyber/v3/suites"
 
 	rabinv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/rabin/v1alpha1"
 	orbisdkg "github.com/sourcenetwork/orbis-go/pkg/dkg"
@@ -11,18 +13,25 @@ import (
 
 type Deal = rabinv1alpha1.Deal
 type Response = rabinv1alpha1.Response
+type SecretCommits = rabinv1alpha1.SecretCommits
 
 var (
 	// full protocol example: /orbis/0x123/dkg/rabin/send_deal/0.0.1
-	ProtocolDeal     protocol.ID = orbisdkg.ProtocolName + "/rabin/deal/0.0.1"
-	ProtocolResponse protocol.ID = orbisdkg.ProtocolName + "/rabin/response/0.0.1"
+	ProtocolDeal          protocol.ID = orbisdkg.ProtocolName + "/rabin/deal/0.0.1"
+	ProtocolResponse      protocol.ID = orbisdkg.ProtocolName + "/rabin/response/0.0.1"
+	ProtocolSecretCommits protocol.ID = orbisdkg.ProtocolName + "/rabin/secretcommits/0.0.1"
 )
 
 func (d *dkg) dealToProto(deal *rabindkg.Deal) (*Deal, error) {
+	return dealToProto(deal)
+}
+
+func dealToProto(deal *rabindkg.Deal) (*Deal, error) {
 	dkheyBytes, err := deal.Deal.DHKey.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
+
 	return &Deal{
 		Index: deal.Index,
 		Deal: &rabinv1alpha1.EncryptedDeal{
@@ -35,7 +44,11 @@ func (d *dkg) dealToProto(deal *rabindkg.Deal) (*Deal, error) {
 }
 
 func (d *dkg) dealFromProto(deal *Deal) (*rabindkg.Deal, error) {
-	dhpoint := d.suite.Point()
+	return dealFromProto(d.suite, deal)
+}
+
+func dealFromProto(suite suites.Suite, deal *Deal) (*rabindkg.Deal, error) {
+	dhpoint := suite.Point()
 	if err := dhpoint.UnmarshalBinary(deal.Deal.Dhkey); err != nil {
 		return nil, err
 	}
@@ -46,7 +59,7 @@ func (d *dkg) dealFromProto(deal *Deal) (*rabindkg.Deal, error) {
 			DHKey:     dhpoint,
 			Signature: deal.Deal.Signature,
 			Nonce:     deal.Deal.Nonce,
-			Cipher:    deal.Deal.Signature,
+			Cipher:    deal.Deal.Cipher,
 		},
 	}, nil
 }
@@ -73,4 +86,42 @@ func (d *dkg) responseFromProto(response *Response) *rabindkg.Response {
 			Signature: response.Response.Signature,
 		},
 	}
+}
+
+func secretCommitsToProto(sc *rabindkg.SecretCommits) (*SecretCommits, error) {
+	// convert kyber points
+	points := make([][]byte, len(sc.Commitments))
+	for i, c := range sc.Commitments {
+		cBytes, err := c.MarshalBinary()
+		if err != nil {
+			return nil, err
+		}
+		points[i] = cBytes
+	}
+
+	return &SecretCommits{
+		Index:       sc.Index,
+		Commitments: points,
+		SessionId:   sc.SessionID,
+		Signature:   sc.Signature,
+	}, nil
+}
+
+func secretCommitsFromProto(suite suites.Suite, sc *SecretCommits) (*rabindkg.SecretCommits, error) {
+	// convert kyber points
+	points := make([]kyber.Point, len(sc.Commitments))
+	for i, c := range sc.Commitments {
+		commitPoint := suite.Point()
+		if err := commitPoint.UnmarshalBinary(c); err != nil {
+			return nil, err
+		}
+		points[i] = commitPoint
+	}
+
+	return &rabindkg.SecretCommits{
+		Index:       sc.Index,
+		Commitments: points,
+		SessionID:   sc.SessionId,
+		Signature:   sc.Signature,
+	}, nil
 }

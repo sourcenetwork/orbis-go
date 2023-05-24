@@ -49,8 +49,7 @@ type dkg struct {
 	transport transport.Transport
 	bulletin  bulletin.Bulletin
 
-	state       orbisdkg.State
-	initialized bool
+	state orbisdkg.State
 }
 
 func New(repo *db.DB, rkeys []db.RepoKey, t transport.Transport, b bulletin.Bulletin) (*dkg, error) {
@@ -162,7 +161,7 @@ func (d *dkg) Start(ctx context.Context) error {
 		// 	return fmt.Errorf("create deal: %w", err)
 		// }
 
-		log.Infof("node %d sending deal to partitipants %d", d.index, i)
+		log.Infof("node %d sending deal to partitipants %d (%x)", d.index, i, deal.Deal.Signature)
 		if i == d.index {
 			// TODO: deliver to ourselves
 			continue
@@ -222,6 +221,7 @@ func (d *dkg) ProcessMessage(msg *transport.Message) error {
 			return fmt.Errorf("deal message from proto: %w", err)
 		}
 
+		log.Infof("dkg.ProcessMessage() node %d process deal %d (%x)", d.index, deal.Index, deal.Deal.Signature)
 		err = d.processDeal(deal, d.participants)
 		if err != nil {
 			return fmt.Errorf("process deal message: %w", err)
@@ -241,6 +241,23 @@ func (d *dkg) ProcessMessage(msg *transport.Message) error {
 		err = d.processResponse(resp)
 		if err != nil {
 			return fmt.Errorf("process response message: %w", err)
+		}
+	case string(ProtocolSecretCommits):
+		log.Infof("dkg.ProcessMessage() ProtocolSecretCommits: id: %s", msg.Id)
+		var protoSecretCommits rabinv1alpha1.SecretCommits
+		err := proto.Unmarshal(msg.Payload, &protoSecretCommits)
+		if err != nil {
+			return fmt.Errorf("unmarshal secret commits: %w", err)
+		}
+
+		sc, err := secretCommitsFromProto(d.suite, &protoSecretCommits)
+		if err != nil {
+			return fmt.Errorf("secret commits from proto: %w", err)
+		}
+
+		err = d.processSecretCommits(sc)
+		if err != nil {
+			return fmt.Errorf("process secret commits: %w", err)
 		}
 
 	default:

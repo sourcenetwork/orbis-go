@@ -6,6 +6,7 @@ import (
 
 	rabindkg "go.dedis.ch/kyber/v3/share/dkg/rabin"
 	"go.dedis.ch/protobuf"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	orbisdkg "github.com/sourcenetwork/orbis-go/pkg/dkg"
@@ -18,6 +19,9 @@ func (d *dkg) setupHandlers() {
 
 	// response
 	d.transport.AddHandler(ProtocolResponse, d.ProcessMessage)
+
+	// secretcommits
+	d.transport.AddHandler(ProtocolSecretCommits, d.ProcessMessage)
 }
 
 func (d *dkg) processDeal(deal *rabindkg.Deal, nodes []transport.Node) error {
@@ -26,15 +30,15 @@ func (d *dkg) processDeal(deal *rabindkg.Deal, nodes []transport.Node) error {
 		return fmt.Errorf("process rabin dkg deal: %w", err)
 	}
 
+	buf, err := protobuf.Encode(response)
+	if err != nil {
+		return fmt.Errorf("encode response: %w", err)
+	}
+
 	for _, node := range nodes {
 		if d.isMe(node) {
 			log.Infof("skipping self: %s", node.ID())
 			continue // skip ourselves
-		}
-
-		buf, err := protobuf.Encode(response)
-		if err != nil {
-			return fmt.Errorf("encode response: %w", err)
 		}
 
 		// todo: context
@@ -62,20 +66,69 @@ func (d *dkg) processResponse(resp *rabindkg.Response) error {
 		return fmt.Errorf("process response: %w", err)
 	}
 
-	if d.rdkg.Certified() {
-		// interpolate shared public key
-		distkey, err := d.rdkg.DistKeyShare()
-		if err != nil {
-			return fmt.Errorf("dist key share: %w", err)
-		}
-
-		d.share = crypto.PriShare{
-			PriShare: distkey.PriShare(),
-		}
-
-		d.pubKey = distkey.Public()
-		d.state = orbisdkg.CERTIFIED
+	if !d.rdkg.Certified() {
+		return nil
 	}
+
+	sc, err := d.rdkg.SecretCommits()
+	if err != nil {
+		return fmt.Errorf("generate secret commit dkg response: %w", err)
+	}
+
+	protoSC, err := secretCommitsToProto(sc)
+	if err != nil {
+		return fmt.Errorf("secret commits to proto: %w", err)
+	}
+
+	buf, err := proto.Marshal(protoSC)
+	if err != nil {
+		return fmt.Errorf("encode response: %w", err)
+	}
+
+	// send SC
+	for _, node := range d.participants {
+		if d.isMe(node) {
+			log.Infof("skipping self: %s", node.ID())
+			continue // skip ourselves
+		}
+
+		// todo: context
+		if err := d.send(context.TODO(), string(ProtocolSecretCommits), buf, node); err != nil {
+			return fmt.Errorf("send secret commits: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (d *dkg) processSecretCommits(sc *rabindkg.SecretCommits) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	_, err := d.rdkg.ProcessSecretCommits(sc)
+	if err != nil {
+		return fmt.Errorf("process rabin dkg secretcommits: %w", err)
+	}
+
+	// we've collected all deals, responses, and secret commits finally
+	if !d.rdkg.Finished() {
+		return nil
+	}
+
+	// interpolate shared public key
+	distkey, err := d.rdkg.DistKeyShare()
+	if err != nil {
+		return fmt.Errorf("rabin dkg dist key share: %w", err)
+	}
+
+	d.share = crypto.PriShare{
+		PriShare: distkey.PriShare(),
+	}
+
+	d.pubKey = distkey.Public()
+	d.state = orbisdkg.CERTIFIED
+
+	log.Infof("Finished DKG Setup. Shared Public Key: %s", d.pubKey)
 
 	return nil
 }
