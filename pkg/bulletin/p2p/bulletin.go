@@ -6,10 +6,11 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log"
-	"github.com/libp2p/go-libp2p-core/peer"
 	libp2pnetwork "github.com/libp2p/go-libp2p/core/network"
-	rpc "github.com/textileio/go-libp2p-pubsub-rpc"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"google.golang.org/protobuf/proto"
+
+	rpc "github.com/sourcenetwork/go-libp2p-pubsub-rpc"
 
 	"github.com/sourcenetwork/orbis-go/config"
 	gossipbulletinv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/gossipbulletin/v1alpha1"
@@ -71,7 +72,7 @@ func (bb *Bulletin) Register(ctx context.Context, namespace string) error {
 	if _, exists := bb.topics[namespace]; exists {
 		return bulletin.ErrDuplicateTopic
 	}
-	topic, err := rpc.NewTopic(ctx, bb.h.PubSub(), peer.ID(bb.h.ID()), namespace, true)
+	topic, err := rpc.NewTopic(ctx, bb.h.PubSub(), bb.h.ID(), namespace, true)
 	if err != nil {
 		return err
 	}
