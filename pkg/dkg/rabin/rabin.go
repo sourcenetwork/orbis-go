@@ -310,7 +310,7 @@ func (d *dkg) dispatch() {
 		log.Infof("%d: handling secret %d", i, sd.secretCommits.Index)
 		sd.err <- d.processSecretCommits(sd.secretCommits)
 	}
-	// close(d.commits)
+	close(d.commits)
 }
 
 func (d *dkg) dispatchDeal(deal *rabindkg.Deal) error {

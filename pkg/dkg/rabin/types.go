@@ -1,6 +1,8 @@
 package rabin
 
 import (
+	"fmt"
+
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"go.dedis.ch/kyber/v3"
 	rabindkg "go.dedis.ch/kyber/v3/share/dkg/rabin"
@@ -20,6 +22,8 @@ var (
 	ProtocolDeal          protocol.ID = orbisdkg.ProtocolName + "/rabin/deal/0.0.1"
 	ProtocolResponse      protocol.ID = orbisdkg.ProtocolName + "/rabin/response/0.0.1"
 	ProtocolSecretCommits protocol.ID = orbisdkg.ProtocolName + "/rabin/secretcommits/0.0.1"
+
+	ErrDealNotCertified = fmt.Errorf("dkg: can't give SecretCommits if deal not certified")
 )
 
 func (d *dkg) dealToProto(deal *rabindkg.Deal) (*Deal, error) {

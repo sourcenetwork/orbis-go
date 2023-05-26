@@ -76,7 +76,9 @@ func (d *dkg) processResponse(resp *rabindkg.Response) error {
 	}
 
 	sc, err := d.rdkg.SecretCommits()
-	if err != nil {
+	if err != nil && err.Error() == ErrDealNotCertified.Error() {
+		return nil // skip
+	} else if err != nil {
 		return fmt.Errorf("generate secret commit dkg response: %w", err)
 	}
 
@@ -115,8 +117,12 @@ func (d *dkg) processSecretCommits(sc *rabindkg.SecretCommits) error {
 		return fmt.Errorf("process rabin dkg secretcommits: %w", err)
 	}
 
-	// we've collected all deals, responses, and secret commits finally
-	if !d.rdkg.Finished() {
+	// If we haven't collected all deals, responses, and secret commits
+	// then we can't compute the dist key share
+	//
+	// Also, if we've already completed the dkg setup, then we
+	// can also skip
+	if !d.rdkg.Finished() || d.state == orbisdkg.CERTIFIED {
 		return nil
 	}
 
