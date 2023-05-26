@@ -20,7 +20,7 @@ import (
 	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
 
-var log = logging.Logger("dkg/rabin")
+var log = logging.Logger("orbis/dkg/rabin")
 
 const name = "rabin"
 
@@ -42,6 +42,10 @@ type dkg struct {
 
 	dealRepo db.Repository[*rabinv1alpha1.Deal]
 	respRepo db.Repository[*rabinv1alpha1.Response]
+
+	deals     chan dealDispatch
+	responses chan responseDispatch
+	commits   chan secretCommitsDispatch
 
 	share crypto.PriShare
 
@@ -114,6 +118,10 @@ func (d *dkg) Init(ctx context.Context, pk crypto.PrivateKey, nodes []orbisdkg.N
 	d.setupHandlers()
 	d.state = orbisdkg.INITIALIZED
 
+	d.deals = make(chan dealDispatch, d.numExpectedDeals())
+	d.responses = make(chan responseDispatch, d.numExpectedResponses())
+	d.commits = make(chan secretCommitsDispatch, d.numExpectedCommits())
+
 	return nil
 }
 
@@ -178,6 +186,7 @@ func (d *dkg) Start(ctx context.Context) error {
 		}
 	}
 
+	go d.dispatch()
 	return nil
 }
 
@@ -222,7 +231,7 @@ func (d *dkg) ProcessMessage(msg *transport.Message) error {
 		}
 
 		log.Infof("dkg.ProcessMessage() node %d process deal %d (%x)", d.index, deal.Index, deal.Deal.Signature)
-		err = d.processDeal(deal, d.participants)
+		err = d.dispatchDeal(deal)
 		if err != nil {
 			return fmt.Errorf("process deal message: %w", err)
 		}
@@ -238,7 +247,8 @@ func (d *dkg) ProcessMessage(msg *transport.Message) error {
 		}
 
 		resp := d.responseFromProto(&protoResponse)
-		err = d.processResponse(resp)
+
+		err = d.dispatchResponse(resp)
 		if err != nil {
 			return fmt.Errorf("process response message: %w", err)
 		}
@@ -255,7 +265,7 @@ func (d *dkg) ProcessMessage(msg *transport.Message) error {
 			return fmt.Errorf("secret commits from proto: %w", err)
 		}
 
-		err = d.processSecretCommits(sc)
+		err = d.dispatchSecretCommit(sc)
 		if err != nil {
 			return fmt.Errorf("process secret commits: %w", err)
 		}
@@ -265,4 +275,81 @@ func (d *dkg) ProcessMessage(msg *transport.Message) error {
 	}
 
 	return nil
+}
+
+// dispatch is responsible for handling all the incoming
+// messages, and dispatching them to their cooresponding
+// handlers, but with ordering via channels. This gurantees
+// that we handle all the events at their appropriate
+// time.
+//
+// It is designed to run in a gourinte
+func (d *dkg) dispatch() {
+	// processDeals
+	log.Infof("handling %d expected deals", d.numExpectedDeals())
+	for i := 0; i < d.numExpectedDeals(); i++ {
+		dd := <-d.deals
+		log.Infof("%d: handling deal %d", i, dd.deal.Index)
+		dd.err <- d.processDeal(dd.deal)
+	}
+	close(d.deals)
+
+	// processResponses
+	log.Infof("handling %d expected responses", d.numExpectedResponses())
+	for i := 0; i < d.numExpectedResponses(); i++ {
+		rd := <-d.responses
+		log.Infof("%d: handling response %d", i, rd.respone.Index)
+		rd.err <- d.processResponse(rd.respone)
+	}
+	close(d.responses)
+
+	// processSecrets
+	log.Infof("handling %d expected secrets", d.numExpectedCommits())
+	for i := 0; i < d.numExpectedCommits(); i++ {
+		sd := <-d.commits
+		log.Infof("%d: handling secret %d", i, sd.secretCommits.Index)
+		sd.err <- d.processSecretCommits(sd.secretCommits)
+	}
+	// close(d.commits)
+}
+
+func (d *dkg) dispatchDeal(deal *rabindkg.Deal) error {
+	dealDispatchEvent := dealDispatch{
+		err:  make(chan error),
+		deal: deal,
+	}
+	d.deals <- dealDispatchEvent   // send
+	return <-dealDispatchEvent.err // recieve
+}
+
+func (d *dkg) dispatchResponse(resp *rabindkg.Response) error {
+	respDispatchEvent := responseDispatch{
+		err:     make(chan error),
+		respone: resp,
+	}
+	d.responses <- respDispatchEvent // send
+	return <-respDispatchEvent.err   // recieve
+}
+
+func (d *dkg) dispatchSecretCommit(sc *rabindkg.SecretCommits) error {
+	scDispatchEvent := secretCommitsDispatch{
+		err:           make(chan error),
+		secretCommits: sc,
+	}
+	d.commits <- scDispatchEvent // send
+	return <-scDispatchEvent.err // recieve
+}
+
+func (d *dkg) numExpectedDeals() int {
+	return len(d.participants) - 1
+}
+
+func (d *dkg) numExpectedResponses() int {
+	l := len(d.participants)
+	return (l - 1) * (l - 1)
+}
+
+func (d *dkg) numExpectedCommits() int {
+	l := len(d.participants)
+	return (l - 1) * (l - 1)
 }

@@ -24,7 +24,7 @@ func (d *dkg) setupHandlers() {
 	d.transport.AddHandler(ProtocolSecretCommits, d.ProcessMessage)
 }
 
-func (d *dkg) processDeal(deal *rabindkg.Deal, nodes []transport.Node) error {
+func (d *dkg) processDeal(deal *rabindkg.Deal) error {
 	response, err := d.rdkg.ProcessDeal(deal)
 	if err != nil {
 		return fmt.Errorf("process rabin dkg deal: %w", err)
@@ -35,7 +35,7 @@ func (d *dkg) processDeal(deal *rabindkg.Deal, nodes []transport.Node) error {
 		return fmt.Errorf("encode response: %w", err)
 	}
 
-	for _, node := range nodes {
+	for _, node := range d.participants {
 		if d.isMe(node) {
 			log.Infof("skipping self: %s", node.ID())
 			continue // skip ourselves
@@ -61,9 +61,14 @@ func (d *dkg) processResponse(resp *rabindkg.Response) error {
 	// network or bulletin board.
 	//
 	// For now, lets just design it assuming all is well (temp)
-	_, err := d.rdkg.ProcessResponse(resp)
+	just, err := d.rdkg.ProcessResponse(resp)
 	if err != nil {
 		return fmt.Errorf("process response: %w", err)
+	}
+
+	if just != nil {
+		log.Warnf("Got justification during response process for %d: %v", resp.Index, just)
+		return nil
 	}
 
 	if !d.rdkg.Certified() {

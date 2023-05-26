@@ -125,3 +125,18 @@ func secretCommitsFromProto(suite suites.Suite, sc *SecretCommits) (*rabindkg.Se
 		Signature:   sc.Signature,
 	}, nil
 }
+
+type dealDispatch struct {
+	err  chan error
+	deal *rabindkg.Deal
+}
+
+type responseDispatch struct {
+	err     chan error
+	respone *rabindkg.Response
+}
+
+type secretCommitsDispatch struct {
+	err           chan error
+	secretCommits *rabindkg.SecretCommits
+}
