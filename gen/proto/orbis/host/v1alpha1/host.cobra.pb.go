@@ -12,26 +12,26 @@ import (
 	io "io"
 )
 
-func P2PServiceClientCommand(options ...client.Option) *cobra.Command {
+func HostServiceClientCommand(options ...client.Option) *cobra.Command {
 	cfg := client.NewConfig(options...)
 	cmd := &cobra.Command{
-		Use:   cfg.CommandNamer("P2PService"),
-		Short: "P2PService service client",
+		Use:   cfg.CommandNamer("HostService"),
+		Short: "HostService service client",
 		Long:  "",
 	}
 	cfg.BindFlags(cmd.PersistentFlags())
 	cmd.AddCommand(
-		_P2PServiceHostCommand(cfg),
-		_P2PServicePeersCommand(cfg),
-		_P2PServiceConnectCommand(cfg),
-		_P2PServiceSendCommand(cfg),
-		_P2PServicePublishCommand(cfg),
-		_P2PServiceSubscribeCommand(cfg),
+		_HostServiceHostCommand(cfg),
+		_HostServicePeersCommand(cfg),
+		_HostServiceConnectCommand(cfg),
+		_HostServiceSendCommand(cfg),
+		_HostServicePublishCommand(cfg),
+		_HostServiceSubscribeCommand(cfg),
 	)
 	return cmd
 }
 
-func _P2PServiceHostCommand(cfg *client.Config) *cobra.Command {
+func _HostServiceHostCommand(cfg *client.Config) *cobra.Command {
 	req := &HostRequest{}
 
 	cmd := &cobra.Command{
@@ -40,15 +40,15 @@ func _P2PServiceHostCommand(cfg *client.Config) *cobra.Command {
 		Long:  "Host returns the information about the host node.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if cfg.UseEnvVars {
-				if err := flag.SetFlagsFromEnv(cmd.Parent().PersistentFlags(), true, cfg.EnvVarNamer, cfg.EnvVarPrefix, "P2PService"); err != nil {
+				if err := flag.SetFlagsFromEnv(cmd.Parent().PersistentFlags(), true, cfg.EnvVarNamer, cfg.EnvVarPrefix, "HostService"); err != nil {
 					return err
 				}
-				if err := flag.SetFlagsFromEnv(cmd.PersistentFlags(), false, cfg.EnvVarNamer, cfg.EnvVarPrefix, "P2PService", "Host"); err != nil {
+				if err := flag.SetFlagsFromEnv(cmd.PersistentFlags(), false, cfg.EnvVarNamer, cfg.EnvVarPrefix, "HostService", "Host"); err != nil {
 					return err
 				}
 			}
 			return client.RoundTrip(cmd.Context(), cfg, func(cc grpc.ClientConnInterface, in iocodec.Decoder, out iocodec.Encoder) error {
-				cli := NewP2PServiceClient(cc)
+				cli := NewHostServiceClient(cc)
 				v := &HostRequest{}
 
 				if err := in(v); err != nil {
@@ -71,7 +71,7 @@ func _P2PServiceHostCommand(cfg *client.Config) *cobra.Command {
 	return cmd
 }
 
-func _P2PServicePeersCommand(cfg *client.Config) *cobra.Command {
+func _HostServicePeersCommand(cfg *client.Config) *cobra.Command {
 	req := &PeersRequest{}
 
 	cmd := &cobra.Command{
@@ -80,15 +80,15 @@ func _P2PServicePeersCommand(cfg *client.Config) *cobra.Command {
 		Long:  "Peers lists information about connected peer nodes.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if cfg.UseEnvVars {
-				if err := flag.SetFlagsFromEnv(cmd.Parent().PersistentFlags(), true, cfg.EnvVarNamer, cfg.EnvVarPrefix, "P2PService"); err != nil {
+				if err := flag.SetFlagsFromEnv(cmd.Parent().PersistentFlags(), true, cfg.EnvVarNamer, cfg.EnvVarPrefix, "HostService"); err != nil {
 					return err
 				}
-				if err := flag.SetFlagsFromEnv(cmd.PersistentFlags(), false, cfg.EnvVarNamer, cfg.EnvVarPrefix, "P2PService", "Peers"); err != nil {
+				if err := flag.SetFlagsFromEnv(cmd.PersistentFlags(), false, cfg.EnvVarNamer, cfg.EnvVarPrefix, "HostService", "Peers"); err != nil {
 					return err
 				}
 			}
 			return client.RoundTrip(cmd.Context(), cfg, func(cc grpc.ClientConnInterface, in iocodec.Decoder, out iocodec.Encoder) error {
-				cli := NewP2PServiceClient(cc)
+				cli := NewHostServiceClient(cc)
 				v := &PeersRequest{}
 
 				if err := in(v); err != nil {
@@ -111,7 +111,7 @@ func _P2PServicePeersCommand(cfg *client.Config) *cobra.Command {
 	return cmd
 }
 
-func _P2PServiceConnectCommand(cfg *client.Config) *cobra.Command {
+func _HostServiceConnectCommand(cfg *client.Config) *cobra.Command {
 	req := &ConnectRequest{}
 
 	cmd := &cobra.Command{
@@ -120,15 +120,15 @@ func _P2PServiceConnectCommand(cfg *client.Config) *cobra.Command {
 		Long:  "Connect connects to a peer node.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if cfg.UseEnvVars {
-				if err := flag.SetFlagsFromEnv(cmd.Parent().PersistentFlags(), true, cfg.EnvVarNamer, cfg.EnvVarPrefix, "P2PService"); err != nil {
+				if err := flag.SetFlagsFromEnv(cmd.Parent().PersistentFlags(), true, cfg.EnvVarNamer, cfg.EnvVarPrefix, "HostService"); err != nil {
 					return err
 				}
-				if err := flag.SetFlagsFromEnv(cmd.PersistentFlags(), false, cfg.EnvVarNamer, cfg.EnvVarPrefix, "P2PService", "Connect"); err != nil {
+				if err := flag.SetFlagsFromEnv(cmd.PersistentFlags(), false, cfg.EnvVarNamer, cfg.EnvVarPrefix, "HostService", "Connect"); err != nil {
 					return err
 				}
 			}
 			return client.RoundTrip(cmd.Context(), cfg, func(cc grpc.ClientConnInterface, in iocodec.Decoder, out iocodec.Encoder) error {
-				cli := NewP2PServiceClient(cc)
+				cli := NewHostServiceClient(cc)
 				v := &ConnectRequest{}
 
 				if err := in(v); err != nil {
@@ -153,7 +153,7 @@ func _P2PServiceConnectCommand(cfg *client.Config) *cobra.Command {
 	return cmd
 }
 
-func _P2PServiceSendCommand(cfg *client.Config) *cobra.Command {
+func _HostServiceSendCommand(cfg *client.Config) *cobra.Command {
 	req := &SendRequest{}
 
 	cmd := &cobra.Command{
@@ -162,15 +162,15 @@ func _P2PServiceSendCommand(cfg *client.Config) *cobra.Command {
 		Long:  "Send sends a message to a peer node.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if cfg.UseEnvVars {
-				if err := flag.SetFlagsFromEnv(cmd.Parent().PersistentFlags(), true, cfg.EnvVarNamer, cfg.EnvVarPrefix, "P2PService"); err != nil {
+				if err := flag.SetFlagsFromEnv(cmd.Parent().PersistentFlags(), true, cfg.EnvVarNamer, cfg.EnvVarPrefix, "HostService"); err != nil {
 					return err
 				}
-				if err := flag.SetFlagsFromEnv(cmd.PersistentFlags(), false, cfg.EnvVarNamer, cfg.EnvVarPrefix, "P2PService", "Send"); err != nil {
+				if err := flag.SetFlagsFromEnv(cmd.PersistentFlags(), false, cfg.EnvVarNamer, cfg.EnvVarPrefix, "HostService", "Send"); err != nil {
 					return err
 				}
 			}
 			return client.RoundTrip(cmd.Context(), cfg, func(cc grpc.ClientConnInterface, in iocodec.Decoder, out iocodec.Encoder) error {
-				cli := NewP2PServiceClient(cc)
+				cli := NewHostServiceClient(cc)
 				v := &SendRequest{}
 
 				if err := in(v); err != nil {
@@ -197,7 +197,7 @@ func _P2PServiceSendCommand(cfg *client.Config) *cobra.Command {
 	return cmd
 }
 
-func _P2PServicePublishCommand(cfg *client.Config) *cobra.Command {
+func _HostServicePublishCommand(cfg *client.Config) *cobra.Command {
 	req := &PublishRequest{}
 
 	cmd := &cobra.Command{
@@ -206,15 +206,15 @@ func _P2PServicePublishCommand(cfg *client.Config) *cobra.Command {
 		Long:  "Publish broadcasts a message to a topic.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if cfg.UseEnvVars {
-				if err := flag.SetFlagsFromEnv(cmd.Parent().PersistentFlags(), true, cfg.EnvVarNamer, cfg.EnvVarPrefix, "P2PService"); err != nil {
+				if err := flag.SetFlagsFromEnv(cmd.Parent().PersistentFlags(), true, cfg.EnvVarNamer, cfg.EnvVarPrefix, "HostService"); err != nil {
 					return err
 				}
-				if err := flag.SetFlagsFromEnv(cmd.PersistentFlags(), false, cfg.EnvVarNamer, cfg.EnvVarPrefix, "P2PService", "Publish"); err != nil {
+				if err := flag.SetFlagsFromEnv(cmd.PersistentFlags(), false, cfg.EnvVarNamer, cfg.EnvVarPrefix, "HostService", "Publish"); err != nil {
 					return err
 				}
 			}
 			return client.RoundTrip(cmd.Context(), cfg, func(cc grpc.ClientConnInterface, in iocodec.Decoder, out iocodec.Encoder) error {
-				cli := NewP2PServiceClient(cc)
+				cli := NewHostServiceClient(cc)
 				v := &PublishRequest{}
 
 				if err := in(v); err != nil {
@@ -240,7 +240,7 @@ func _P2PServicePublishCommand(cfg *client.Config) *cobra.Command {
 	return cmd
 }
 
-func _P2PServiceSubscribeCommand(cfg *client.Config) *cobra.Command {
+func _HostServiceSubscribeCommand(cfg *client.Config) *cobra.Command {
 	req := &SubscribeRequest{}
 
 	cmd := &cobra.Command{
@@ -249,15 +249,15 @@ func _P2PServiceSubscribeCommand(cfg *client.Config) *cobra.Command {
 		Long:  "Subscribe broadcasts a message to a topic.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if cfg.UseEnvVars {
-				if err := flag.SetFlagsFromEnv(cmd.Parent().PersistentFlags(), true, cfg.EnvVarNamer, cfg.EnvVarPrefix, "P2PService"); err != nil {
+				if err := flag.SetFlagsFromEnv(cmd.Parent().PersistentFlags(), true, cfg.EnvVarNamer, cfg.EnvVarPrefix, "HostService"); err != nil {
 					return err
 				}
-				if err := flag.SetFlagsFromEnv(cmd.PersistentFlags(), false, cfg.EnvVarNamer, cfg.EnvVarPrefix, "P2PService", "Subscribe"); err != nil {
+				if err := flag.SetFlagsFromEnv(cmd.PersistentFlags(), false, cfg.EnvVarNamer, cfg.EnvVarPrefix, "HostService", "Subscribe"); err != nil {
 					return err
 				}
 			}
 			return client.RoundTrip(cmd.Context(), cfg, func(cc grpc.ClientConnInterface, in iocodec.Decoder, out iocodec.Encoder) error {
-				cli := NewP2PServiceClient(cc)
+				cli := NewHostServiceClient(cc)
 				v := &SubscribeRequest{}
 
 				if err := in(v); err != nil {
