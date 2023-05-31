@@ -15,25 +15,13 @@ service RingService {
   rpc Refresh(RefreshRequest) returns (RefreshResponse) {}
   rpc State(StateRequest) returns (StateResponse) {}
   rpc Nodes(NodesRequest) returns (NodesResponse) {}
+  // rpc GetShares(GetSharesRequest) returns (GetSharesResponse) {}
 
+  // TODO: move to secret service?
   // rpc StoreSecret(StoreSecretRequest) returns (StoreSecretResponse) {}
   // rpc GetSecret(GetSecretRequest) returns (GetSecretResponse) {}
   // rpc DeleteSecret(DeleteSecretRequest) returns (DeleteSecretResponse) {}
-
-  // rpc GetShares(GetSharesRequest) returns (GetSharesResponse) {}
 }
-
-//   rpc NewRing(manifest []byte, repo db.Repository) return (service.RingService
-//   rpc Store(types.SecretID, *types.Secret, proof.VerifiableEncryption)
-//   rpc Get(types.SecretID) (types.Secret, error) {
-//   rpc GetShares(types.SecretID) ([]types.PrivSecretShare, error)
-//   rpc Delete(types.SecretID)
-//   rpc PublicKey() (crypto.PublicKey, error)
-//   rpc Refresh(pss.Config) (pss.RefreshState, error)
-//   rpc Threshold() int
-//   rpc State() pss.State
-//   rpc Nodes() []pss.Node
-// }
 
 message ListRingsRequest {}
 
@@ -45,7 +33,9 @@ message CreateRingRequest {
   Ring ring = 1;
 }
 
-message CreateRingResponse {}
+message CreateRingResponse {
+  string id = 1;
+}
 
 message GetRingRequest {
   string id = 1;
@@ -78,8 +68,8 @@ message StateRequest {
 }
 
 message StateResponse {
-  string key = 1;
-  string value = 2;
+  string dkg_state = 1;
+  string pss_state = 2;
 }
 
 message NodesRequest {

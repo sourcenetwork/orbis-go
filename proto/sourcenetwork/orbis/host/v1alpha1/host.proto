@@ -6,7 +6,7 @@ import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
 import "libp2p/crypto/v1/crypto.proto";
 
-service P2PService {
+service HostService {
   // Host returns the information about the host node.
   rpc Host(HostRequest) returns (HostResponse) {}
 
