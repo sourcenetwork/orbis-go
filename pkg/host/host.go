@@ -26,13 +26,15 @@ import (
 	libp2ptls "github.com/libp2p/go-libp2p/p2p/security/tls"
 )
 
-var log = logging.Logger("orbis/p2p")
+var log = logging.Logger("orbis/host")
 
 type Host struct {
 	libp2phost.Host
 	idht   *libp2pdht.IpfsDHT
 	pubsub *pubsub.PubSub
-	topics map[string]*pubsub.Topic
+
+	topics     map[string]*pubsub.Topic
+	topicsLock sync.Mutex
 }
 
 func New(ctx context.Context, cfg config.Host) (*Host, error) {
@@ -105,11 +107,8 @@ func New(ctx context.Context, cfg config.Host) (*Host, error) {
 
 	gossipSub, err := pubsub.NewGossipSub(ctx, h)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("create gossipsub: %w", err)
 	}
-
-	// log.Infof("listenaddress peers: %v", cfg.ListenAddresses)
-	// log.Infof("bootstrap peers: %v", cfg.BootstrapPeers)
 
 	host := &Host{
 		Host:   h,
@@ -127,49 +126,36 @@ func (h *Host) Subscribe(ctx context.Context, topic string) (*pubsub.Subscriptio
 
 	t, err := h.join(topic)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("join topic: %w", err)
 	}
 
-	return t.Subscribe()
+	sub, err := t.Subscribe()
+	if err != nil {
+		return nil, fmt.Errorf("subscribe topic: %w", err)
+	}
 
-	// sub, err := t.Subscribe()
-	// if err != nil {
-	// 	return err
-	// }
-
-	// for {
-	// 	msg, err := sub.Next(ctx)
-	// 	if err == context.Canceled {
-	// 		break
-	// 	}
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// 	if msg.ReceivedFrom == h.ID() {
-	// 		continue
-	// 	}
-	// 	h.log.Infof("%s | %s > %s", topic, msg.ReceivedFrom.Pretty(), msg.Data)
-	// }
-
-	// return nil
+	return sub, nil
 }
 
 func (h *Host) Publish(ctx context.Context, topic string, data []byte) error {
 
 	t, err := h.join(topic)
 	if err != nil {
-		return err
+		return fmt.Errorf("join topic: %w", err)
 	}
 
 	err = t.Publish(ctx, data)
 	if err != nil {
-		return err
+		return fmt.Errorf("publish topic: %w", err)
 	}
 
 	return nil
 }
 
 func (h *Host) join(topic string) (*pubsub.Topic, error) {
+
+	h.topicsLock.Lock()
+	defer h.topicsLock.Unlock()
 
 	t, exists := h.topics[topic]
 	if exists {
@@ -178,19 +164,22 @@ func (h *Host) join(topic string) (*pubsub.Topic, error) {
 
 	t, err := h.pubsub.Join(topic)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("join topic: %w", err)
 	}
+
 	h.topics[topic] = t
 
 	return t, nil
 }
 
 func (h *Host) Bootstrap(ctx context.Context, cfg config.Host) {
+
 	var wg sync.WaitGroup
+
 	for _, peerAddr := range cfg.BootstrapPeers {
 		pi, err := libp2ppeer.AddrInfoFromString(peerAddr)
 		if err != nil {
-			log.Warnf("Can't parse peer addr info string: %s, %s", pi, err)
+			log.Warnf("Can't parse peer addr info string: %q, %s", pi, err)
 			continue
 		}
 		wg.Add(1)
@@ -203,16 +192,17 @@ func (h *Host) Bootstrap(ctx context.Context, cfg config.Host) {
 			}
 		}()
 	}
-	wg.Wait()
 
+	wg.Wait()
 }
 
-func (h *Host) Discover(ctx context.Context, rendezvous string) {
+func (h *Host) Discover(ctx context.Context, rendezvous string) error {
 
 	pi := libp2ppeer.AddrInfo{
 		ID:    h.ID(),
 		Addrs: h.Addrs(),
 	}
+
 	log.Infof("Announcing ourselves: %s", pi)
 	d := drouting.NewRoutingDiscovery(h.idht)
 	dutil.Advertise(ctx, d, rendezvous)
@@ -220,7 +210,7 @@ func (h *Host) Discover(ctx context.Context, rendezvous string) {
 	log.Infof("Searching for other peers...")
 	peerChan, err := d.FindPeers(ctx, rendezvous)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("find peers: %w", err)
 	}
 
 	go func() {
@@ -240,19 +230,11 @@ func (h *Host) Discover(ctx context.Context, rendezvous string) {
 				continue
 			}
 
-			// stream, err := host.NewStream(ctx, peer.ID, libp2pprotocol.ID(protocolID))
-			// if err != nil {
-			// 	log.Warnf("Connection failed:", err)
-			// 	continue
-			// }
-			// rw := bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
-
-			// go writeData(rw)
-			// go readData(rw)
-
 			log.Infof("Connected to: %s", peer)
 		}
 	}()
+
+	return nil
 }
 
 func (h *Host) Peers() []string {
@@ -262,7 +244,6 @@ func (h *Host) Peers() []string {
 	for _, p := range h.Network().Peers() {
 		a := s.PeerInfo(p)
 		peers = append(peers, a.String())
-
 	}
 
 	return peers
@@ -278,7 +259,7 @@ func (h *Host) Send(ctx context.Context, pi libp2ppeer.AddrInfo, protocol string
 
 	_, err = stream.Write(data)
 	if err != nil {
-		return fmt.Errorf("write data: %w", err)
+		return fmt.Errorf("write to stream: %w", err)
 	}
 
 	return nil

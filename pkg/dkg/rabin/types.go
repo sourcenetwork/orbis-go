@@ -84,7 +84,7 @@ func (d *dkg) dealToProto(deal *rabindkg.Deal) (*Deal, error) {
 func dealToProto(deal *rabindkg.Deal) (*Deal, error) {
 	dkheyBytes, err := deal.Deal.DHKey.MarshalBinary()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("marshal dhkey: %w", err)
 	}
 
 	return &Deal{
@@ -106,7 +106,7 @@ func (d *dkg) dealFromProto(deal *Deal) (*rabindkg.Deal, error) {
 func dealFromProto(suite suites.Suite, deal *Deal) (*rabindkg.Deal, error) {
 	dhpoint := suite.Point()
 	if err := dhpoint.UnmarshalBinary(deal.Deal.Dhkey); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal dhkey: %w", err)
 	}
 
 	return &rabindkg.Deal{
@@ -151,7 +151,7 @@ func secretCommitsToProto(sc *rabindkg.SecretCommits) (*SecretCommits, error) {
 	for i, c := range sc.Commitments {
 		cBytes, err := c.MarshalBinary()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("marshal commitment: %w", err)
 		}
 		points[i] = cBytes
 	}
@@ -170,7 +170,7 @@ func secretCommitsFromProto(suite suites.Suite, sc *SecretCommits) (*rabindkg.Se
 	for i, c := range sc.Commitments {
 		commitPoint := suite.Point()
 		if err := commitPoint.UnmarshalBinary(c); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("unmarshal commitment: %w", err)
 		}
 		points[i] = commitPoint
 	}

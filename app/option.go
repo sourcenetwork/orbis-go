@@ -36,7 +36,7 @@ func WithDBData(path string) Option {
 	return func(a *App) error {
 		d, err := db.New(path)
 		if err != nil {
-			return fmt.Errorf("creating db: %w", err)
+			return fmt.Errorf("create db: %w", err)
 		}
 		do.ProvideValue(a.inj, d)
 		a.db = d

@@ -65,7 +65,7 @@ func (t *Transport) Send(ctx context.Context, node transport.Node, msg *transpor
 	}
 
 	b := backoff.NewExponentialBackOff()
-	b.MaxElapsedTime = 30 * time.Second
+	b.MaxElapsedTime = 10 * time.Second
 	bctx := backoff.WithContext(b, ctx)
 
 	err = backoff.Retry(newStream, bctx)
@@ -155,10 +155,12 @@ func streamHandlerFrom(handler transport.Handler) func(network.Stream) {
 			if err != io.EOF {
 				log.Errorf("read stream: %s", err)
 			}
+
 			err = stream.Reset()
 			if err != nil {
 				log.Errorf("reset stream: %s", err)
 			}
+
 			return
 		}
 

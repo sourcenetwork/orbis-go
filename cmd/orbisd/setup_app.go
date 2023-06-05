@@ -14,15 +14,9 @@ import (
 
 func setupApp(ctx context.Context, cfg config.Config) (*app.App, error) {
 
-	// testingStreamHandler := func(msg *transport.Message) error {
-	// 	log.Infof("Transport Received message: %s", msg.Payload)
-	// 	return nil
-	// }
-	// tp.AddHandler(p2ptp.ProtocolID, testingStreamHandler)
-
 	host, err := host.New(ctx, cfg.Host)
 	if err != nil {
-		return nil, fmt.Errorf("creating host: %w", err)
+		return nil, fmt.Errorf("create host: %w", err)
 	}
 
 	opts := []app.Option{

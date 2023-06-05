@@ -25,7 +25,7 @@
 //   4. Each QUAL participant generates their secret commitments calling
 //    `SecretCommits()` and broadcasts them to the QUAL set.
 //   5. Each QUAL participant processes the received secret commitments using
-//    `SecretCommits()`. If there is an error, it can return a commitment complaint
+//    `ProcessSecretCommits()`. If there is an error, it can return a commitment complaint
 //    (ComplaintCommits) that must be broadcasted to the QUAL set.
 //   6. Each QUAL participant receiving a complaint can process it with
 //    `ProcessComplaintCommits()` which returns the secret share

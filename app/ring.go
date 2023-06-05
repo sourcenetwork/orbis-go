@@ -166,36 +166,19 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 		return nil, fmt.Errorf("create dkg service: %w", err)
 	}
 
-	var nodes []transport.Node
-	for _, n := range ring.Nodes {
-		id, err := peer.Decode(n.Id)
-		if err != nil {
-			return nil, fmt.Errorf("invalid peer id: %w", err)
-		}
-		pubKey, err := id.ExtractPublicKey()
-		if err != nil {
-			return nil, fmt.Errorf("extract publick key from id: %w", err)
-		}
-		key, err := crypto.PublicKeyFromLibP2P(pubKey)
-		if err != nil {
-			return nil, fmt.Errorf("invalid public key: %w", err)
-		}
-
-		addr, err := ma.NewMultiaddr(n.Address)
-		if err != nil {
-			return nil, fmt.Errorf("invalid address: %w", err)
-		}
-		node := p2ptransport.NewNode(n.Id, key, addr)
-
-		nodes = append(nodes, node)
+	nodes, err := nodesFromIDs(ring)
+	if err != nil {
+		return nil, fmt.Errorf("conver nodes from ring ids")
 	}
 
-	if err := dkgSrv.Init(ctx, app.privateKey, rid, nodes, ring.N, ring.T, fromState); err != nil {
+	err = dkgSrv.Init(ctx, app.privateKey, rid, nodes, ring.N, ring.T, fromState)
+	if err != nil {
 		return nil, fmt.Errorf("initializing dkg: %w", err)
 	}
 	do.ProvideValue(inj, dkgSrv)
 
-	if err := rs.registerService(dkgSrv); err != nil {
+	err = rs.registerService(dkgSrv)
+	if err != nil {
 		return nil, fmt.Errorf("starting dkg: %w", err)
 	}
 
@@ -204,8 +187,10 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 	if err != nil {
 		return nil, fmt.Errorf("create pre service: %w", err)
 	}
-	if err := preSrv.Init(rid, ring.N, ring.T, []types.Node{}); err != nil {
-		return nil, fmt.Errorf("initializing pre: %w", err)
+
+	err = preSrv.Init(rid, ring.N, ring.T, []types.Node{})
+	if err != nil {
+		return nil, fmt.Errorf("initialize pre: %w", err)
 	}
 	do.ProvideValue(inj, preSrv)
 
@@ -214,7 +199,9 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 	if err != nil {
 		return nil, fmt.Errorf("create pss service: %w", err)
 	}
-	if err := pssSrv.Init(rid, ring.N, ring.T, []types.Node{}); err != nil {
+
+	err = pssSrv.Init(rid, ring.N, ring.T, []types.Node{})
+	if err != nil {
 		return nil, fmt.Errorf("create pss service: %w", err)
 	}
 
@@ -237,12 +224,45 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 	return rs, nil
 }
 
+func nodesFromIDs(ring *ringv1alpha1.Ring) ([]transport.Node, error) {
+
+	spew.Dump(ring.Nodes)
+
+	var nodes []transport.Node
+	for _, n := range ring.Nodes {
+
+		id, err := peer.Decode(n.Id)
+		if err != nil {
+			return nil, fmt.Errorf("invalid peer id: %w", err)
+		}
+
+		pubKey, err := id.ExtractPublicKey()
+		if err != nil {
+			return nil, fmt.Errorf("extract publick key from id: %w", err)
+		}
+
+		key, err := crypto.PublicKeyFromLibP2P(pubKey)
+		if err != nil {
+			return nil, fmt.Errorf("invalid public key: %w", err)
+		}
+
+		addr, err := ma.NewMultiaddr(n.Address)
+		if err != nil {
+			return nil, fmt.Errorf("invalid address: %w", err)
+		}
+
+		node := p2ptransport.NewNode(n.Id, key, addr)
+		nodes = append(nodes, node)
+	}
+
+	return nodes, nil
+}
+
 func (r *Ring) Store(context.Context, types.SecretID, *types.Secret, proof.VerifiableEncryption) error {
 	return nil
 }
 
 func (r *Ring) Get(context.Context, types.SecretID) (types.Secret, error) {
-
 	return types.Secret{}, nil
 }
 
@@ -256,7 +276,6 @@ func (r *Ring) Delete(context.Context, types.SecretID) error {
 
 func (r *Ring) PublicKey() (crypto.PublicKey, error) {
 	return nil, nil
-
 }
 
 func (r *Ring) Refresh(context.Context, pss.Config) (pss.RefreshState, error) {

@@ -7,12 +7,22 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var log = logging.Logger("orbis")
+var log = logging.Logger("orbis/orbisd")
 
 func main() {
 
 	logging.SetAllLoggers(logging.LevelDPanic)
 	logging.SetLogLevelRegex("orbis.*", "debug")
+
+	err := logging.SetLogLevelRegex("dht/.*", "error")
+	if err != nil {
+		log.Fatalf("Set log level: %s", err)
+	}
+
+	err = logging.SetLogLevelRegex("orbis/transport/.*", "error")
+	if err != nil {
+		log.Fatalf("Set log level: %s", err)
+	}
 
 	rootCmd := &cobra.Command{
 		Use:          "orbisd",
@@ -23,7 +33,7 @@ func main() {
 	// Setup the start command for the Orbis server.
 	startCmd, err := cobracli.StartCmd(setupServer)
 	if err != nil {
-		log.Fatalf("Error: %s", err)
+		log.Fatalf("Start command: %s", err)
 	}
 
 	// Setup client commands for the Orbis client.

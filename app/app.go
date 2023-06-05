@@ -81,7 +81,7 @@ func New(ctx context.Context, host *host.Host, opts ...Option) (*App, error) {
 	hpk := host.Peerstore().PrivKey(host.ID())
 	cpk, err := crypto.PrivateKeyFromLibP2P(hpk)
 	if err != nil {
-		return nil, fmt.Errorf("converting libp2p private key: %w", err)
+		return nil, fmt.Errorf("convert libp2p private key: %w", err)
 	}
 
 	inj := do.New()
@@ -89,13 +89,13 @@ func New(ctx context.Context, host *host.Host, opts ...Option) (*App, error) {
 	// register global services
 	tp, err := p2ptp.New(ctx, host, config.Transport{})
 	if err != nil {
-		return nil, fmt.Errorf("creating transport: %w", err)
+		return nil, fmt.Errorf("create transport: %w", err)
 	}
 	do.ProvideNamedValue[transport.Transport](inj, tp.Name(), tp)
 
 	bb, err := p2pbb.New(ctx, host, config.Bulletin{})
 	if err != nil {
-		return nil, fmt.Errorf("creating bulletin: %w", err)
+		return nil, fmt.Errorf("create bulletin: %w", err)
 	}
 	do.ProvideNamedValue[bulletin.Bulletin](inj, bb.Name(), bb)
 
@@ -153,17 +153,21 @@ func (a *App) setupRepoKeysForService(namespace string, records []string) error 
 		a.repoKeys[name] = k
 	}
 	a.serviceRepos[namespace] = serviceKeys
+
 	return nil
 }
+
 func (a *App) repoKeysForService(name string) []db.RepoKey {
 	keys, exists := a.serviceRepos[name]
 	if !exists {
 		return nil
 	}
+
 	rkeys := make([]db.RepoKey, len(keys))
 	for i, k := range keys {
 		rkeys[i] = a.repoKeys[k]
 	}
+
 	return rkeys
 }
 
@@ -172,6 +176,7 @@ func keysForRepoTypes(records []string) []db.RepoKey {
 	for i, r := range records {
 		keys[i] = db.NewRepoKey(r)
 	}
+
 	return keys
 }
 

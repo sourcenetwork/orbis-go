@@ -32,6 +32,7 @@ func (s *transportService) GetHost(ctx context.Context, req *transportv1alpha1.G
 	if err != nil {
 		return nil, err
 	}
+
 	resp := &transportv1alpha1.GetHostResponse{
 		Node: &transportv1alpha1.Node{
 			Id:      h.ID(),

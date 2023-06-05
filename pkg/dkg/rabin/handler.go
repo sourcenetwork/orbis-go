@@ -25,6 +25,9 @@ func (d *dkg) setupHandlers() {
 }
 
 func (d *dkg) processDeal(deal *rabindkg.Deal) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	response, err := d.rdkg.ProcessDeal(deal)
 	if err != nil {
 		return fmt.Errorf("process rabin dkg deal: %w", err)
@@ -37,13 +40,14 @@ func (d *dkg) processDeal(deal *rabindkg.Deal) error {
 
 	for _, node := range d.participants {
 		if d.isMe(node) {
-			log.Infof("skipping self: %s", node.ID())
 			continue // skip ourselves
 		}
+		// TODO: can we skip the sender of the deal as well?
 
-		// todo: context
-		if err := d.send(context.TODO(), string(ProtocolResponse), buf, node); err != nil {
-			return fmt.Errorf("send response: %w", err)
+		// TODO: context
+		err := d.send(context.TODO(), string(ProtocolResponse), buf, node)
+		if err != nil {
+			return fmt.Errorf("send response to node %q: %w", node.ID(), err)
 		}
 	}
 
@@ -54,10 +58,10 @@ func (d *dkg) processResponse(resp *rabindkg.Response) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	// we cant process the response unless we
+	// we can't process the response unless we
 	// have processed the cooresponding deal
 	//
-	// theres a change that we missed it from the p2p
+	// theres a chance that we missed it from the p2p
 	// network or bulletin board.
 	//
 	// For now, lets just design it assuming all is well (temp)
@@ -76,10 +80,11 @@ func (d *dkg) processResponse(resp *rabindkg.Response) error {
 	}
 
 	sc, err := d.rdkg.SecretCommits()
-	if err != nil && err.Error() == ErrDealNotCertified.Error() {
-		return nil // skip
-	} else if err != nil {
-		return fmt.Errorf("generate secret commit dkg response: %w", err)
+	if err != nil {
+		if err.Error() == ErrDealNotCertified.Error() {
+			return nil
+		}
+		return fmt.Errorf("generate secret commit: %w", err)
 	}
 
 	protoSC, err := secretCommitsToProto(sc)
@@ -92,14 +97,13 @@ func (d *dkg) processResponse(resp *rabindkg.Response) error {
 		return fmt.Errorf("encode response: %w", err)
 	}
 
-	// send SC
-	for _, node := range d.participants {
+	for i, node := range d.participants {
 		if d.isMe(node) {
-			log.Infof("skipping self: %s", node.ID())
-			continue // skip ourselves
+			continue
 		}
 
-		// todo: context
+		log.Infof("Node %d sending secret commits to %d", d.index, i)
+		// TODO: context
 		if err := d.send(context.TODO(), string(ProtocolSecretCommits), buf, node); err != nil {
 			return fmt.Errorf("send secret commits: %w", err)
 		}
@@ -114,7 +118,7 @@ func (d *dkg) processSecretCommits(sc *rabindkg.SecretCommits) error {
 
 	_, err := d.rdkg.ProcessSecretCommits(sc)
 	if err != nil {
-		return fmt.Errorf("process rabin dkg secretcommits: %w", err)
+		return fmt.Errorf("process rabin dkg secret commits: %w", err)
 	}
 
 	// If we haven't collected all deals, responses, and secret commits
@@ -138,7 +142,8 @@ func (d *dkg) processSecretCommits(sc *rabindkg.SecretCommits) error {
 
 	d.pubKey = distkey.Public()
 	d.state = orbisdkg.CERTIFIED
-	log.Infof("Finished DKG Setup. Shared Public Key: %s", d.pubKey)
+
+	log.Infof("Node %d finished setup with shared publick Key: %s", d.index, d.pubKey)
 
 	return d.save(context.TODO())
 }

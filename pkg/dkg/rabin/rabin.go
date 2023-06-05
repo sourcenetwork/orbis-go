@@ -131,7 +131,7 @@ func (d *dkg) initFromNew(ctx context.Context, pk crypto.PrivateKey, rid types.R
 
 	suite, err := crypto.SuiteForType(pk.Type())
 	if err != nil {
-		return err
+		return fmt.Errorf("get suite for type: %w", err)
 	}
 
 	d.ringID = rid
@@ -227,7 +227,7 @@ func (d *dkg) Start(ctx context.Context) error {
 
 		// persist deals
 		for _, deal := range deals {
-			fmt.Printf("signature: %x\n", deal.Deal.Signature)
+			log.Infof("Signature: %x\n", deal.Deal.Signature)
 
 			dealproto, err := d.dealToProto(deal)
 			if err != nil {
@@ -236,7 +236,7 @@ func (d *dkg) Start(ctx context.Context) error {
 
 			dealproto.RingId = string(d.ringID)
 			dealproto.NodeId = d.transport.Host().ID()
-			log.Debugf("creating doc: %+v", deal)
+			log.Debugf("Creating doc: %+v", deal)
 			if err := d.dealRepo.Create(ctx, dealproto); err != nil {
 				return fmt.Errorf("create deal: %w", err)
 			}
@@ -265,7 +265,7 @@ func (d *dkg) Start(ctx context.Context) error {
 				continue
 			}
 
-			log.Infof("node %d sending deal to partitipants %d (%x)", d.index, deal.TargetIndex, deal.Deal.Signature)
+			log.Infof("Node %d sending deal to partitipants %d (%x)", d.index, deal.TargetIndex, deal.Deal.Signature)
 			if i == d.index {
 				// TODO: deliver to ourselves
 				continue
@@ -276,6 +276,7 @@ func (d *dkg) Start(ctx context.Context) error {
 				return fmt.Errorf("marshal deal: %w", err)
 			}
 
+			log.Infof("Node %d sending deal to %d", d.index, i)
 			err = d.send(ctx, string(ProtocolDeal), buf, d.participants[deal.TargetIndex])
 			if err != nil {
 				return fmt.Errorf("send deal: %w", err)
@@ -288,20 +289,25 @@ func (d *dkg) Start(ctx context.Context) error {
 	}
 
 	go d.dispatch()
+
 	return nil
 }
 
 func (d *dkg) send(ctx context.Context, msgType string, buf []byte, node transport.Node) error {
+
 	cid, err := types.CidFromBytes(buf)
 	if err != nil {
 		return fmt.Errorf("cid from bytes: %w", err)
 	}
+
 	msg, err := d.transport.NewMessage(d.ringID, cid.String(), false, buf, msgType)
 	if err != nil {
 		return fmt.Errorf("new message: %w", err)
 	}
-	log.Infof("dkg.send() node id: %s, addr: %s", node.ID(), node.Address())
-	if err := d.transport.Send(ctx, node, msg); err != nil {
+
+	log.Debugf("send to: %q, addr: %q", node.ID(), node.Address())
+	err = d.transport.Send(ctx, node, msg)
+	if err != nil {
 		return fmt.Errorf("send message: %w", err)
 	}
 
@@ -313,11 +319,12 @@ func (d *dkg) Close(_ context.Context) error {
 }
 
 func (d *dkg) ProcessMessage(msg *transport.Message) error {
-	// todo maybe?: validate msg.PublicKey matches payload pubkeys
+	// TODO maybe?: validate msg.PublicKey matches payload pubkeys
+
+	log.Debugf("process message: id: %q, type: %q", msg.Id, msg.GetType())
 
 	switch msg.GetType() {
 	case string(ProtocolDeal):
-		log.Infof("dkg.ProcessMessage() ProtocolDeal: id: %s", msg.Id)
 
 		var protoDeal rabinv1alpha1.Deal
 
@@ -337,11 +344,10 @@ func (d *dkg) ProcessMessage(msg *transport.Message) error {
 
 		err = d.dispatchDealProto(&protoDeal)
 		if err != nil {
-			return err
+			return fmt.Errorf("dispatch deal message: %w", err)
 		}
 
 	case string(ProtocolResponse):
-		log.Infof("dkg.ProcessMessage() ProtocolResponse: id: %s", msg.Id)
 
 		var protoResponse rabinv1alpha1.Response
 
@@ -349,6 +355,7 @@ func (d *dkg) ProcessMessage(msg *transport.Message) error {
 		if err != nil {
 			return fmt.Errorf("unmarshal response message: %w", err)
 		}
+
 		protoResponse.RingId = string(d.ringID)
 		protoResponse.NodeId = msg.NodeId
 		err = d.respRepo.Create(context.TODO(), &protoResponse)
@@ -361,12 +368,13 @@ func (d *dkg) ProcessMessage(msg *transport.Message) error {
 
 		err = d.dispatchResponseProto(&protoResponse)
 		if err != nil {
-			return err
+			return fmt.Errorf("dispatch response message: %w", err)
 		}
 
 	case string(ProtocolSecretCommits):
-		log.Infof("dkg.ProcessMessage() ProtocolSecretCommits: id: %s", msg.Id)
+
 		var protoSecretCommits rabinv1alpha1.SecretCommits
+
 		err := proto.Unmarshal(msg.Payload, &protoSecretCommits)
 		if err != nil {
 			return fmt.Errorf("unmarshal secret commits: %w", err)
@@ -384,11 +392,11 @@ func (d *dkg) ProcessMessage(msg *transport.Message) error {
 
 		err = d.dispatchSecretCommitsProto(&protoSecretCommits)
 		if err != nil {
-			return err
+			return fmt.Errorf("dispatch secret commits: %w", err)
 		}
 
 	default:
-		panic("bad message type") //todo
+		return fmt.Errorf("unknown message type: %q", msg.GetType())
 	}
 
 	return nil
@@ -402,11 +410,12 @@ func (d *dkg) ProcessMessage(msg *transport.Message) error {
 //
 // It is designed to run in a gourinte
 func (d *dkg) dispatch() {
+
 	// processDeals
 	log.Infof("handling %d expected deals", d.numExpectedDeals())
 	for i := 0; i < d.numExpectedDeals() && d.state < PROCESSED_DEALS; i++ {
 		dd := <-d.deals
-		log.Infof("%d: handling deal %d", i, dd.deal.Index)
+		log.Infof("Node %d handling deal for dealer %d (%d/%d)", d.index, dd.deal.Index, i, d.numExpectedDeals())
 		dd.err <- d.processDeal(dd.deal)
 	}
 
@@ -415,11 +424,12 @@ func (d *dkg) dispatch() {
 	if err := d.save(context.TODO()); err != nil {
 		log.Fatal("failed to save DKG state: %w", err)
 	}
+
 	// processResponses
 	log.Infof("handling %d expected responses", d.numExpectedResponses())
 	for i := 0; i < d.numExpectedResponses() && d.state < PROCESSED_RESPONSES; i++ {
 		rd := <-d.responses
-		log.Infof("%d: handling response %d", i, rd.respone.Index)
+		log.Infof("Node %d handling response for dealer %d (%d/%d)", d.index, rd.respone.Index, i, d.numExpectedResponses())
 		rd.err <- d.processResponse(rd.respone)
 	}
 
@@ -430,10 +440,9 @@ func (d *dkg) dispatch() {
 	}
 
 	// processSecrets
-	log.Infof("handling %d expected secrets", d.numExpectedCommits())
 	for i := 0; i < d.numExpectedCommits(); i++ {
 		sd := <-d.commits
-		log.Infof("%d: handling secret %d", i, sd.secretCommits.Index)
+		log.Infof("Node %d handling secret for dealer %d (%d/%d)", d.index, sd.secretCommits.Index, i, d.numExpectedCommits())
 		sd.err <- d.processSecretCommits(sd.secretCommits)
 	}
 	close(d.commits)

@@ -33,13 +33,13 @@ func ridStB(s string) ([]byte, error) {
 	// check if the address is a CID
 	c, err := cid.Decode(s)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse orbis ring id: %s %s", s, err)
+		return nil, fmt.Errorf("parse orbis ring id: %s %s", s, err)
 	}
 
 	if ty := c.Type(); ty == cid.Raw {
 		return c.Hash(), nil
 	} else {
-		return nil, fmt.Errorf("failed to parse orbis ring id: %s has the invalid codec %d", s, ty)
+		return nil, fmt.Errorf("parse orbis ring id: %s has the invalid codec %d", s, ty)
 	}
 }
 
