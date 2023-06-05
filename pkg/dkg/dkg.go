@@ -9,9 +9,10 @@ import (
 )
 
 const (
-	INITIALIZED State = iota // DKG group has initialized but not started the generation
-	STARTED                  // Started the distributed key generation
-	CERTIFIED                // Generated and cerified the shared key
+	UNINITIALIZED State = iota // DKG group has not been initialized.
+	INITIALIZED                // DKG group has initialized but not started the generation.
+	STARTED                    // Started the distributed key generation.
+	CERTIFIED                  // Generated and cerified the shared key.
 
 	CUSTOM_STATE_MASK State = 0b10000000 // Mask to reserve usage of custom enums for implementations
 
@@ -20,6 +21,21 @@ const (
 
 // enum
 type State uint8
+
+func (s State) String() string {
+	switch s {
+	case UNINITIALIZED:
+		return "UNINITIALIZED"
+	case INITIALIZED:
+		return "INITIALIZED"
+	case STARTED:
+		return "STARTED"
+	case CERTIFIED:
+		return "CERTIFIED"
+	default:
+		return "UNKNOWN"
+	}
+}
 
 type Node = transport.Node
 
