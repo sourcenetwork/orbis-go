@@ -12,4 +12,7 @@ message EncryptedDeal {
 message Deal {
   uint32 index = 1;
   EncryptedDeal deal = 2;
+  string ring_id = 3;
+  string node_id = 4;
+  int32 target_index = 5;
 }

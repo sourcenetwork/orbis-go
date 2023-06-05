@@ -5,6 +5,8 @@ package orbis.rabin.v1alpha1;
 message Response {
     uint32 index = 1;
     VerifiableResponse response = 2;
+    string ring_id = 3;
+    string node_id = 4;
 }
   
 message VerifiableResponse {

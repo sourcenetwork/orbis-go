@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package orbis.crypto.v1alpha1;
+
+enum SuiteType {
+    NONE = 0;
+    Ed25519 = 1;
+    Secp256k1 = 2;
+}
