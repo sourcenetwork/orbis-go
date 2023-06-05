@@ -10,7 +10,7 @@ import (
 )
 
 type Ring struct {
-	ringv1alpha1.Ring
+	*ringv1alpha1.Ring
 }
 
 func RingFromManifest(manifest []byte) (*Ring, RingID, error) {

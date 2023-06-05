@@ -1,5 +1,13 @@
 {
   "ring": {
+    "id": "40b086ef",
+    "n": 3,
+    "t": 2,
+    "dkg": "rabin",
+    "pss": "avpss",
+    "pre": "elgamal",
+    "bulletin": "p2pbb",
+    "transport": "p2p",
     "nodes": [
       {
         "id": "12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqu",

@@ -47,6 +47,11 @@ type Ring struct {
 	inj *do.Injector
 }
 
+type State struct {
+	DKG dkg.State
+	PSS pss.State
+}
+
 type service interface {
 	Start(context.Context) error
 	Close(context.Context) error
@@ -226,8 +231,6 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 
 func nodesFromIDs(ring *ringv1alpha1.Ring) ([]transport.Node, error) {
 
-	spew.Dump(ring.Nodes)
-
 	var nodes []transport.Node
 	for _, n := range ring.Nodes {
 
@@ -286,8 +289,11 @@ func (r *Ring) Threshold() int {
 	return 0
 }
 
-func (r *Ring) State() pss.State {
-	return pss.State{}
+func (r *Ring) State() State {
+	return State{
+		DKG: r.DKG.State(),
+		PSS: r.PSS.State(),
+	}
 }
 
 func (r *Ring) Nodes() []pss.Node {
