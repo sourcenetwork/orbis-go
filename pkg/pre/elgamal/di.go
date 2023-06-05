@@ -47,6 +47,6 @@ func (factory) Name() string {
 	return name
 }
 
-func (factory) Repos() []db.Record {
-	return []db.Record{}
+func (factory) Repos() []string {
+	return []string{}
 }

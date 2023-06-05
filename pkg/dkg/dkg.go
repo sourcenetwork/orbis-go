@@ -5,12 +5,15 @@ import (
 
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
+	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
 
 const (
 	INITIALIZED State = iota // DKG group has initialized but not started the generation
 	STARTED                  // Started the distributed key generation
 	CERTIFIED                // Generated and cerified the shared key
+
+	CUSTOM_STATE_MASK State = 0b10000000 // Mask to reserve usage of custom enums for implementations
 
 	ProtocolName = "dkg"
 )
@@ -21,7 +24,7 @@ type State uint8
 type Node = transport.Node
 
 type DKG interface {
-	Init(ctx context.Context, pk crypto.PrivateKey, nodes []Node, n int32, threshold int32) error
+	Init(ctx context.Context, pk crypto.PrivateKey, rid types.RingID, nodes []Node, n int32, threshold int32, fromState bool) error
 
 	Name() string
 

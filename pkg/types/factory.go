@@ -8,5 +8,5 @@ import (
 type Factory[T any] interface {
 	New(*do.Injector, []db.RepoKey) (T, error)
 	Name() string
-	Repos() []db.Record
+	Repos() []string
 }
