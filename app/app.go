@@ -3,11 +3,12 @@ package app
 import (
 	"context"
 	"fmt"
+	"sync"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/samber/do"
 
 	"github.com/sourcenetwork/orbis-go/config"
+	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/ring/v1alpha1"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	p2pbb "github.com/sourcenetwork/orbis-go/pkg/bulletin/p2p"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
@@ -15,6 +16,7 @@ import (
 	"github.com/sourcenetwork/orbis-go/pkg/host"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
 	p2ptp "github.com/sourcenetwork/orbis-go/pkg/transport/p2p"
+	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
 
 var (
@@ -34,6 +36,10 @@ type App struct {
 
 	privateKey crypto.PrivateKey
 
+	ringRepo db.Repository[*ringv1alpha1.Ring]
+
+	rings map[types.RingID]*Ring
+
 	// namespaced key => repoParam
 	// collected during app initialization
 	repoParams map[string]repoParam
@@ -46,6 +52,8 @@ type App struct {
 	// index for which keys are for which
 	// service
 	serviceRepos map[string][]string
+
+	mu sync.Mutex
 }
 
 type repoParam struct {
@@ -102,6 +110,7 @@ func New(ctx context.Context, host *host.Host, opts ...Option) (*App, error) {
 		repoParams:   make(map[string]repoParam),
 		repoKeys:     make(map[string]db.RepoKey),
 		serviceRepos: make(map[string][]string),
+		rings:        make(map[types.RingID]*Ring),
 	}
 
 	for _, opt := range opts {
@@ -111,23 +120,28 @@ func New(ctx context.Context, host *host.Host, opts ...Option) (*App, error) {
 		}
 	}
 
-	return a, a.mountRepos()
-}
-
-func (a *App) mountRepos() error {
-	for name, params := range a.repoParams {
-		if params.key == nil {
-			return ErrKeyMissing
-		}
-		if err := db.MountRepo(a.db, params.key, params.typ); err != nil {
-			return err
-		}
-		a.repoKeys[name] = params.key
+	a.ringRepo, err = db.GetRepo[*ringv1alpha1.Ring](a.db, db.NewRepoKey("ring"), ringPkFunc)
+	if err != nil {
+		return nil, err
 	}
-	return nil
+	return a, nil
 }
 
-func (a *App) setupRepoKeysForService(namespace string, records []db.Record) error {
+// func (a *App) mountRepos() error {
+// 	for name, params := range a.repoParams {
+// 		if params.key == nil {
+// 			return ErrKeyMissing
+// 		}
+// 		if err := db.MountRepo(a.db, params.key, params.typ); err != nil {
+// 			return err
+// 		}
+// 		a.repoKeys[name] = params.key
+// 	}
+// 	log.Debugf("app.mountRepos(): mounted repos: %v", a.repoKeys)
+// 	return nil
+// }
+
+func (a *App) setupRepoKeysForService(namespace string, records []string) error {
 	repoKeys := keysForRepoTypes(records)
 	serviceKeys := make([]string, len(records))
 	for i, k := range repoKeys {
@@ -135,11 +149,8 @@ func (a *App) setupRepoKeysForService(namespace string, records []db.Record) err
 		if _, exists := a.repoParams[name]; exists {
 			return ErrDuplicateRepo
 		}
-		serviceKeys = append(serviceKeys, name)
-		a.repoParams[name] = repoParam{
-			key: k,
-			typ: records[i],
-		}
+		serviceKeys[i] = name
+		a.repoKeys[name] = k
 	}
 	a.serviceRepos[namespace] = serviceKeys
 	return nil
@@ -156,11 +167,10 @@ func (a *App) repoKeysForService(name string) []db.RepoKey {
 	return rkeys
 }
 
-func keysForRepoTypes(records []db.Record) []db.RepoKey {
+func keysForRepoTypes(records []string) []db.RepoKey {
 	keys := make([]db.RepoKey, len(records))
 	for i, r := range records {
-		typeName := proto.MessageV2(r).ProtoReflect().Descriptor().Name()
-		keys[i] = db.NewRepoKey(string(typeName))
+		keys[i] = db.NewRepoKey(r)
 	}
 	return keys
 }

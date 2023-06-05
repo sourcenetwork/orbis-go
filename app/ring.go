@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/davecgh/go-spew/spew"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/samber/do"
+	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/ring/v1alpha1"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto/proof"
@@ -30,11 +30,26 @@ type Ring struct {
 	PSS pss.PSS
 	PRE pre.PRE
 
+	// collection of registered services
+	// that require startup/shutdown and
+	// expose hooks.
+	services []service
+
 	Transport transport.Transport
 	Bulletin  bulletin.Bulletin
 	DB        *db.DB
 
+	N int
+	T int
+
+	nodes []transport.Node
+
 	inj *do.Injector
+}
+
+type service interface {
+	Start(context.Context) error
+	Close(context.Context) error
 }
 
 /*
@@ -90,8 +105,16 @@ nodeconfig {
 
 */
 
-func (app *App) NewRing(ctx context.Context, ring *types.Ring) (*Ring, error) {
+func (app *App) JoinRing(ctx context.Context, ring *ringv1alpha1.Ring) (*Ring, error) {
+	app.mu.Lock()
+	defer app.mu.Unlock()
+	return app.joinRing(ctx, ring, false /* fromState */)
+}
+
+func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState bool) (*Ring, error) {
 	rid := types.RingID(ring.Id)
+
+	rs := &Ring{}
 
 	// rings get their own cloned dependency injector handler
 	// since we actually create and initialize services which
@@ -137,13 +160,13 @@ func (app *App) NewRing(ctx context.Context, ring *types.Ring) (*Ring, error) {
 
 	// setup and register local services
 	dkgRepoKeys := app.repoKeysForService(dkgFactory.Name())
+	log.Debugf("dkg repo keys: %v", dkgRepoKeys)
 	dkgSrv, err := dkgFactory.New(inj, dkgRepoKeys)
 	if err != nil {
 		return nil, fmt.Errorf("create dkg service: %w", err)
 	}
 
 	var nodes []transport.Node
-	spew.Dump(ring.Nodes)
 	for _, n := range ring.Nodes {
 		id, err := peer.Decode(n.Id)
 		if err != nil {
@@ -167,12 +190,12 @@ func (app *App) NewRing(ctx context.Context, ring *types.Ring) (*Ring, error) {
 		nodes = append(nodes, node)
 	}
 
-	if err := dkgSrv.Init(ctx, app.privateKey, nodes, ring.N, ring.T); err != nil {
+	if err := dkgSrv.Init(ctx, app.privateKey, rid, nodes, ring.N, ring.T, fromState); err != nil {
 		return nil, fmt.Errorf("initializing dkg: %w", err)
 	}
 	do.ProvideValue(inj, dkgSrv)
 
-	if err := dkgSrv.Start(ctx); err != nil {
+	if err := rs.registerService(dkgSrv); err != nil {
 		return nil, fmt.Errorf("starting dkg: %w", err)
 	}
 
@@ -187,7 +210,7 @@ func (app *App) NewRing(ctx context.Context, ring *types.Ring) (*Ring, error) {
 	do.ProvideValue(inj, preSrv)
 
 	pssRepoKeys := app.repoKeysForService(pssFactory.Name())
-	pssSrv, err := pssFactory.New(inj, pssRepoKeys) // @todo repokeys
+	pssSrv, err := pssFactory.New(inj, pssRepoKeys)
 	if err != nil {
 		return nil, fmt.Errorf("create pss service: %w", err)
 	}
@@ -195,7 +218,7 @@ func (app *App) NewRing(ctx context.Context, ring *types.Ring) (*Ring, error) {
 		return nil, fmt.Errorf("create pss service: %w", err)
 	}
 
-	rs := &Ring{
+	rs = &Ring{
 		ID:        rid,
 		DKG:       dkgSrv,
 		PSS:       pssSrv,
@@ -204,9 +227,12 @@ func (app *App) NewRing(ctx context.Context, ring *types.Ring) (*Ring, error) {
 		Bulletin:  bb,
 		DB:        db,
 		inj:       inj,
+		services:  rs.services, // this is dumb, but im being lazy, sorry.
 	}
 
 	// called in ring.Join() - go rs.handleEvents()
+
+	app.rings[rs.ID] = rs
 
 	return rs, nil
 }
@@ -246,5 +272,47 @@ func (r *Ring) State() pss.State {
 }
 
 func (r *Ring) Nodes() []pss.Node {
+	return nil
+}
+
+func (r *Ring) registerService(srv service) error {
+	if srv == nil {
+		return fmt.Errorf("service can't be nil")
+	}
+	r.services = append(r.services, srv)
+	return nil
+}
+
+func (r *Ring) Start(ctx context.Context) error {
+	var err error
+	for _, srv := range r.services {
+		err = srv.Start(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// LoadRings loads any existing rings into state
+func (app *App) LoadRings(ctx context.Context) error {
+	app.mu.Lock()
+	defer app.mu.Unlock()
+
+	rings, err := app.ringRepo.GetAll(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, r := range rings {
+		ring, err := app.joinRing(ctx, r, true /* fromState */)
+		if err != nil {
+			return err
+		}
+
+		app.rings[ring.ID] = ring
+	}
+
 	return nil
 }

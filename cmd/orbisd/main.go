@@ -11,7 +11,8 @@ var log = logging.Logger("orbis")
 
 func main() {
 
-	logging.SetAllLoggers(logging.LevelInfo)
+	logging.SetAllLoggers(logging.LevelDPanic)
+	logging.SetLogLevelRegex("orbis.*", "debug")
 
 	rootCmd := &cobra.Command{
 		Use:          "orbisd",

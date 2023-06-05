@@ -5,10 +5,10 @@ go 1.20
 require (
 	github.com/NathanBaulch/protoc-gen-cobra v1.2.1
 	github.com/btcsuite/btcd/btcec/v2 v2.3.0
+	github.com/cenkalti/backoff/v4 v4.2.1
 	github.com/davecgh/go-spew v1.1.1
 	github.com/ethereum/go-ethereum v1.11.4
-	github.com/go-bond/bond v0.1.36
-	github.com/golang/protobuf v1.5.3
+	github.com/go-bond/bond v0.1.42
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.15.2
 	github.com/ipfs/go-cid v0.4.1
 	github.com/ipfs/go-log v1.0.5
@@ -36,7 +36,6 @@ require (
 	github.com/DataDog/zstd v1.5.2 // indirect
 	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cockroachdb/errors v1.9.1 // indirect
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
@@ -57,6 +56,7 @@ require (
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/mock v1.6.0 // indirect
+	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/google/pprof v0.0.0-20230405160723-4a4c7d95572b // indirect
@@ -167,4 +167,8 @@ require (
 	nhooyr.io/websocket v1.8.7 // indirect
 )
 
-replace github.com/sourcenetwork/go-libp2p-pubsub-rpc => github.com/sourcenetwork/go-libp2p-pubsub-rpc v0.0.0-20230524064401-a125104e968e
+replace (
+	github.com/go-bond/bond => ../bond //github.com/sourcenetwork/bond v0.0.0-20230602041731-de398b572984
+	github.com/sourcenetwork/go-libp2p-pubsub-rpc => github.com/sourcenetwork/go-libp2p-pubsub-rpc v0.0.0-20230524064401-a125104e968e
+	go.dedis.ch/kyber/v3 => ../kyber
+)

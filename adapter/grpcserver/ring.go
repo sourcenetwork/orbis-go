@@ -6,7 +6,6 @@ import (
 
 	"github.com/sourcenetwork/orbis-go/app"
 	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/ring/v1alpha1"
-	"github.com/sourcenetwork/orbis-go/pkg/types"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -32,25 +31,27 @@ func (s *ringService) ListRings(ctx context.Context, req *ringv1alpha1.ListRings
 
 func (s *ringService) CreateRing(ctx context.Context, req *ringv1alpha1.CreateRingRequest) (*ringv1alpha1.CreateRingResponse, error) {
 
-	manifest := &types.Ring{
-		Ring: ringv1alpha1.Ring{
-			Id:        "40b086ef",
-			N:         3,
-			T:         2,
-			Dkg:       "rabin",
-			Pss:       "avpss",
-			Pre:       "elgamal",
-			Bulletin:  "p2pbb",
-			Transport: "p2p",
-			Nodes:     req.Ring.Nodes,
-		},
+	manifest := &ringv1alpha1.Ring{
+		Id:        "40b086ef",
+		N:         3,
+		T:         2,
+		Dkg:       "rabin",
+		Pss:       "avpss",
+		Pre:       "elgamal",
+		Bulletin:  "p2pbb",
+		Transport: "p2p",
+		Nodes:     req.Ring.Nodes,
 	}
 
-	rr, err := s.app.NewRing(ctx, manifest)
+	rr, err := s.app.JoinRing(ctx, manifest)
 	if err != nil {
 		return nil, fmt.Errorf("create ring: %w", err)
 	}
-	_ = rr
+
+	err = rr.Start(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("starting ring: %w", err)
+	}
 	resp := &ringv1alpha1.CreateRingResponse{}
 
 	return resp, nil

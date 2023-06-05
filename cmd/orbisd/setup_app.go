@@ -49,6 +49,13 @@ func setupApp(ctx context.Context, cfg config.Config) (*app.App, error) {
 		return nil, fmt.Errorf("create app: %w", err)
 	}
 
+	// load state
+	log.Info("Loading rings from state")
+	err = app.LoadRings(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	return app, nil
 }
 
