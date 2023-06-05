@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/go-bond/bond"
+	logging "github.com/ipfs/go-log"
 )
 
 // type DB interface {
@@ -13,10 +14,7 @@ import (
 // 	Secrets() Repository[*types.Secret]
 // }
 
-var (
-	ErrRepoKeyInvalid = fmt.Errorf("invalid key")
-	ErrDuplicateKey   = fmt.Errorf("duplicate keys")
-)
+var log = logging.Logger("orbis/db")
 
 type RepoKey interface {
 	Name() string
@@ -44,10 +42,14 @@ type DB struct {
 	repos map[RepoKey]any // map[tableKey]Repository
 }
 
-func GetRepo[R Record](db *DB, rkey RepoKey) (Repository[R], error) {
+func GetRepo[R Record](db *DB, rkey RepoKey, pkFunc RepoPrimaryKeyFunc[R]) (Repository[R], error) {
+	if rkey == nil {
+		return nil, ErrRepoKeyInvalid
+	}
 	repo, ok := db.repos[rkey]
 	if !ok {
-		return nil, fmt.Errorf("no repo exists for %s", rkey.Name())
+		repo = newSimpleRepo[R](db.bond, pkFunc)
+		db.repos[rkey] = repo
 	}
 
 	repoTyped, ok := repo.(Repository[R])
@@ -59,7 +61,6 @@ func GetRepo[R Record](db *DB, rkey RepoKey) (Repository[R], error) {
 
 func New(path string) (*DB, error) {
 	opts := bond.DefaultOptions()
-	opts.Serializer = protoSerializer{}
 
 	dirname, err := os.UserHomeDir()
 	if err != nil {
@@ -82,17 +83,18 @@ func New(path string) (*DB, error) {
 //
 // The last parameter ...T is an *optional* generic type
 // inference, if the call site can't be explicit
-func MountRepo[T Record](db *DB, key RepoKey, _ ...T) error {
-	if key == nil {
-		return ErrRepoKeyInvalid
-	}
-	if _, exists := db.repos[key]; exists {
-		return ErrDuplicateKey
-	}
-	repo := newSimpleRepo[T](db.bond)
-	db.repos[key] = repo
-	return nil
-}
+// func MountRepo[T Record](db *DB, key RepoKey, _ ...T) error {
+// 	if key == nil {
+// 		return ErrRepoKeyInvalid
+// 	}
+// 	log.Debugf("db.MountRepo(): mounting repo %s", key.Name())
+// 	if _, exists := db.repos[key]; exists {
+// 		return ErrDuplicateKey
+// 	}
+// 	repo := newSimpleRepo[T](db.bond)
+// 	db.repos[key] = repo
+// 	return nil
+// }
 
 // func thing() {
 // 	// db, _ := New()

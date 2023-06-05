@@ -6,6 +6,8 @@ import (
 	"github.com/go-bond/bond"
 )
 
+type KeyBuilder = bond.KeyBuilder
+
 type Batch = bond.Batch
 
 type FilterFunc[R any] func(r R) bool
@@ -13,7 +15,7 @@ type OrderLessFunc[R any] func(r, r2 R) bool
 
 type Query[R any] interface {
 	After(R) Query[R]
-	Filter(FilterFunc[R]) Query[R]
+	// Filter(FilterFunc[R]) Query[R]
 	Limit(uint64) Query[R]
 	Offset(uint64) Query[R]
 	Order(OrderLessFunc[R]) Query[R]
@@ -29,9 +31,9 @@ func (q rawQuery[R]) After(r R) Query[R] {
 	return rawQuery[R]{q.bondQuery.After(r)}
 }
 
-func (q rawQuery[R]) Filter(filter FilterFunc[R]) Query[R] {
-	return rawQuery[R]{q.bondQuery.Filter(bond.FilterFunc[R](filter))}
-}
+// func (q rawQuery[R]) Filter(filter FilterFunc[R]) Query[R] {
+// 	return rawQuery[R]{q.bondQuery.Filter(bond.FilterFunc[R](filter))}
+// }
 
 func (q rawQuery[R]) Limit(limit uint64) Query[R] {
 	return rawQuery[R]{q.bondQuery.Limit(limit)}
