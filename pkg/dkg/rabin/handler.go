@@ -138,10 +138,9 @@ func (d *dkg) processSecretCommits(sc *rabindkg.SecretCommits) error {
 
 	d.pubKey = distkey.Public()
 	d.state = orbisdkg.CERTIFIED
-
 	log.Infof("Finished DKG Setup. Shared Public Key: %s", d.pubKey)
 
-	return nil
+	return d.save(context.TODO())
 }
 
 func (d *dkg) isMe(node transport.Node) bool {

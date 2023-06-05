@@ -2,6 +2,7 @@ package rabin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -40,8 +41,10 @@ type dkg struct {
 	pubKey  kyber.Point
 	privKey kyber.Scalar
 
-	dealRepo db.Repository[*rabinv1alpha1.Deal]
-	respRepo db.Repository[*rabinv1alpha1.Response]
+	dealRepo          db.Repository[*rabinv1alpha1.Deal]
+	respRepo          db.Repository[*rabinv1alpha1.Response]
+	secretCommitsRepo db.Repository[*rabinv1alpha1.SecretCommits]
+	dkgRepo           db.Repository[*rabinv1alpha1.DKG]
 
 	deals     chan dealDispatch
 	responses chan responseDispatch
@@ -57,19 +60,68 @@ type dkg struct {
 }
 
 func New(repo *db.DB, rkeys []db.RepoKey, t transport.Transport, b bulletin.Bulletin) (*dkg, error) {
+	if len(rkeys) != 4 {
+		return nil, ErrMissingRepoKeys
+	}
+	dealsRepo, err := db.GetRepo(repo, rkeys[0], dealPkFunc)
+	if err != nil {
+		return nil, errors.Join(ErrCouldntGetRepo, err)
+	}
+	respsRepo, err := db.GetRepo(repo, rkeys[1], responsePkFunc)
+	if err != nil {
+		return nil, errors.Join(ErrCouldntGetRepo, err)
+	}
+	secretCommitsRepo, err := db.GetRepo(repo, rkeys[2], secretCommitsPkFunc)
+	if err != nil {
+		return nil, errors.Join(ErrCouldntGetRepo, err)
+	}
+	dkgRepo, err := db.GetRepo(repo, rkeys[3], dkgPkFunc)
+	if err != nil {
+		return nil, errors.Join(ErrCouldntGetRepo, err)
+	}
 
-	//dealsRepo, err := db.GetRepo[db.Record](repo, rkeys[0])
-	//sharesRepo, err := db.GetRepo[db.Record](repo, rkeys[1])
 	return &dkg{
-		db:        repo,
-		transport: t,
-		bulletin:  b,
-		index:     -1,
+		db:                repo,
+		dealRepo:          dealsRepo,
+		respRepo:          respsRepo,
+		secretCommitsRepo: secretCommitsRepo,
+		dkgRepo:           dkgRepo,
+		transport:         t,
+		bulletin:          b,
+		index:             -1,
 	}, nil
 }
 
 // Init initializes the DKG with the target nodes
-func (d *dkg) Init(ctx context.Context, pk crypto.PrivateKey, nodes []orbisdkg.Node, n int32, threshold int32) error {
+func (d *dkg) Init(ctx context.Context, pk crypto.PrivateKey, rid types.RingID, nodes []orbisdkg.Node, n int32, threshold int32, fromState bool) error {
+	// try load from persisted state
+	// otherwise initalize from new
+	if fromState {
+		return d.initFromState(ctx, pk, rid, nodes, n, threshold)
+	}
+	return d.initFromNew(ctx, pk, rid, nodes, n, threshold)
+}
+
+func (d *dkg) initFromState(ctx context.Context, pk crypto.PrivateKey, rid types.RingID, nodes []orbisdkg.Node, n int32, threshold int32) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	d.ringID = rid
+	err := d.loadUnsafe(ctx)
+	if err != nil {
+		return err
+	}
+
+	// ensure the loaded state hasn't diverged from the initialized state
+	// Would imply that either the caller has made a mistake, or the DB
+	// has been currupted, either way, bad!
+	// TODO!!
+	// if !d.Equal(&dkg{...}) { ... }
+
+	return d.initCommon(ctx)
+}
+
+func (d *dkg) initFromNew(ctx context.Context, pk crypto.PrivateKey, rid types.RingID, nodes []orbisdkg.Node, n int32, threshold int32) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -82,6 +134,7 @@ func (d *dkg) Init(ctx context.Context, pk crypto.PrivateKey, nodes []orbisdkg.N
 		return err
 	}
 
+	d.ringID = rid
 	d.suite = suite
 	d.privKey = pk.Scalar()
 	d.pubKey = suite.Point().Mul(d.privKey, nil) // public point for scalar
@@ -92,8 +145,10 @@ func (d *dkg) Init(ctx context.Context, pk crypto.PrivateKey, nodes []orbisdkg.N
 		return orbisdkg.ErrBadNodeSet
 	}
 
-	points := make([]kyber.Point, 0, len(nodes))
-	for i, n := range nodes {
+	d.participants = nodes
+
+	points := make([]kyber.Point, 0, len(d.participants))
+	for i, n := range d.participants {
 		point := n.PublicKey().Point()
 		if point.Equal(d.pubKey) {
 			d.index = i
@@ -111,12 +166,21 @@ func (d *dkg) Init(ctx context.Context, pk crypto.PrivateKey, nodes []orbisdkg.N
 		return fmt.Errorf("create DKG: %w", err)
 	}
 
-	d.participants = nodes
 	d.rdkg = rdkg
+	d.state = orbisdkg.INITIALIZED
 
+	err = d.initCommon(ctx)
+	if err != nil {
+		return err
+	}
+	return d.save(ctx) // save the initialized state
+}
+
+// initCommon does all the none state initialization. Shared
+// between initFromNew() and initFromState()
+func (d *dkg) initCommon(ctx context.Context) error {
 	// setup stream handler for transport
 	d.setupHandlers()
-	d.state = orbisdkg.INITIALIZED
 
 	d.deals = make(chan dealDispatch, d.numExpectedDeals())
 	d.responses = make(chan responseDispatch, d.numExpectedResponses())
@@ -146,43 +210,80 @@ func (d *dkg) State() orbisdkg.State {
 func (d *dkg) Start(ctx context.Context) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	d.state = orbisdkg.STARTED
 
-	// TODO
-	// if !d.initialized {
-	// 	return orbisdkg.ErrNotInitialized
-	// }
+	log.Debug("Starting rabin DKG")
 
-	deals, err := d.rdkg.Deals()
-	if err != nil {
-		return fmt.Errorf("generate deals: %w", err)
-	}
-
-	for i, deal := range deals {
-		dealproto, err := d.dealToProto(deal)
-		if err != nil {
-			return fmt.Errorf("convert deal to proto: %w", err)
-		}
-
-		// TODO: save deals to db
-		// if err := d.deals.Create(ctx, dealproto); err != nil {
-		// 	return fmt.Errorf("create deal: %w", err)
+	if d.state == orbisdkg.INITIALIZED {
+		log.Debug("Generating and persisting deals")
+		// TODO
+		// if !d.initialized {
+		// 	return orbisdkg.ErrNotInitialized
 		// }
 
-		log.Infof("node %d sending deal to partitipants %d (%x)", d.index, i, deal.Deal.Signature)
-		if i == d.index {
-			// TODO: deliver to ourselves
-			continue
+		deals, err := d.rdkg.Deals()
+		if err != nil {
+			return fmt.Errorf("generate deals: %w", err)
 		}
 
-		buf, err := proto.Marshal(dealproto)
-		if err != nil {
-			return fmt.Errorf("marshal deal: %w", err)
+		// persist deals
+		for _, deal := range deals {
+			fmt.Printf("signature: %x\n", deal.Deal.Signature)
+
+			dealproto, err := d.dealToProto(deal)
+			if err != nil {
+				return fmt.Errorf("convert deal to proto: %w", err)
+			}
+
+			dealproto.RingId = string(d.ringID)
+			dealproto.NodeId = d.transport.Host().ID()
+			log.Debugf("creating doc: %+v", deal)
+			if err := d.dealRepo.Create(ctx, dealproto); err != nil {
+				return fmt.Errorf("create deal: %w", err)
+			}
 		}
 
-		err = d.send(ctx, string(ProtocolDeal), buf, d.participants[i])
+		d.state = orbisdkg.STARTED
+		if err := d.save(ctx); err != nil {
+			return err
+		}
+	}
+
+	if d.state == orbisdkg.STARTED {
+		log.Debug("Sending deals to nodes")
+		// send deals
+		dealProtos, err := d.dealRepo.GetAll(ctx)
 		if err != nil {
-			return fmt.Errorf("send deal: %w", err)
+			return fmt.Errorf("getting deals to broadcast: %w", err)
+		}
+
+		for i, deal := range dealProtos {
+
+			// skip deals that don't match the nodeID and ringID of this DKG
+			// This can be removed once proper filtering is working on the repo
+			if deal.NodeId != d.transport.Host().ID() &&
+				deal.RingId != string(d.ringID) {
+				continue
+			}
+
+			log.Infof("node %d sending deal to partitipants %d (%x)", d.index, deal.TargetIndex, deal.Deal.Signature)
+			if i == d.index {
+				// TODO: deliver to ourselves
+				continue
+			}
+
+			buf, err := proto.Marshal(deal)
+			if err != nil {
+				return fmt.Errorf("marshal deal: %w", err)
+			}
+
+			err = d.send(ctx, string(ProtocolDeal), buf, d.participants[deal.TargetIndex])
+			if err != nil {
+				return fmt.Errorf("send deal: %w", err)
+			}
+		}
+		d.state = RECIEVING
+		if err := d.save(ctx); err != nil {
+			return err
 		}
 	}
 
@@ -224,16 +325,19 @@ func (d *dkg) ProcessMessage(msg *transport.Message) error {
 		if err != nil {
 			return fmt.Errorf("unmarshal deal message: %w", err)
 		}
-
-		deal, err := d.dealFromProto(&protoDeal)
-		if err != nil {
-			return fmt.Errorf("deal message from proto: %w", err)
+		protoDeal.RingId = string(d.ringID)
+		protoDeal.NodeId = msg.NodeId
+		err = d.dealRepo.Create(context.TODO(), &protoDeal)
+		if err != nil && !errors.Is(err, db.ErrRecordAlreadyExists) {
+			// don't need to process if it already exists
+			return nil
+		} else if err != nil {
+			return fmt.Errorf("failed to insert deal into repo: %w", err)
 		}
 
-		log.Infof("dkg.ProcessMessage() node %d process deal %d (%x)", d.index, deal.Index, deal.Deal.Signature)
-		err = d.dispatchDeal(deal)
+		err = d.dispatchDealProto(&protoDeal)
 		if err != nil {
-			return fmt.Errorf("process deal message: %w", err)
+			return err
 		}
 
 	case string(ProtocolResponse):
@@ -245,13 +349,21 @@ func (d *dkg) ProcessMessage(msg *transport.Message) error {
 		if err != nil {
 			return fmt.Errorf("unmarshal response message: %w", err)
 		}
-
-		resp := d.responseFromProto(&protoResponse)
-
-		err = d.dispatchResponse(resp)
-		if err != nil {
-			return fmt.Errorf("process response message: %w", err)
+		protoResponse.RingId = string(d.ringID)
+		protoResponse.NodeId = msg.NodeId
+		err = d.respRepo.Create(context.TODO(), &protoResponse)
+		if err != nil && !errors.Is(err, db.ErrRecordAlreadyExists) {
+			// don't need to process if it already exists
+			return nil
+		} else if err != nil {
+			return fmt.Errorf("failed to insert deal into repo: %w", err)
 		}
+
+		err = d.dispatchResponseProto(&protoResponse)
+		if err != nil {
+			return err
+		}
+
 	case string(ProtocolSecretCommits):
 		log.Infof("dkg.ProcessMessage() ProtocolSecretCommits: id: %s", msg.Id)
 		var protoSecretCommits rabinv1alpha1.SecretCommits
@@ -260,14 +372,19 @@ func (d *dkg) ProcessMessage(msg *transport.Message) error {
 			return fmt.Errorf("unmarshal secret commits: %w", err)
 		}
 
-		sc, err := secretCommitsFromProto(d.suite, &protoSecretCommits)
-		if err != nil {
-			return fmt.Errorf("secret commits from proto: %w", err)
+		protoSecretCommits.RingId = string(d.ringID)
+		protoSecretCommits.NodeId = msg.NodeId
+		err = d.secretCommitsRepo.Create(context.TODO(), &protoSecretCommits)
+		if err != nil && !errors.Is(err, db.ErrRecordAlreadyExists) {
+			// don't need to process if it already exists
+			return nil
+		} else if err != nil {
+			return fmt.Errorf("failed to insert deal into repo: %w", err)
 		}
 
-		err = d.dispatchSecretCommit(sc)
+		err = d.dispatchSecretCommitsProto(&protoSecretCommits)
 		if err != nil {
-			return fmt.Errorf("process secret commits: %w", err)
+			return err
 		}
 
 	default:
@@ -287,21 +404,30 @@ func (d *dkg) ProcessMessage(msg *transport.Message) error {
 func (d *dkg) dispatch() {
 	// processDeals
 	log.Infof("handling %d expected deals", d.numExpectedDeals())
-	for i := 0; i < d.numExpectedDeals(); i++ {
+	for i := 0; i < d.numExpectedDeals() && d.state < PROCESSED_DEALS; i++ {
 		dd := <-d.deals
 		log.Infof("%d: handling deal %d", i, dd.deal.Index)
 		dd.err <- d.processDeal(dd.deal)
 	}
-	close(d.deals)
 
+	close(d.deals)
+	d.state = PROCESSED_DEALS
+	if err := d.save(context.TODO()); err != nil {
+		log.Fatal("failed to save DKG state: %w", err)
+	}
 	// processResponses
 	log.Infof("handling %d expected responses", d.numExpectedResponses())
-	for i := 0; i < d.numExpectedResponses(); i++ {
+	for i := 0; i < d.numExpectedResponses() && d.state < PROCESSED_RESPONSES; i++ {
 		rd := <-d.responses
 		log.Infof("%d: handling response %d", i, rd.respone.Index)
 		rd.err <- d.processResponse(rd.respone)
 	}
+
 	close(d.responses)
+	d.state = PROCESSED_RESPONSES
+	if err := d.save(context.TODO()); err != nil {
+		log.Fatal("failed to save DKG state: %w", err)
+	}
 
 	// processSecrets
 	log.Infof("handling %d expected secrets", d.numExpectedCommits())
@@ -311,6 +437,24 @@ func (d *dkg) dispatch() {
 		sd.err <- d.processSecretCommits(sd.secretCommits)
 	}
 	close(d.commits)
+
+	// don't need to update state and save
+	// like the above dispatch loops
+	// since `processSecreCommits` will do
+	// this for us.
+}
+
+func (d *dkg) dispatchDealProto(dealproto *rabinv1alpha1.Deal) error {
+	deal, err := d.dealFromProto(dealproto)
+	if err != nil {
+		return fmt.Errorf("deal from proto: %w", err)
+	}
+
+	err = d.dispatchDeal(deal)
+	if err != nil {
+		return fmt.Errorf("process deals: %w", err)
+	}
+	return nil
 }
 
 func (d *dkg) dispatchDeal(deal *rabindkg.Deal) error {
@@ -322,6 +466,16 @@ func (d *dkg) dispatchDeal(deal *rabindkg.Deal) error {
 	return <-dealDispatchEvent.err // recieve
 }
 
+func (d *dkg) dispatchResponseProto(respproto *rabinv1alpha1.Response) error {
+	resp := d.responseFromProto(respproto)
+
+	err := d.dispatchResponse(resp)
+	if err != nil {
+		return fmt.Errorf("process secret commits: %w", err)
+	}
+	return nil
+}
+
 func (d *dkg) dispatchResponse(resp *rabindkg.Response) error {
 	respDispatchEvent := responseDispatch{
 		err:     make(chan error),
@@ -329,6 +483,19 @@ func (d *dkg) dispatchResponse(resp *rabindkg.Response) error {
 	}
 	d.responses <- respDispatchEvent // send
 	return <-respDispatchEvent.err   // recieve
+}
+
+func (d *dkg) dispatchSecretCommitsProto(scproto *rabinv1alpha1.SecretCommits) error {
+	sc, err := secretCommitsFromProto(d.suite, scproto)
+	if err != nil {
+		return fmt.Errorf("secret commits from proto: %w", err)
+	}
+
+	err = d.dispatchSecretCommit(sc)
+	if err != nil {
+		return fmt.Errorf("process secret commits: %w", err)
+	}
+	return nil
 }
 
 func (d *dkg) dispatchSecretCommit(sc *rabindkg.SecretCommits) error {
@@ -352,4 +519,58 @@ func (d *dkg) numExpectedResponses() int {
 func (d *dkg) numExpectedCommits() int {
 	l := len(d.participants)
 	return (l - 1) * (l - 1)
+}
+
+// save will persist the current DKG state to the DKG Repo.
+// It only saves state from the DKG struct, and not the dynamic
+// deals, responses, and secret commmits from the internal
+// rabin implementation. Those are saved independantly.
+func (d *dkg) save(ctx context.Context) error {
+	dkgp, err := dkgToProto(d)
+	if err != nil {
+		return fmt.Errorf("proto conversion: %w", err)
+	}
+
+	err = d.dkgRepo.Save(ctx, dkgp)
+	if err != nil {
+		return fmt.Errorf("saving dkg: %w", err)
+	}
+	return nil
+}
+
+// load will get the persisted DKG state from the DKG Repo.
+// It directly writes the result into the pointer, in place.
+func (d *dkg) load(ctx context.Context) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.loadUnsafe(ctx)
+}
+
+// loadUnsafe is the same as load, but without locks.
+// It requires the caller to aquire a lock
+func (d *dkg) loadUnsafe(ctx context.Context) error {
+	dkgp, err := dkgToProto(d)
+	if err != nil {
+		return fmt.Errorf("dkg to proto: %w", err)
+	}
+	dkgp, err = d.dkgRepo.Get(ctx, dkgp)
+	if err != nil {
+		return fmt.Errorf("dkg from repo: %w", err)
+	}
+
+	_d, err := dkgFromProto(dkgp)
+	if err != nil {
+		return fmt.Errorf("dkg from proto: %w", err)
+	}
+
+	// inplace mutation of state defined on pointer reciever
+	d.index = _d.index
+	d.num = _d.num
+	d.threshold = _d.threshold
+	d.suite = _d.suite
+	d.state = _d.state
+	d.pubKey = _d.pubKey
+	d.share = _d.share
+	d.participants = _d.participants
+	return nil
 }

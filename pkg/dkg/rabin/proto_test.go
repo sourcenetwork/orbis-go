@@ -3,7 +3,6 @@ package rabin
 import (
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/require"
 	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/kyber/v3/group/edwards25519"
@@ -30,8 +29,6 @@ func TestProtoDealSerialization(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-
-	spew.Dump(deals[1])
 
 	d1, err := dealToProto(deals[1])
 	if err != nil {

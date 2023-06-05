@@ -2,9 +2,8 @@ package rabin
 
 import (
 	"github.com/samber/do"
-	rabinv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/rabin/v1alpha1"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
-	"github.com/sourcenetwork/orbis-go/pkg/db"
+	odb "github.com/sourcenetwork/orbis-go/pkg/db"
 	orbisdkg "github.com/sourcenetwork/orbis-go/pkg/dkg"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
 	"github.com/sourcenetwork/orbis-go/pkg/types"
@@ -17,8 +16,8 @@ var (
 
 type factory struct{}
 
-func (factory) New(inj *do.Injector, rkeys []db.RepoKey) (orbisdkg.DKG, error) {
-	db, err := do.Invoke[*db.DB](inj)
+func (factory) New(inj *do.Injector, rkeys []odb.RepoKey) (orbisdkg.DKG, error) {
+	db, err := do.Invoke[*odb.DB](inj)
 	if err != nil {
 		return nil, err
 	}
@@ -30,6 +29,7 @@ func (factory) New(inj *do.Injector, rkeys []db.RepoKey) (orbisdkg.DKG, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return New(db, rkeys, t, b)
 }
 
@@ -37,8 +37,8 @@ func (factory) Name() string {
 	return name
 }
 
-func (factory) Repos() []db.Record {
-	return []db.Record{&rabinv1alpha1.Deal{}, &rabinv1alpha1.Response{}}
+func (factory) Repos() []string {
+	return []string{"deals", "responses", "secretCommits", "dkg"}
 }
 
 // /rabin/{deals,shares}

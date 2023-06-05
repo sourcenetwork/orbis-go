@@ -3,19 +3,69 @@ package rabin
 import (
 	"fmt"
 
+	ic "github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/protocol"
+	ma "github.com/multiformats/go-multiaddr"
 	"go.dedis.ch/kyber/v3"
+	"go.dedis.ch/kyber/v3/group/edwards25519"
 	rabindkg "go.dedis.ch/kyber/v3/share/dkg/rabin"
 	rabinvss "go.dedis.ch/kyber/v3/share/vss/rabin"
 	"go.dedis.ch/kyber/v3/suites"
 
 	rabinv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/rabin/v1alpha1"
+	"github.com/sourcenetwork/orbis-go/pkg/crypto/suites/secp256k1"
+	"github.com/sourcenetwork/orbis-go/pkg/db"
 	orbisdkg "github.com/sourcenetwork/orbis-go/pkg/dkg"
+	p2ptransport "github.com/sourcenetwork/orbis-go/pkg/transport/p2p"
+	"github.com/sourcenetwork/orbis-go/pkg/types"
+)
+
+const (
+	// Processed all the deals, waiting for responses
+	PROCESSED_DEALS     orbisdkg.State = orbisdkg.CUSTOM_STATE_MASK | iota // 0b10000000
+	PROCESSED_RESPONSES                                                    // 0b10000001
+	PROCESSED_COMMITS                                                      // 0b10000010
+
+	RECIEVING
+
+	PROCESSING = PROCESSED_DEALS | PROCESSED_RESPONSES
+)
+
+var (
+	ErrMissingRepoKeys = fmt.Errorf("missing repo keys")
 )
 
 type Deal = rabinv1alpha1.Deal
+
+// /ringID/nodeID/dealIndex
+func dealPkFunc(kb db.KeyBuilder, d *Deal) []byte {
+	return kb.AddStringField(d.RingId).
+		AddStringField(d.NodeId).
+		AddInt32Field(int32(d.TargetIndex)).
+		Bytes()
+}
+
 type Response = rabinv1alpha1.Response
+
+func responsePkFunc(kb db.KeyBuilder, d *Response) []byte {
+	return kb.AddStringField(d.RingId).
+		AddStringField(d.NodeId).
+		AddInt32Field(int32(d.Index)).
+		Bytes()
+}
+
 type SecretCommits = rabinv1alpha1.SecretCommits
+
+func secretCommitsPkFunc(kb db.KeyBuilder, d *SecretCommits) []byte {
+	return kb.AddStringField(d.RingId).
+		AddStringField(d.NodeId).
+		AddInt32Field(int32(d.Index)).
+		Bytes()
+}
+
+func dkgPkFunc(kb db.KeyBuilder, d *rabinv1alpha1.DKG) []byte {
+	return kb.AddStringField(d.RingId).Bytes()
+}
 
 var (
 	// full protocol example: /orbis/0x123/dkg/rabin/send_deal/0.0.1
@@ -24,6 +74,7 @@ var (
 	ProtocolSecretCommits protocol.ID = orbisdkg.ProtocolName + "/rabin/secretcommits/0.0.1"
 
 	ErrDealNotCertified = fmt.Errorf("dkg: can't give SecretCommits if deal not certified")
+	ErrCouldntGetRepo   = fmt.Errorf("dkg: can't get repo")
 )
 
 func (d *dkg) dealToProto(deal *rabindkg.Deal) (*Deal, error) {
@@ -37,7 +88,8 @@ func dealToProto(deal *rabindkg.Deal) (*Deal, error) {
 	}
 
 	return &Deal{
-		Index: deal.Index,
+		TargetIndex: int32(deal.Target),
+		Index:       deal.Index,
 		Deal: &rabinv1alpha1.EncryptedDeal{
 			Dhkey:     dkheyBytes,
 			Signature: deal.Deal.Signature,
@@ -58,7 +110,8 @@ func dealFromProto(suite suites.Suite, deal *Deal) (*rabindkg.Deal, error) {
 	}
 
 	return &rabindkg.Deal{
-		Index: deal.Index,
+		Index:  deal.Index,
+		Target: uint32(deal.TargetIndex),
 		Deal: &rabinvss.EncryptedDeal{
 			DHKey:     dhpoint,
 			Signature: deal.Deal.Signature,
@@ -127,6 +180,138 @@ func secretCommitsFromProto(suite suites.Suite, sc *SecretCommits) (*rabindkg.Se
 		Commitments: points,
 		SessionID:   sc.SessionId,
 		Signature:   sc.Signature,
+	}, nil
+}
+
+func dkgToProto(d *dkg) (*rabinv1alpha1.DKG, error) {
+	var suiteType rabinv1alpha1.SuiteType
+	if d.suite != nil {
+		switch d.suite.String() {
+		case "Ed25519":
+			suiteType = rabinv1alpha1.SuiteType_Ed25519
+		case "Secp256k1":
+			suiteType = rabinv1alpha1.SuiteType_Secp256k1
+		default:
+			return nil, fmt.Errorf("invalid suite type: %v", d.suite.String())
+		}
+	}
+
+	var state rabinv1alpha1.State
+	switch d.state {
+	case orbisdkg.INITIALIZED:
+		state = rabinv1alpha1.State_STATE_INITIALIZED
+	case orbisdkg.STARTED:
+		state = rabinv1alpha1.State_STATE_STARTED
+	case orbisdkg.CERTIFIED:
+		state = rabinv1alpha1.State_STATE_CERTIFIED
+	case PROCESSED_DEALS:
+		state = rabinv1alpha1.State_STATE_PROCESSED_DEALS
+	case PROCESSED_RESPONSES:
+		state = rabinv1alpha1.State_STATE_PROCESSED_RESPONSES
+	case PROCESSED_COMMITS:
+		state = rabinv1alpha1.State_STATE_PROCESSED_COMMITS
+	default:
+		return nil, fmt.Errorf("invalid state: %v", d.state)
+	}
+
+	var nodes []*rabinv1alpha1.Node
+	if d.participants != nil {
+		nodes = make([]*rabinv1alpha1.Node, len(d.participants))
+		for i, p := range d.participants {
+			pk, err := ic.PublicKeyToProto(p.PublicKey())
+			if err != nil {
+				return nil, fmt.Errorf("couldnt convert public key to proto: %w", err)
+			}
+			nodes[i] = &rabinv1alpha1.Node{
+				Id:        p.ID(),
+				Address:   p.Address().String(),
+				PublicKey: pk,
+			}
+		}
+	}
+
+	var pubkey []byte
+	var err error
+	if d.pubKey != nil {
+		pubkey, err = d.pubKey.MarshalBinary()
+		if err != nil {
+			return nil, fmt.Errorf("couldn't marshal pubkey: %w", err)
+		}
+	}
+
+	var prishare *rabinv1alpha1.PriShare
+	if d.share.PriShare != nil {
+		sbuf, err := d.share.V.MarshalBinary()
+		if err != nil {
+			return nil, fmt.Errorf("couldn't marshal private share: %w", err)
+		}
+		prishare = &rabinv1alpha1.PriShare{
+			Index: int32(d.share.I),
+			V:     sbuf,
+		}
+	}
+
+	return &rabinv1alpha1.DKG{
+		RingId:    string(d.ringID),
+		Index:     int32(d.index),
+		Num:       d.num,
+		Threshold: d.threshold,
+		Suite:     suiteType,
+		State:     state,
+		Nodes:     nodes,
+		Pubkey:    pubkey,
+		PriShare:  prishare,
+	}, nil
+}
+
+func dkgFromProto(d *rabinv1alpha1.DKG) (dkg, error) {
+	var suite suites.Suite
+	switch d.Suite {
+	case rabinv1alpha1.SuiteType_Ed25519:
+		suite = edwards25519.NewBlakeSHA256Ed25519()
+	case rabinv1alpha1.SuiteType_Secp256k1:
+		suite = secp256k1.NewBlakeKeccackSecp256k1()
+	default:
+		return dkg{}, fmt.Errorf("bad key type: %v", d.Suite.String())
+	}
+
+	var state orbisdkg.State
+	switch d.State {
+	case rabinv1alpha1.State_STATE_INITIALIZED:
+		state = orbisdkg.INITIALIZED
+	case rabinv1alpha1.State_STATE_STARTED:
+		state = orbisdkg.STARTED
+	case rabinv1alpha1.State_STATE_CERTIFIED:
+		state = orbisdkg.CERTIFIED
+	case rabinv1alpha1.State_STATE_PROCESSED_DEALS:
+		state = PROCESSED_DEALS
+	case rabinv1alpha1.State_STATE_PROCESSED_RESPONSES:
+		state = PROCESSED_RESPONSES
+	case rabinv1alpha1.State_STATE_PROCESSED_COMMITS:
+		state = PROCESSED_COMMITS
+	}
+
+	participants := make([]orbisdkg.Node, len(d.Nodes))
+	for i, n := range d.Nodes {
+		pk, err := ic.PublicKeyFromProto(n.PublicKey)
+		if err != nil {
+			return dkg{}, fmt.Errorf("couldnt convert proto to public key: %w", err)
+		}
+		addr, err := ma.NewMultiaddr(n.Address)
+		if err != nil {
+			return dkg{}, fmt.Errorf("invalid address: %w", err)
+		}
+		participants[i] = p2ptransport.NewNode(n.Id, pk, addr)
+	}
+
+	return dkg{
+		ringID:       types.RingID(d.RingId),
+		index:        int(d.Index),
+		num:          d.Num,
+		threshold:    d.Threshold,
+		suite:        suite,
+		state:        state,
+		participants: participants,
 	}, nil
 }
 
