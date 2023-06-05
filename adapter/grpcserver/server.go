@@ -5,7 +5,7 @@ import (
 
 	"github.com/sourcenetwork/orbis-go/app"
 	"github.com/sourcenetwork/orbis-go/config"
-	p2pv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/p2p/v1alpha1"
+	hostv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/host/v1alpha1"
 	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/ring/v1alpha1"
 	secretv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/secret/v1alpha1"
 	transportv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/transport/v1alpha1"
@@ -34,7 +34,7 @@ func NewGRPCServer(cfg config.GRPC, a *app.App) *grpc.Server {
 	s := grpc.NewServer(opts...)
 
 	// Setup orbis service handlers to the server.
-	p2pv1alpha1.RegisterP2PServiceServer(s, newP2PService(a.Host()))
+	hostv1alpha1.RegisterHostServiceServer(s, newHostService(a.Host()))
 	transportv1alpha1.RegisterTransportServiceServer(s, newTransportService(a.Transport()))
 	ringv1alpha1.RegisterRingServiceServer(s, newRingService(a))
 	secretv1alpha1.RegisterSecretServiceServer(s, newSecretService())

@@ -3,7 +3,7 @@ package grpcserver
 import (
 	"context"
 
-	p2pv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/p2p/v1alpha1"
+	hostv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/host/v1alpha1"
 	"github.com/sourcenetwork/orbis-go/pkg/host"
 
 	libp2ppeer "github.com/libp2p/go-libp2p/core/peer"
@@ -11,42 +11,42 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type p2pService struct {
-	p2pv1alpha1.UnimplementedP2PServiceServer
+type hostService struct {
+	hostv1alpha1.UnimplementedHostServiceServer
 
 	h *host.Host
 }
 
-func newP2PService(h *host.Host) *p2pService {
-	return &p2pService{
+func newHostService(h *host.Host) *hostService {
+	return &hostService{
 		h: h,
 	}
 }
 
-func (s *p2pService) Host(ctx context.Context, req *p2pv1alpha1.HostRequest) (*p2pv1alpha1.HostResponse, error) {
+func (s *hostService) Host(ctx context.Context, req *hostv1alpha1.HostRequest) (*hostv1alpha1.HostResponse, error) {
 
 	pi := libp2ppeer.AddrInfo{
 		ID:    s.h.ID(),
 		Addrs: s.h.Addrs(),
 	}
 
-	resp := &p2pv1alpha1.HostResponse{
+	resp := &hostv1alpha1.HostResponse{
 		Id: pi.String(),
 	}
 
 	return resp, nil
 }
 
-func (s *p2pService) Peers(ctx context.Context, req *p2pv1alpha1.PeersRequest) (*p2pv1alpha1.PeersResponse, error) {
+func (s *hostService) Peers(ctx context.Context, req *hostv1alpha1.PeersRequest) (*hostv1alpha1.PeersResponse, error) {
 
-	resp := &p2pv1alpha1.PeersResponse{
+	resp := &hostv1alpha1.PeersResponse{
 		Ids: s.h.Peers(),
 	}
 
 	return resp, nil
 }
 
-func (s *p2pService) Send(ctx context.Context, req *p2pv1alpha1.SendRequest) (*p2pv1alpha1.SendResponse, error) {
+func (s *hostService) Send(ctx context.Context, req *hostv1alpha1.SendRequest) (*hostv1alpha1.SendResponse, error) {
 
 	str := req.PeerInfo
 	pi, err := libp2ppeer.AddrInfoFromString(str)
@@ -59,12 +59,12 @@ func (s *p2pService) Send(ctx context.Context, req *p2pv1alpha1.SendRequest) (*p
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	resp := &p2pv1alpha1.SendResponse{}
+	resp := &hostv1alpha1.SendResponse{}
 
 	return resp, nil
 }
 
-func (s *p2pService) Connect(ctx context.Context, req *p2pv1alpha1.ConnectRequest) (*p2pv1alpha1.ConnectResponse, error) {
+func (s *hostService) Connect(ctx context.Context, req *hostv1alpha1.ConnectRequest) (*hostv1alpha1.ConnectResponse, error) {
 
 	pi, err := libp2ppeer.AddrInfoFromString(req.PeerInfo)
 	if err != nil {
@@ -76,24 +76,24 @@ func (s *p2pService) Connect(ctx context.Context, req *p2pv1alpha1.ConnectReques
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	resp := &p2pv1alpha1.ConnectResponse{}
+	resp := &hostv1alpha1.ConnectResponse{}
 
 	return resp, nil
 }
 
-func (s *p2pService) Publish(ctx context.Context, req *p2pv1alpha1.PublishRequest) (*p2pv1alpha1.PublishResponse, error) {
+func (s *hostService) Publish(ctx context.Context, req *hostv1alpha1.PublishRequest) (*hostv1alpha1.PublishResponse, error) {
 
 	err := s.h.Publish(ctx, req.Topic, req.Data)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	resp := &p2pv1alpha1.PublishResponse{}
+	resp := &hostv1alpha1.PublishResponse{}
 
 	return resp, nil
 }
 
-func (s *p2pService) Subscribe(req *p2pv1alpha1.SubscribeRequest, srv p2pv1alpha1.P2PService_SubscribeServer) error {
+func (s *hostService) Subscribe(req *hostv1alpha1.SubscribeRequest, srv hostv1alpha1.HostService_SubscribeServer) error {
 
 	ctx := srv.Context()
 	sub, err := s.h.Subscribe(ctx, req.Topic)
@@ -106,7 +106,7 @@ func (s *p2pService) Subscribe(req *p2pv1alpha1.SubscribeRequest, srv p2pv1alpha
 		if err != nil {
 			return status.Error(codes.Internal, err.Error())
 		}
-		err = srv.Send(&p2pv1alpha1.SubscribeResponse{
+		err = srv.Send(&hostv1alpha1.SubscribeResponse{
 			Data: msg.Data,
 		})
 		if err != nil {
