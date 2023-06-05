@@ -6,7 +6,6 @@ require (
 	github.com/NathanBaulch/protoc-gen-cobra v1.2.1
 	github.com/btcsuite/btcd/btcec/v2 v2.3.0
 	github.com/cenkalti/backoff/v4 v4.2.1
-	github.com/davecgh/go-spew v1.1.1
 	github.com/ethereum/go-ethereum v1.11.4
 	github.com/go-bond/bond v0.1.42
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.15.2
@@ -43,6 +42,7 @@ require (
 	github.com/cockroachdb/redact v1.1.3 // indirect
 	github.com/containerd/cgroups v1.1.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
@@ -168,7 +168,7 @@ require (
 )
 
 replace (
-	github.com/go-bond/bond => ../bond //github.com/sourcenetwork/bond v0.0.0-20230602041731-de398b572984
+	github.com/go-bond/bond => github.com/sourcenetwork/bond v0.0.0-20230605094713-887163472771
 	github.com/sourcenetwork/go-libp2p-pubsub-rpc => github.com/sourcenetwork/go-libp2p-pubsub-rpc v0.0.0-20230524064401-a125104e968e
-	go.dedis.ch/kyber/v3 => ../kyber
+	go.dedis.ch/kyber/v3 => github.com/sourcenetwork/kyber/v3 v3.1.1-0.20230605094121-e2b935c87d3e //../kyber
 )
