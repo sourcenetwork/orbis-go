@@ -198,6 +198,8 @@ func dkgToProto(d *dkg) (*rabinv1alpha1.DKG, error) {
 
 	var state rabinv1alpha1.State
 	switch d.state {
+	case orbisdkg.UNSPECIFIED:
+		state = rabinv1alpha1.State_STATE_UNSPECIFIED
 	case orbisdkg.INITIALIZED:
 		state = rabinv1alpha1.State_STATE_INITIALIZED
 	case orbisdkg.STARTED:
@@ -210,8 +212,10 @@ func dkgToProto(d *dkg) (*rabinv1alpha1.DKG, error) {
 		state = rabinv1alpha1.State_STATE_PROCESSED_RESPONSES
 	case PROCESSED_COMMITS:
 		state = rabinv1alpha1.State_STATE_PROCESSED_COMMITS
+	case RECIEVING:
+		state = rabinv1alpha1.State_STATE_PROCESSED_RECEVING
 	default:
-		return nil, fmt.Errorf("invalid state: %v", d.state)
+		return nil, fmt.Errorf("invalid state: %v, 0x%0x", d.state, d.state)
 	}
 
 	var nodes []*rabinv1alpha1.Node
@@ -277,6 +281,8 @@ func dkgFromProto(d *rabinv1alpha1.DKG) (dkg, error) {
 
 	var state orbisdkg.State
 	switch d.State {
+	case rabinv1alpha1.State_STATE_UNSPECIFIED:
+		state = orbisdkg.UNSPECIFIED
 	case rabinv1alpha1.State_STATE_INITIALIZED:
 		state = orbisdkg.INITIALIZED
 	case rabinv1alpha1.State_STATE_STARTED:

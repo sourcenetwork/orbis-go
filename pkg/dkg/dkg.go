@@ -9,10 +9,10 @@ import (
 )
 
 const (
-	UNINITIALIZED State = iota // DKG group has not been initialized.
-	INITIALIZED                // DKG group has initialized but not started the generation.
-	STARTED                    // Started the distributed key generation.
-	CERTIFIED                  // Generated and cerified the shared key.
+	UNSPECIFIED State = iota // DKG group has not been initialized.
+	INITIALIZED              // DKG group has initialized but not started the generation.
+	STARTED                  // Started the distributed key generation.
+	CERTIFIED                // Generated and cerified the shared key.
 
 	CUSTOM_STATE_MASK State = 0b10000000 // Mask to reserve usage of custom enums for implementations
 
@@ -24,8 +24,8 @@ type State uint8
 
 func (s State) String() string {
 	switch s {
-	case UNINITIALIZED:
-		return "UNINITIALIZED"
+	case UNSPECIFIED:
+		return "UNSPECIFIED"
 	case INITIALIZED:
 		return "INITIALIZED"
 	case STARTED:

@@ -6,30 +6,32 @@ import "libp2p/crypto/v1/crypto.proto";
 // import "sourcenetwork/orbis/crypto/v1alpha1/crypto.proto";
 
 enum SuiteType {
-    NONE = 0;
-    Ed25519 = 1;
-    Secp256k1 = 2;
+  NONE = 0;
+  Ed25519 = 1;
+  Secp256k1 = 2;
 }
 
 enum State {
-    STATE_INITIALIZED = 0;
-    STATE_STARTED = 1;
-    STATE_CERTIFIED = 2;
-    STATE_PROCESSED_DEALS = 128;
-    STATE_PROCESSED_RESPONSES = 129;
-    STATE_PROCESSED_COMMITS = 130;
+  STATE_UNSPECIFIED = 0;
+  STATE_INITIALIZED = 1;
+  STATE_STARTED = 2;
+  STATE_CERTIFIED = 3;
+  STATE_PROCESSED_DEALS = 128;
+  STATE_PROCESSED_RESPONSES = 129;
+  STATE_PROCESSED_COMMITS = 130;
+  STATE_PROCESSED_RECEVING = 131;
 }
 
 message DKG {
-    string ring_id = 1;
-    int32 index = 2;
-    int32 num = 3;
-    int32 threshold = 4;
-    SuiteType suite = 5;
-    State state = 6;
-    bytes pubkey = 7;
-    PriShare pri_share = 8;
-    repeated Node nodes = 9;
+  string ring_id = 1;
+  int32 index = 2;
+  int32 num = 3;
+  int32 threshold = 4;
+  SuiteType suite = 5;
+  State state = 6;
+  bytes pubkey = 7;
+  PriShare pri_share = 8;
+  repeated Node nodes = 9;
 }
 
 message Node {
@@ -39,6 +41,6 @@ message Node {
 }
 
 message PriShare {
-    int32 index = 1;
-    bytes v = 2;
+  int32 index = 1;
+  bytes v = 2;
 }

@@ -52,6 +52,11 @@ func (s *ringService) CreateRing(ctx context.Context, req *ringv1alpha1.CreateRi
 		Id: string(r.ID),
 	}
 
+	err = r.Start(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("start ring: %w", err)
+	}
+
 	return resp, nil
 }
 
