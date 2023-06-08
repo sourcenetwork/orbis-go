@@ -1,0 +1,21 @@
+defaultBaseImage: debian:bullseye-slim
+defaultPlatforms:
+  - linux/arm64
+  - linux/amd64
+
+x-base: &base
+  ldflags:
+    - -s -w
+    - -buildid=
+  env:
+    - CGO_ENABLED=0
+  flas:
+    - -trimpath
+  mod_timestamp: "{{ .CommitTimestamp }}"
+
+builds:
+  - main: ./cmd/orbisd
+    <<: *base
+
+  - main: ./cmd/orbisctl
+    <<: *base

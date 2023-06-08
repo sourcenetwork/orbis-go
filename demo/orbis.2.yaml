@@ -14,7 +14,7 @@ host:
   listenAddresses:
     - /ip4/0.0.0.0/tcp/9002
   bootstrap_peers:
-    - /ip4/127.0.0.1/tcp/9001/p2p/12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqu
+    - /dns4/orbisd1/tcp/9001/p2p/12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqu
 
 bulletin:
   rendezvous: "orbis-bulletin"

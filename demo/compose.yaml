@@ -1,0 +1,55 @@
+version: "3.9"
+
+x-orbisd: &orbisd
+  tty: true
+  stdin_open: true
+  image: ko.local/orbisd
+  volumes:
+    - ../demo:/demo
+
+x-orbisctl: &orbisctl
+  image: ko.local/orbisctl
+  volumes:
+    - ../demo:/demo
+
+services:
+  orbisd1:
+    <<: *orbisd
+    command: [ "start", "--config", "/demo/orbis.1.yaml"]
+    ports:
+      - "9001:9001"
+      - "8081:8081"
+      - "8091:8091"
+
+  orbisd2:
+    <<: *orbisd
+    depends_on: [orbisd1]
+    command: [ "start", "--config", "/demo/orbis.2.yaml"]
+    ports:
+      - "9002:9002"
+      - "8082:8082"
+      - "8092:8092"
+
+  orbisd3:
+    <<: *orbisd
+    depends_on: [orbisd2]
+    command: [ "start", "--config", "/demo/orbis.3.yaml"]
+    ports:
+      - "9003:9003"
+      - "8083:8083"
+      - "8093:8093"
+
+  orbisctl1:
+    <<: *orbisctl
+    depends_on: [orbisd3]
+    command: ["-s", "orbisd1:8081", "ring-service", "create-ring", "-f", "/demo/create-ring.json"]
+
+  orbisctl2:
+    <<: *orbisctl
+    depends_on: [orbisd3]
+    command: ["-s", "orbisd2:8082", "ring-service", "create-ring", "-f", "/demo/create-ring.json"]
+
+  orbisctl3:
+    <<: *orbisctl
+    depends_on: [orbisd3]
+    command: ["-s", "orbisd3:8083", "ring-service", "create-ring", "-f", "/demo/create-ring.json"]
