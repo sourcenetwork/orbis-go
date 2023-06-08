@@ -7,6 +7,7 @@ message Response {
     VerifiableResponse response = 2;
     string ring_id = 3;
     string node_id = 4;
+    uint32 target_index = 5;
 }
   
 message VerifiableResponse {

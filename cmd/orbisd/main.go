@@ -19,7 +19,7 @@ func main() {
 		log.Fatalf("Set log level: %s", err)
 	}
 
-	err = logging.SetLogLevelRegex("orbis/transport/.*", "error")
+	err = logging.SetLogLevelRegex("orbis/transport/.*", "debug")
 	if err != nil {
 		log.Fatalf("Set log level: %s", err)
 	}

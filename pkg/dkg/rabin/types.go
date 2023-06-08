@@ -21,12 +21,11 @@ import (
 )
 
 const (
+	RECIEVING orbisdkg.State = orbisdkg.CUSTOM_STATE_MASK | iota // 0b10000000
 	// Processed all the deals, waiting for responses
-	PROCESSED_DEALS     orbisdkg.State = orbisdkg.CUSTOM_STATE_MASK | iota // 0b10000000
-	PROCESSED_RESPONSES                                                    // 0b10000001
-	PROCESSED_COMMITS                                                      // 0b10000010
-
-	RECIEVING
+	PROCESSED_DEALS     // 0b10000001
+	PROCESSED_RESPONSES // 0b10000010
+	PROCESSED_COMMITS   // 0b10000011
 
 	PROCESSING = PROCESSED_DEALS | PROCESSED_RESPONSES
 )
@@ -41,6 +40,7 @@ type Deal = rabinv1alpha1.Deal
 func dealPkFunc(kb db.KeyBuilder, d *Deal) []byte {
 	return kb.AddStringField(d.RingId).
 		AddStringField(d.NodeId).
+		AddInt32Field(int32(d.Index)).
 		AddInt32Field(int32(d.TargetIndex)).
 		Bytes()
 }
@@ -51,6 +51,7 @@ func responsePkFunc(kb db.KeyBuilder, d *Response) []byte {
 	return kb.AddStringField(d.RingId).
 		AddStringField(d.NodeId).
 		AddInt32Field(int32(d.Index)).
+		AddInt32Field(int32(d.TargetIndex)).
 		Bytes()
 }
 
@@ -60,6 +61,7 @@ func secretCommitsPkFunc(kb db.KeyBuilder, d *SecretCommits) []byte {
 	return kb.AddStringField(d.RingId).
 		AddStringField(d.NodeId).
 		AddInt32Field(int32(d.Index)).
+		// AddInt32Field(int32(d.TargetIndex)).
 		Bytes()
 }
 
@@ -123,7 +125,8 @@ func dealFromProto(suite suites.Suite, deal *Deal) (*rabindkg.Deal, error) {
 
 func (d *dkg) responseToProto(response *rabindkg.Response) *Response {
 	return &Response{
-		Index: response.Index,
+		Index:       response.Index,
+		TargetIndex: response.Target,
 		Response: &rabinv1alpha1.VerifiableResponse{
 			SessionId: response.Response.SessionID,
 			Index:     response.Response.Index,
@@ -135,7 +138,8 @@ func (d *dkg) responseToProto(response *rabindkg.Response) *Response {
 
 func (d *dkg) responseFromProto(response *Response) *rabindkg.Response {
 	return &rabindkg.Response{
-		Index: response.Index,
+		Index:  response.Index,
+		Target: response.TargetIndex,
 		Response: &rabinvss.Response{
 			SessionID: response.Response.SessionId,
 			Index:     response.Response.Index,
@@ -157,7 +161,8 @@ func secretCommitsToProto(sc *rabindkg.SecretCommits) (*SecretCommits, error) {
 	}
 
 	return &SecretCommits{
-		Index:       sc.Index,
+		Index: sc.Index,
+		// TargetIndex: sc.TargetIndex,
 		Commitments: points,
 		SessionId:   sc.SessionID,
 		Signature:   sc.Signature,
@@ -176,7 +181,8 @@ func secretCommitsFromProto(suite suites.Suite, sc *SecretCommits) (*rabindkg.Se
 	}
 
 	return &rabindkg.SecretCommits{
-		Index:       sc.Index,
+		Index: sc.Index,
+		// TargetIndex: sc.TargetIndex,
 		Commitments: points,
 		SessionID:   sc.SessionId,
 		Signature:   sc.Signature,
