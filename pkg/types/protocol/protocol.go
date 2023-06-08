@@ -64,7 +64,8 @@ func init() {
 		Size:       ma.LengthPrefixedVarSize,
 		Transcoder: ma.NewTranscoderFromFunctions(ridStB, ridBtS, ridVal),
 	}
-	if err := ma.AddProtocol(orbisProtocol); err != nil {
+	err := ma.AddProtocol(orbisProtocol)
+	if err != nil {
 		panic(err)
 	}
 }

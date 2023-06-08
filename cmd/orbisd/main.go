@@ -12,14 +12,14 @@ var log = logging.Logger("orbis/orbisd")
 func main() {
 
 	logging.SetAllLoggers(logging.LevelDPanic)
-	logging.SetLogLevelRegex("orbis.*", "debug")
+	logging.SetLogLevelRegex("orbis.*", "info")
 
 	err := logging.SetLogLevelRegex("dht/.*", "error")
 	if err != nil {
 		log.Fatalf("Set log level: %s", err)
 	}
 
-	err = logging.SetLogLevelRegex("orbis/transport/.*", "debug")
+	err = logging.SetLogLevelRegex("orbis/transport/.*", "error")
 	if err != nil {
 		log.Fatalf("Set log level: %s", err)
 	}

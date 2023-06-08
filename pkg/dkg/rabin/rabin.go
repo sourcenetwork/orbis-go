@@ -211,8 +211,6 @@ func (d *dkg) Start(ctx context.Context) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	log.Debug("Starting rabin DKG")
-
 	if d.state == orbisdkg.INITIALIZED {
 		log.Debug("Generating and persisting deals")
 		deals, err := d.rdkg.Deals()
@@ -222,7 +220,6 @@ func (d *dkg) Start(ctx context.Context) error {
 
 		// persist deals
 		for _, deal := range deals {
-			log.Infof("Signature: %x\n", deal.Deal.Signature)
 
 			dealproto, err := d.dealToProto(deal)
 			if err != nil {
@@ -232,19 +229,21 @@ func (d *dkg) Start(ctx context.Context) error {
 			dealproto.RingId = string(d.ringID)
 			dealproto.NodeId = d.transport.Host().ID()
 			log.Debugf("Creating doc: %+v", deal)
-			if err := d.dealRepo.Create(ctx, dealproto); err != nil {
+			err = d.dealRepo.Create(ctx, dealproto)
+			if err != nil {
 				return fmt.Errorf("create deal: %w", err)
 			}
 		}
 
 		d.state = orbisdkg.STARTED
-		if err := d.save(ctx); err != nil {
-			return err
+		err = d.save(ctx)
+		if err != nil {
+			return fmt.Errorf("save dkg state as started")
 		}
 	}
 
 	if d.state == orbisdkg.STARTED {
-		log.Debug("Sending deals to nodes")
+
 		// send deals
 		dealProtos, err := d.dealRepo.GetAll(ctx) // todo: add filter
 		if err != nil {
@@ -260,21 +259,21 @@ func (d *dkg) Start(ctx context.Context) error {
 				continue
 			}
 
-			log.Infof("Node %d sending deal to partitipants %d (%x)", d.index, deal.TargetIndex, deal.Deal.Signature)
 			buf, err := proto.Marshal(deal)
 			if err != nil {
 				return fmt.Errorf("marshal deal: %w", err)
 			}
 
-			log.Infof("Node %d sending deal to %d", d.index, deal.TargetIndex)
+			log.Infof("Node %d sending deal to participant %d", d.index, deal.TargetIndex)
 			err = d.send(ctx, string(ProtocolDeal), buf, d.participants[deal.TargetIndex])
 			if err != nil {
 				return fmt.Errorf("send deal: %w", err)
 			}
 		}
 		d.state = RECIEVING
-		if err := d.save(ctx); err != nil {
-			return err
+		err = d.save(ctx)
+		if err != nil {
+			return fmt.Errorf("save dkg state as recieving")
 		}
 	}
 
@@ -315,7 +314,7 @@ func (d *dkg) ProcessMessage(msg *transport.Message) error {
 
 	switch msg.GetType() {
 	case string(ProtocolDeal):
-		log.Debug("handling deal message")
+
 		var protoDeal rabinv1alpha1.Deal
 
 		err := proto.Unmarshal(msg.Payload, &protoDeal)
@@ -327,21 +326,18 @@ func (d *dkg) ProcessMessage(msg *transport.Message) error {
 		err = d.dealRepo.Create(context.TODO(), &protoDeal)
 		if err != nil && !errors.Is(err, db.ErrRecordAlreadyExists) {
 			// don't need to process if it already exists
-			log.Warn("Deal already exists, don't need to process it")
 			return nil
 		} else if err != nil {
 			return fmt.Errorf("failed to insert deal into repo: %w", err)
 		}
 
-		log.Debug("dispatching deal start")
 		err = d.dispatchDealProto(&protoDeal)
 		if err != nil {
 			return fmt.Errorf("dispatch deal message: %w", err)
 		}
-		log.Debug("dipatch deal end")
 
 	case string(ProtocolResponse):
-		log.Debug("handling response message")
+
 		var protoResponse rabinv1alpha1.Response
 
 		err := proto.Unmarshal(msg.Payload, &protoResponse)
@@ -354,21 +350,18 @@ func (d *dkg) ProcessMessage(msg *transport.Message) error {
 		err = d.respRepo.Create(context.TODO(), &protoResponse)
 		if err != nil && !errors.Is(err, db.ErrRecordAlreadyExists) {
 			// don't need to process if it already exists
-			log.Warn("Response already exists, don't need to process it")
 			return nil
 		} else if err != nil {
 			return fmt.Errorf("failed to insert deal into repo: %w", err)
 		}
 
-		log.Debug("dispatch response start")
 		err = d.dispatchResponseProto(&protoResponse)
 		if err != nil {
 			return fmt.Errorf("dispatch response message: %w", err)
 		}
-		log.Debug("dispatch response end")
 
 	case string(ProtocolSecretCommits):
-		log.Debug("handling secret commits message")
+
 		var protoSecretCommits rabinv1alpha1.SecretCommits
 
 		err := proto.Unmarshal(msg.Payload, &protoSecretCommits)
@@ -381,24 +374,19 @@ func (d *dkg) ProcessMessage(msg *transport.Message) error {
 		err = d.secretCommitsRepo.Create(context.TODO(), &protoSecretCommits)
 		if err != nil && !errors.Is(err, db.ErrRecordAlreadyExists) {
 			// don't need to process if it already exists
-			log.Warn("Secret commit already exists, don't need to process it")
 			return nil
 		} else if err != nil {
 			return fmt.Errorf("failed to insert deal into repo: %w", err)
 		}
 
-		log.Debug("dispatch commits start")
 		err = d.dispatchSecretCommitsProto(&protoSecretCommits)
 		if err != nil {
 			return fmt.Errorf("dispatch secret commits: %w", err)
 		}
-		log.Debug("dispatch commits end")
 
 	default:
 		return fmt.Errorf("unknown message type: %q", msg.GetType())
 	}
-
-	fmt.Println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 
 	return nil
 }
@@ -413,41 +401,37 @@ func (d *dkg) ProcessMessage(msg *transport.Message) error {
 func (d *dkg) dispatch() {
 
 	// processDeals
-	log.Infof("handling %d expected deals", d.numExpectedDeals())
-	log.Debugf("current dkg state: %d:", d.state)
 	for i := 0; i < d.numExpectedDeals() && d.state < PROCESSED_DEALS; i++ {
 		dd := <-d.deals
-		log.Infof("Node %d handling deal for dealer %d (%d/%d)", d.index, dd.deal.Index, i, d.numExpectedDeals())
+		log.Infof("Node %d handling deal for dealer %d (%d/%d)", d.index, dd.deal.Index, i+1, d.numExpectedDeals())
 		dd.err <- d.processDeal(dd.deal)
 	}
 
-	// close(d.deals)
 	d.state = PROCESSED_DEALS
-	if err := d.save(context.TODO()); err != nil {
-		log.Fatal("failed to save DKG state: %w", err)
+	err := d.save(context.TODO())
+	if err != nil {
+		log.Fatalf("failed to save DKG state: %w", err)
 	}
 
 	// processResponses
-	log.Infof("handling %d expected responses", d.numExpectedResponses())
 	for i := 0; i < d.numExpectedResponses() && d.state < PROCESSED_RESPONSES; i++ {
 		rd := <-d.responses
-		log.Infof("Node %d handling response for dealer %d (%d/%d)", d.index, rd.respone.Index, i, d.numExpectedResponses())
+		log.Infof("Node %d handling response for dealer %d (%d/%d)", d.index, rd.respone.Index, i+1, d.numExpectedResponses())
 		rd.err <- d.processResponse(rd.respone)
 	}
 
-	// close(d.responses)
 	d.state = PROCESSED_RESPONSES
-	if err := d.save(context.TODO()); err != nil {
-		log.Fatal("failed to save DKG state: %w", err)
+	err = d.save(context.TODO())
+	if err != nil {
+		log.Fatalf("failed to save DKG state: %w", err)
 	}
 
 	// processSecrets
 	for i := 0; i < d.numExpectedCommits(); i++ {
 		sd := <-d.commits
-		log.Infof("Node %d handling secret for dealer %d (%d/%d)", d.index, sd.secretCommits.Index, i, d.numExpectedCommits())
+		log.Infof("Node %d handling secret for dealer %d (%d/%d)", d.index, sd.secretCommits.Index, i+1, d.numExpectedCommits())
 		sd.err <- d.processSecretCommits(sd.secretCommits)
 	}
-	// close(d.commits)
 
 	// don't need to update state and save
 	// like the above dispatch loops
@@ -465,6 +449,7 @@ func (d *dkg) dispatchDealProto(dealproto *rabinv1alpha1.Deal) error {
 	if err != nil {
 		return fmt.Errorf("process deals: %w", err)
 	}
+
 	return nil
 }
 

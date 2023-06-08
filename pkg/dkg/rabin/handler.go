@@ -25,24 +25,21 @@ func (d *dkg) setupHandlers() {
 }
 
 func (d *dkg) processDeal(deal *rabindkg.Deal) error {
-	// d.mu.Lock()
-	// defer d.mu.Unlock()
+	d.mu.Lock()
+	defer d.mu.Unlock()
 
 	response, err := d.rdkg.ProcessDeal(deal)
 	if err != nil {
 		return fmt.Errorf("process rabin dkg deal: %w", err)
 	}
 
-	log.Debugf("response: %+v", response)
 	buf, err := protobuf.Encode(response)
 	if err != nil {
 		return fmt.Errorf("encode response: %w", err)
 	}
 
-	log.Debugf("Sending response %v to nodes: %v", response.Index, d.participants)
 	for _, node := range d.participants {
 		if d.isMe(node) {
-			log.Debug("skipping sending response to ourselves")
 			continue // skip ourselves
 		}
 		// TODO: can we skip the sender of the deal as well?
@@ -58,8 +55,8 @@ func (d *dkg) processDeal(deal *rabindkg.Deal) error {
 }
 
 func (d *dkg) processResponse(resp *rabindkg.Response) error {
-	// d.mu.Lock()
-	// defer d.mu.Unlock()
+	d.mu.Lock()
+	defer d.mu.Unlock()
 
 	// we can't process the response unless we
 	// have processed the cooresponding deal
@@ -105,9 +102,10 @@ func (d *dkg) processResponse(resp *rabindkg.Response) error {
 			continue
 		}
 
-		log.Infof("Node %d sending secret commits to %d", d.index, i)
+		log.Infof("Node %d sending secret commits to pariticipant %d", d.index, i)
 		// TODO: context
-		if err := d.send(context.TODO(), string(ProtocolSecretCommits), buf, node); err != nil {
+		err := d.send(context.TODO(), string(ProtocolSecretCommits), buf, node)
+		if err != nil {
 			return fmt.Errorf("send secret commits: %w", err)
 		}
 	}
@@ -116,8 +114,8 @@ func (d *dkg) processResponse(resp *rabindkg.Response) error {
 }
 
 func (d *dkg) processSecretCommits(sc *rabindkg.SecretCommits) error {
-	// d.mu.Lock()
-	// defer d.mu.Unlock()
+	d.mu.Lock()
+	defer d.mu.Unlock()
 
 	_, err := d.rdkg.ProcessSecretCommits(sc)
 	if err != nil {

@@ -107,7 +107,8 @@ func (d *dkg) dealFromProto(deal *Deal) (*rabindkg.Deal, error) {
 
 func dealFromProto(suite suites.Suite, deal *Deal) (*rabindkg.Deal, error) {
 	dhpoint := suite.Point()
-	if err := dhpoint.UnmarshalBinary(deal.Deal.Dhkey); err != nil {
+	err := dhpoint.UnmarshalBinary(deal.Deal.Dhkey)
+	if err != nil {
 		return nil, fmt.Errorf("unmarshal dhkey: %w", err)
 	}
 
@@ -174,7 +175,8 @@ func secretCommitsFromProto(suite suites.Suite, sc *SecretCommits) (*rabindkg.Se
 	points := make([]kyber.Point, len(sc.Commitments))
 	for i, c := range sc.Commitments {
 		commitPoint := suite.Point()
-		if err := commitPoint.UnmarshalBinary(c); err != nil {
+		err := commitPoint.UnmarshalBinary(c)
+		if err != nil {
 			return nil, fmt.Errorf("unmarshal commitment: %w", err)
 		}
 		points[i] = commitPoint

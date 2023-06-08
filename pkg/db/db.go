@@ -32,7 +32,7 @@ func (rk *repoKey) Name() string {
 // a RepoKey.
 func NewRepoKey(name string) RepoKey {
 	if name == "" {
-		panic("empty key name not allowed")
+		log.Fatalf("empty key name not allowed")
 	}
 	return &repoKey{name}
 }

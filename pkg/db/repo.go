@@ -70,7 +70,7 @@ func newSimpleRepo[T Record](bdb bond.DB, pkFunc RepoPrimaryKeyFunc[T]) *simpleR
 	}
 	var t T
 	name := getTableName(t)
-	fmt.Println("table name:", name)
+	log.Debugf("table name:", name)
 	rr := &simpleRepo[T]{}
 	rr.table = bond.NewTable(bond.TableOptions[T]{
 		DB:                  bdb,
