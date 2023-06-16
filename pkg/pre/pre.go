@@ -23,9 +23,9 @@ type PRE interface {
 	Name() string
 	// Reencrypt using a nodes local private share
 	Reencrypt(crypto.PublicKey, kyber.Point) (ReencryptReply, error)
-	// Process incoming replies from other nodes
+	// Verify incoming replies from other nodes
 	// note: We can likely drop pss.Node
-	Process(pss.Node, ReencryptReply) error
+	Verify(pss.Node, ReencryptReply) error
 	// Recover the encrypted ReKey
 	Recover() (kyber.Point, error)
 }
