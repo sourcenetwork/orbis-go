@@ -8,6 +8,9 @@ x-orbisd: &orbisd
     - ../demo:/demo
 
 x-orbisctl: &orbisctl
+  depends_on:
+    delay:
+      condition: service_completed_successfully
   image: ko.local/orbisctl
   volumes:
     - ../demo:/demo
@@ -39,17 +42,18 @@ services:
       - "8083:8083"
       - "8093:8093"
 
+  delay:
+    image: alpine:3.14
+    command: ["sleep", "2"]
+
   orbisctl1:
     <<: *orbisctl
-    depends_on: [orbisd3]
     command: ["-s", "orbisd1:8081", "ring-service", "create-ring", "-f", "/demo/create-ring.json"]
 
   orbisctl2:
     <<: *orbisctl
-    depends_on: [orbisd3]
     command: ["-s", "orbisd2:8082", "ring-service", "create-ring", "-f", "/demo/create-ring.json"]
 
   orbisctl3:
     <<: *orbisctl
-    depends_on: [orbisd3]
     command: ["-s", "orbisd3:8083", "ring-service", "create-ring", "-f", "/demo/create-ring.json"]
