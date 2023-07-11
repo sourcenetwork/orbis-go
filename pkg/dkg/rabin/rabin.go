@@ -252,6 +252,10 @@ func (d *dkg) Start(ctx context.Context) error {
 
 		for _, deal := range dealProtos {
 
+			if d.index == int(deal.TargetIndex) {
+				continue // don't send to self
+			}
+
 			// skip deals that don't match the nodeID and ringID of this DKG
 			// This can be removed once proper filtering is working on the repo
 			if deal.NodeId != d.transport.Host().ID() &&
