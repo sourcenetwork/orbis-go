@@ -45,8 +45,33 @@ func PublicKeyToProto(pk PublicKey) (*icpb.PublicKey, error) {
 	return ic.PublicKeyToProto(pk)
 }
 
-func PublicKeyFromPoint(point kyber.Point) (PublicKey, error) {
-	panic("todo")
+func PublicKeyFromPoint(suite suites.Suite, point kyber.Point) (PublicKey, error) {
+
+	buf, err := point.MarshalBinary()
+	if err != nil {
+		return nil, fmt.Errorf("marshal point: %w", err)
+	}
+
+	var pk ic.PubKey
+
+	switch suite.String() {
+	case "Ed25519":
+		pk, err = ic.UnmarshalEd25519PublicKey(buf)
+	case "Secp256k1":
+		pk, err = ic.UnmarshalSecp256k1PublicKey(buf)
+	case "ECDSA":
+		pk, err = ic.UnmarshalECDSAPublicKey(buf)
+	case "RSA":
+		pk, err = ic.UnmarshalRsaPublicKey(buf)
+	default:
+		return nil, fmt.Errorf("unknown suite type")
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal public key: %w", err)
+	}
+
+	return PublicKeyFromLibP2P(pk)
 }
 
 func publicKeyFromLibP2P(pubkey ic.PubKey) (*pubKey, error) {

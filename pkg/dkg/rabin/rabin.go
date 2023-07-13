@@ -193,9 +193,8 @@ func (d *dkg) Name() string {
 	return name
 }
 
-func (d *dkg) PublicKey() crypto.PublicKey {
-	pk, _ := crypto.PublicKeyFromPoint(d.pubKey)
-	return pk
+func (d *dkg) PublicKey() (crypto.PublicKey, error) {
+	return crypto.PublicKeyFromPoint(d.suite, d.pubKey)
 }
 
 func (d *dkg) Share() crypto.PriShare {

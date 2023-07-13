@@ -278,7 +278,7 @@ func (r *Ring) Delete(context.Context, types.SecretID) error {
 }
 
 func (r *Ring) PublicKey() (crypto.PublicKey, error) {
-	return nil, nil
+	return r.DKG.PublicKey()
 }
 
 func (r *Ring) Refresh(context.Context, pss.Config) (pss.RefreshState, error) {
