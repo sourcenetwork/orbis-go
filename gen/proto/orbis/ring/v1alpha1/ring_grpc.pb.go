@@ -20,14 +20,17 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	RingService_ListRings_FullMethodName  = "/orbis.ring.v1alpha1.RingService/ListRings"
-	RingService_GetRing_FullMethodName    = "/orbis.ring.v1alpha1.RingService/GetRing"
-	RingService_CreateRing_FullMethodName = "/orbis.ring.v1alpha1.RingService/CreateRing"
-	RingService_DeleteRing_FullMethodName = "/orbis.ring.v1alpha1.RingService/DeleteRing"
-	RingService_PublicKey_FullMethodName  = "/orbis.ring.v1alpha1.RingService/PublicKey"
-	RingService_Refresh_FullMethodName    = "/orbis.ring.v1alpha1.RingService/Refresh"
-	RingService_State_FullMethodName      = "/orbis.ring.v1alpha1.RingService/State"
-	RingService_Nodes_FullMethodName      = "/orbis.ring.v1alpha1.RingService/Nodes"
+	RingService_ListRings_FullMethodName    = "/orbis.ring.v1alpha1.RingService/ListRings"
+	RingService_GetRing_FullMethodName      = "/orbis.ring.v1alpha1.RingService/GetRing"
+	RingService_CreateRing_FullMethodName   = "/orbis.ring.v1alpha1.RingService/CreateRing"
+	RingService_DeleteRing_FullMethodName   = "/orbis.ring.v1alpha1.RingService/DeleteRing"
+	RingService_PublicKey_FullMethodName    = "/orbis.ring.v1alpha1.RingService/PublicKey"
+	RingService_Refresh_FullMethodName      = "/orbis.ring.v1alpha1.RingService/Refresh"
+	RingService_State_FullMethodName        = "/orbis.ring.v1alpha1.RingService/State"
+	RingService_ListSecrets_FullMethodName  = "/orbis.ring.v1alpha1.RingService/ListSecrets"
+	RingService_StoreSecret_FullMethodName  = "/orbis.ring.v1alpha1.RingService/StoreSecret"
+	RingService_GetSecret_FullMethodName    = "/orbis.ring.v1alpha1.RingService/GetSecret"
+	RingService_DeleteSecret_FullMethodName = "/orbis.ring.v1alpha1.RingService/DeleteSecret"
 )
 
 // RingServiceClient is the client API for RingService service.
@@ -41,7 +44,10 @@ type RingServiceClient interface {
 	PublicKey(ctx context.Context, in *PublicKeyRequest, opts ...grpc.CallOption) (*PublicKeyResponse, error)
 	Refresh(ctx context.Context, in *RefreshRequest, opts ...grpc.CallOption) (*RefreshResponse, error)
 	State(ctx context.Context, in *StateRequest, opts ...grpc.CallOption) (*StateResponse, error)
-	Nodes(ctx context.Context, in *NodesRequest, opts ...grpc.CallOption) (*NodesResponse, error)
+	ListSecrets(ctx context.Context, in *ListSecretsRequest, opts ...grpc.CallOption) (*ListSecretsResponse, error)
+	StoreSecret(ctx context.Context, in *StoreSecretRequest, opts ...grpc.CallOption) (*StoreSecretResponse, error)
+	GetSecret(ctx context.Context, in *GetSecretRequest, opts ...grpc.CallOption) (*GetSecretResponse, error)
+	DeleteSecret(ctx context.Context, in *DeleteSecretRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type ringServiceClient struct {
@@ -115,9 +121,36 @@ func (c *ringServiceClient) State(ctx context.Context, in *StateRequest, opts ..
 	return out, nil
 }
 
-func (c *ringServiceClient) Nodes(ctx context.Context, in *NodesRequest, opts ...grpc.CallOption) (*NodesResponse, error) {
-	out := new(NodesResponse)
-	err := c.cc.Invoke(ctx, RingService_Nodes_FullMethodName, in, out, opts...)
+func (c *ringServiceClient) ListSecrets(ctx context.Context, in *ListSecretsRequest, opts ...grpc.CallOption) (*ListSecretsResponse, error) {
+	out := new(ListSecretsResponse)
+	err := c.cc.Invoke(ctx, RingService_ListSecrets_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *ringServiceClient) StoreSecret(ctx context.Context, in *StoreSecretRequest, opts ...grpc.CallOption) (*StoreSecretResponse, error) {
+	out := new(StoreSecretResponse)
+	err := c.cc.Invoke(ctx, RingService_StoreSecret_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *ringServiceClient) GetSecret(ctx context.Context, in *GetSecretRequest, opts ...grpc.CallOption) (*GetSecretResponse, error) {
+	out := new(GetSecretResponse)
+	err := c.cc.Invoke(ctx, RingService_GetSecret_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *ringServiceClient) DeleteSecret(ctx context.Context, in *DeleteSecretRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, RingService_DeleteSecret_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +168,10 @@ type RingServiceServer interface {
 	PublicKey(context.Context, *PublicKeyRequest) (*PublicKeyResponse, error)
 	Refresh(context.Context, *RefreshRequest) (*RefreshResponse, error)
 	State(context.Context, *StateRequest) (*StateResponse, error)
-	Nodes(context.Context, *NodesRequest) (*NodesResponse, error)
+	ListSecrets(context.Context, *ListSecretsRequest) (*ListSecretsResponse, error)
+	StoreSecret(context.Context, *StoreSecretRequest) (*StoreSecretResponse, error)
+	GetSecret(context.Context, *GetSecretRequest) (*GetSecretResponse, error)
+	DeleteSecret(context.Context, *DeleteSecretRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedRingServiceServer()
 }
 
@@ -164,8 +200,17 @@ func (UnimplementedRingServiceServer) Refresh(context.Context, *RefreshRequest) 
 func (UnimplementedRingServiceServer) State(context.Context, *StateRequest) (*StateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method State not implemented")
 }
-func (UnimplementedRingServiceServer) Nodes(context.Context, *NodesRequest) (*NodesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Nodes not implemented")
+func (UnimplementedRingServiceServer) ListSecrets(context.Context, *ListSecretsRequest) (*ListSecretsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListSecrets not implemented")
+}
+func (UnimplementedRingServiceServer) StoreSecret(context.Context, *StoreSecretRequest) (*StoreSecretResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StoreSecret not implemented")
+}
+func (UnimplementedRingServiceServer) GetSecret(context.Context, *GetSecretRequest) (*GetSecretResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSecret not implemented")
+}
+func (UnimplementedRingServiceServer) DeleteSecret(context.Context, *DeleteSecretRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteSecret not implemented")
 }
 func (UnimplementedRingServiceServer) mustEmbedUnimplementedRingServiceServer() {}
 
@@ -306,20 +351,74 @@ func _RingService_State_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RingService_Nodes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(NodesRequest)
+func _RingService_ListSecrets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListSecretsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RingServiceServer).Nodes(ctx, in)
+		return srv.(RingServiceServer).ListSecrets(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: RingService_Nodes_FullMethodName,
+		FullMethod: RingService_ListSecrets_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RingServiceServer).Nodes(ctx, req.(*NodesRequest))
+		return srv.(RingServiceServer).ListSecrets(ctx, req.(*ListSecretsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RingService_StoreSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StoreSecretRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RingServiceServer).StoreSecret(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RingService_StoreSecret_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RingServiceServer).StoreSecret(ctx, req.(*StoreSecretRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RingService_GetSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSecretRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RingServiceServer).GetSecret(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RingService_GetSecret_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RingServiceServer).GetSecret(ctx, req.(*GetSecretRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RingService_DeleteSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteSecretRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RingServiceServer).DeleteSecret(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RingService_DeleteSecret_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RingServiceServer).DeleteSecret(ctx, req.(*DeleteSecretRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -360,8 +459,20 @@ var RingService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _RingService_State_Handler,
 		},
 		{
-			MethodName: "Nodes",
-			Handler:    _RingService_Nodes_Handler,
+			MethodName: "ListSecrets",
+			Handler:    _RingService_ListSecrets_Handler,
+		},
+		{
+			MethodName: "StoreSecret",
+			Handler:    _RingService_StoreSecret_Handler,
+		},
+		{
+			MethodName: "GetSecret",
+			Handler:    _RingService_GetSecret_Handler,
+		},
+		{
+			MethodName: "DeleteSecret",
+			Handler:    _RingService_DeleteSecret_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

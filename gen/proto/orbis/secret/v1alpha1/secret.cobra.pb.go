@@ -65,8 +65,7 @@ func _SecretServiceListSecretsCommand(cfg *client.Config) *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().StringVar(&req.Key, cfg.FlagNamer("Key"), "", "")
-	cmd.PersistentFlags().StringVar(&req.Value, cfg.FlagNamer("Value"), "", "")
+	cmd.PersistentFlags().StringVar(&req.RingId, cfg.FlagNamer("RingId"), "", "")
 
 	return cmd
 }
@@ -108,8 +107,12 @@ func _SecretServiceStoreSecretCommand(cfg *client.Config) *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().StringVar(&req.Key, cfg.FlagNamer("Key"), "", "")
-	cmd.PersistentFlags().StringVar(&req.Value, cfg.FlagNamer("Value"), "", "")
+	cmd.PersistentFlags().StringVar(&req.RingId, cfg.FlagNamer("RingId"), "", "")
+	_Secret := &Secret{}
+	flag.BytesBase64Var(cmd.PersistentFlags(), &_Secret.EncCmt, cfg.FlagNamer("Secret EncCmt"), "")
+	flag.WithPostSetHook(cmd.PersistentFlags(), cfg.FlagNamer("Secret EncCmt"), func() { req.Secret = _Secret })
+	flag.BytesBase64Var(cmd.PersistentFlags(), &_Secret.EncScrt, cfg.FlagNamer("Secret EncScrt"), "")
+	flag.WithPostSetHook(cmd.PersistentFlags(), cfg.FlagNamer("Secret EncScrt"), func() { req.Secret = _Secret })
 
 	return cmd
 }
@@ -151,7 +154,7 @@ func _SecretServiceGetSecretCommand(cfg *client.Config) *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().StringVar(&req.Key, cfg.FlagNamer("Key"), "", "")
+	cmd.PersistentFlags().StringVar(&req.SecretId, cfg.FlagNamer("SecretId"), "", "")
 
 	return cmd
 }
@@ -193,7 +196,8 @@ func _SecretServiceDeleteSecretCommand(cfg *client.Config) *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().StringVar(&req.Key, cfg.FlagNamer("Key"), "", "")
+	cmd.PersistentFlags().StringVar(&req.SecretId, cfg.FlagNamer("SecretId"), "", "")
+	flag.BytesBase64Var(cmd.PersistentFlags(), &req.AcpProof, cfg.FlagNamer("AcpProof"), "")
 
 	return cmd
 }
