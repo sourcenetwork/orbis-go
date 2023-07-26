@@ -4,12 +4,24 @@ import (
 	"context"
 	"sync"
 
+	"github.com/golang/protobuf/proto"
+	"github.com/sourcenetwork/eventbus-go"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
+	"github.com/sourcenetwork/orbis-go/pkg/transport"
+	"github.com/sourcenetwork/orbis-go/pkg/util/glob"
 )
 
 // type BaseBulletin = bulletin.Bulletin[string, []byte]
 
 var _ bulletin.Bulletin = (*Bulletin)(nil)
+
+type Option func(*Bulletin)
+
+func WithBus(bus eventbus.Bus) Option {
+	return func(b *Bulletin) {
+		b.bus = bus
+	}
+}
 
 // Bulletin is an in-memory testing bulletinboard
 // implementation. It is *not* verifiable, doesn't use
@@ -18,6 +30,21 @@ var _ bulletin.Bulletin = (*Bulletin)(nil)
 type Bulletin struct {
 	mu       sync.RWMutex
 	messages map[string][]byte
+
+	bus eventbus.Bus
+}
+
+func New(opts ...Option) *Bulletin {
+	b := &Bulletin{
+		messages: make(map[string][]byte),
+		bus:      eventbus.NewBus(),
+	}
+
+	for _, o := range opts {
+		o(b)
+	}
+
+	return b
 }
 
 func (b *Bulletin) Name() string {
@@ -29,12 +56,11 @@ func (b *Bulletin) Register(ctx context.Context, namespace string) error {
 }
 
 // Post
-func (b *Bulletin) Post(ctx context.Context, identifier bulletin.ID, msg bulletin.Message) (bulletin.Response, error) {
-	idstr := identifier.String()
-	return b.PostByString(ctx, idstr, msg)
+func (b *Bulletin) Post(ctx context.Context, identifier string, msg *transport.Message) (bulletin.Response, error) {
+	return b.PostByString(ctx, identifier, msg, true)
 }
 
-func (b *Bulletin) PostByString(ctx context.Context, identifier string, msg bulletin.Message) (bulletin.Response, error) {
+func (b *Bulletin) PostByString(ctx context.Context, identifier string, msg *transport.Message, emit bool) (bulletin.Response, error) {
 	if identifier == "" {
 		return bulletin.Response{}, bulletin.ErrEmptyID
 	}
@@ -44,16 +70,25 @@ func (b *Bulletin) PostByString(ctx context.Context, identifier string, msg bull
 	if _, exists := b.messages[identifier]; exists {
 		return bulletin.Response{}, bulletin.ErrDuplicateMessage
 	}
-	b.messages[identifier] = msg
+	buf, err := proto.Marshal(msg)
+	if err != nil {
+		return bulletin.Response{}, err
+	}
+	b.messages[identifier] = buf
+
+	if emit {
+		eventbus.Publish(b.bus, msg) // publish the event locally
+	}
+
 	return bulletin.Response{
 		Data: msg,
+		ID:   identifier,
 	}, nil
 }
 
 // Read
-func (b *Bulletin) Read(ctx context.Context, identifier bulletin.ID) (bulletin.Response, error) {
-	idstr := identifier.String()
-	return b.ReadByString(ctx, idstr)
+func (b *Bulletin) Read(ctx context.Context, identifier string) (bulletin.Response, error) {
+	return b.ReadByString(ctx, identifier)
 }
 
 func (b *Bulletin) ReadByString(ctx context.Context, identifier string) (bulletin.Response, error) {
@@ -67,26 +102,64 @@ func (b *Bulletin) ReadByString(ctx context.Context, identifier string) (bulleti
 	if !exists {
 		return bulletin.Response{}, bulletin.ErrMessageNotFound
 	}
+
+	tMsg := new(transport.Message)
+	err := proto.Unmarshal(msg, tMsg)
+	if err != nil {
+		return bulletin.Response{}, err
+	}
+
 	return bulletin.Response{
-		Data: msg,
+		Data: tMsg,
+		ID:   identifier,
 	}, nil
 }
 
 // Query
-func (b *Bulletin) Query(ctx context.Context, query string) ([]bulletin.Response, error) {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
+func (b *Bulletin) Query(ctx context.Context, query string) (<-chan bulletin.QueryResponse, error) {
+	respCh := make(chan bulletin.QueryResponse, 0)
 
-	resps := make([]bulletin.Response, 0)
-	for id, msg := range b.messages {
-		if glob(query, id) {
-			resps = append(resps, bulletin.Response{
-				Data: msg,
-			})
+	go func() {
+		b.mu.RLock()
+		defer func() {
+			b.mu.RUnlock()
+			close(respCh)
+		}()
+
+		for id, msg := range b.messages {
+			if glob.Glob(query, id) {
+				tMsg := new(transport.Message)
+				err := proto.Unmarshal(msg, tMsg)
+				if err != nil {
+					respCh <- bulletin.QueryResponse{
+						Err: err,
+					}
+					return // should we exit or continue loop?
+				}
+
+				respCh <- bulletin.QueryResponse{
+					Resp: bulletin.Response{
+						ID:   id,
+						Data: tMsg,
+					},
+				}
+			}
 		}
-	}
+	}()
 
-	return resps, nil
+	return respCh, nil
+}
+
+func (b *Bulletin) Has(ctx context.Context, id string) bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	_, exists := b.messages[id]
+	return exists
+}
+
+// Events
+func (b *Bulletin) Events() eventbus.Bus {
+	return b.bus
 }
 
 func (b *Bulletin) Start() {}

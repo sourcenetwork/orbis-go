@@ -1,12 +1,13 @@
 package p2p
 
 type ID struct {
-	ns  string
-	key string
+	namespace string
+	service   string
+	key       string
 }
 
 func NewID(ns string, key string) ID {
-	return ID{ns: ns, key: key}
+	return ID{namespace: ns, key: key}
 }
 
 // Returns the full ID serialized as a string

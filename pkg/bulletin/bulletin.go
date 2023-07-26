@@ -3,6 +3,9 @@ package bulletin
 import (
 	"context"
 	"fmt"
+
+	"github.com/sourcenetwork/eventbus-go"
+	"github.com/sourcenetwork/orbis-go/pkg/transport"
 )
 
 var (
@@ -20,9 +23,18 @@ type Message []byte
 
 type Proof []byte
 
+// Response
 type Response struct {
-	Data  Message
+	Data  *transport.Message
+	ID    string
 	Proof Proof
+}
+
+// QueryResponse is the response object for a `Query()` request
+// which is designed to be sent over a channel
+type QueryResponse struct {
+	Resp Response
+	Err  error
 }
 
 type Query struct{}
@@ -31,20 +43,21 @@ type Bulletin interface {
 	Name() string
 	Register(ctx context.Context, namespace string) error
 	// message format := /<namespace>/
-	// /ring/<ringID>/pss/<epochNum>/<nodeIndex>/<action>
-	// /ring/<ringID>/pre/<nodeIndex>/<action>
-	// /ring/<ringID>/dkg/<nodeIndex>/<action>
-	Post(context.Context, ID, Message) (Response, error)
-	Read(context.Context, ID) (Response, error)
+	// /ring/<ringID>/pss/<epochNum>/<action>/<nodeIndex>
+	// /ring/<ringID>/pre/<action>/<nodeIndex>
+	// /ring/<ringID>/dkg/rabin/<action>/<fromIndex>/<toIndex>
+	Post(context.Context, string, *transport.Message) (Response, error)
+	Read(context.Context, string) (Response, error)
+	// Has(context.Context, string) (bool, error)
 
 	// Query Search the bulletin board using a glob based
 	// text search system.
-	Query(context.Context, string) ([]Response, error)
+	Query(context.Context, string) (<-chan QueryResponse, error)
 
 	// Verify(context.Context, Proof, string, Message) bool
 
 	// EventBus
-	// Events() eventbus.Bus
+	Events() eventbus.Bus
 }
 
 // ID
