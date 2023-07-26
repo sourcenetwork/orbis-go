@@ -8,8 +8,10 @@ require (
 	github.com/cenkalti/backoff/v4 v4.2.1
 	github.com/ethereum/go-ethereum v1.11.4
 	github.com/go-bond/bond v0.1.42
+	github.com/golang/protobuf v1.5.3
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.15.2
 	github.com/ipfs/go-cid v0.4.1
+	github.com/ipfs/go-ipfs-util v0.0.2
 	github.com/ipfs/go-log v1.0.5
 	github.com/libp2p/go-libp2p v0.27.3
 	github.com/libp2p/go-libp2p-kad-dht v0.22.0
@@ -17,6 +19,7 @@ require (
 	github.com/multiformats/go-multiaddr v0.9.0
 	github.com/multiformats/go-multihash v0.2.1
 	github.com/samber/do v1.4.1
+	github.com/sourcenetwork/eventbus-go v0.0.0-20230306033122-703b6c56430e
 	github.com/sourcenetwork/go-libp2p-pubsub-rpc v0.0.0-20230209220544-e16d5e34c4fc
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.15.0
@@ -56,7 +59,6 @@ require (
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/mock v1.6.0 // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/google/pprof v0.0.0-20230405160723-4a4c7d95572b // indirect
@@ -73,7 +75,6 @@ require (
 	github.com/ipfs/boxo v0.8.1 // indirect
 	github.com/ipfs/go-block-format v0.1.2 // indirect
 	github.com/ipfs/go-datastore v0.6.0 // indirect
-	github.com/ipfs/go-ipfs-util v0.0.2 // indirect
 	github.com/ipfs/go-ipld-cbor v0.0.6 // indirect
 	github.com/ipfs/go-ipld-format v0.4.0 // indirect
 	github.com/ipfs/go-log/v2 v2.5.1 // indirect
@@ -169,6 +170,6 @@ require (
 
 replace (
 	github.com/go-bond/bond => github.com/sourcenetwork/bond v0.0.0-20230605094713-887163472771
-	github.com/sourcenetwork/go-libp2p-pubsub-rpc => github.com/sourcenetwork/go-libp2p-pubsub-rpc v0.0.0-20230524064401-a125104e968e
-	go.dedis.ch/kyber/v3 => github.com/sourcenetwork/kyber/v3 v3.1.1-0.20230608021904-c04a5e625256
+	github.com/sourcenetwork/go-libp2p-pubsub-rpc => github.com/sourcenetwork/go-libp2p-pubsub-rpc v0.0.0-20230723045113-08c70bbc09f2
+	go.dedis.ch/kyber/v3 => github.com/sourcenetwork/kyber/v3 v3.1.1-0.20230726113421-a4ed13f7d481
 )
