@@ -78,6 +78,14 @@ func New(path string) (*DB, error) {
 	}, nil
 }
 
+func (db *DB) Debug() error {
+	it := db.bond.Iter(&bond.IterOptions{})
+	for it.First(); it.Valid(); it.Next() {
+		fmt.Printf("%x => %x\n--\n", it.Key(), it.Value())
+	}
+	return it.Close()
+}
+
 // MountRepo will create and mount a typed repo under the given
 // RepoKey
 //
