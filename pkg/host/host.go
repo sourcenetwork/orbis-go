@@ -2,13 +2,12 @@ package host
 
 import (
 	"context"
+
 	"crypto/rand"
 	"fmt"
 	mrand "math/rand"
 	"sync"
 	"time"
-
-	"github.com/sourcenetwork/orbis-go/config"
 
 	logging "github.com/ipfs/go-log"
 	libp2p "github.com/libp2p/go-libp2p"
@@ -24,15 +23,20 @@ import (
 	libp2pconnmgr "github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	libp2pnoise "github.com/libp2p/go-libp2p/p2p/security/noise"
 	libp2ptls "github.com/libp2p/go-libp2p/p2p/security/tls"
+
+	"github.com/sourcenetwork/orbis-go/config"
+	"github.com/sourcenetwork/orbis-go/pkg/crypto"
+	"github.com/sourcenetwork/orbis-go/pkg/transport"
+	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
 
 var log = logging.Logger("orbis/host")
 
 type Host struct {
 	libp2phost.Host
-	idht   *libp2pdht.IpfsDHT
-	pubsub *pubsub.PubSub
-
+	privKey    crypto.PrivateKey
+	idht       *libp2pdht.IpfsDHT
+	pubsub     *pubsub.PubSub
 	topics     map[string]*pubsub.Topic
 	topicsLock sync.Mutex
 }
@@ -59,6 +63,11 @@ func New(ctx context.Context, cfg config.Host) (*Host, error) {
 	priv, _, err := libp2pcrypto.GenerateKeyPairWithReader(cryptoType, cfg.Crypto.Bits, randomness)
 	if err != nil {
 		return nil, fmt.Errorf("generate key pair: %w", err)
+	}
+
+	cpriv, err := crypto.PrivateKeyFromLibP2P(priv)
+	if err != nil {
+		return nil, fmt.Errorf("converting to crypto private key: %w", err)
 	}
 
 	connmgr, err := libp2pconnmgr.NewConnManager(
@@ -111,10 +120,11 @@ func New(ctx context.Context, cfg config.Host) (*Host, error) {
 	}
 
 	host := &Host{
-		Host:   h,
-		idht:   idht,
-		pubsub: gossipSub,
-		topics: map[string]*pubsub.Topic{},
+		Host:    h,
+		idht:    idht,
+		pubsub:  gossipSub,
+		topics:  map[string]*pubsub.Topic{},
+		privKey: cpriv,
 	}
 
 	host.Bootstrap(ctx, cfg)
@@ -267,4 +277,29 @@ func (h *Host) Send(ctx context.Context, pi libp2ppeer.AddrInfo, protocol string
 
 func (h *Host) PubSub() *pubsub.PubSub {
 	return h.pubsub
+}
+
+func (h *Host) PublicKey() crypto.PublicKey {
+	return h.privKey.GetPublic()
+}
+
+func (h *Host) NewMessage(rid types.RingID, id string, gossip bool, payload []byte, msgType string) (*transport.Message, error) {
+
+	pubkeyBytes, err := h.PublicKey().Raw()
+	if err != nil {
+		return nil, fmt.Errorf("get raw public key: %w", err)
+	}
+
+	// todo: Signature (should be done on send)
+	// replay? nonce?
+	return &transport.Message{
+		Timestamp:  time.Now().Unix(),
+		Id:         id,
+		RingId:     string(rid),
+		NodeId:     h.ID().String(),
+		NodePubKey: pubkeyBytes,
+		Type:       msgType,
+		Payload:    payload,
+		Gossip:     gossip,
+	}, nil
 }
