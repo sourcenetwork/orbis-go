@@ -32,6 +32,9 @@ message DKG {
   bytes pubkey = 7;
   PriShare pri_share = 8;
   repeated Node nodes = 9;
+  PriPoly f = 10;
+  PriPoly g = 11;
+  bytes poly_secret = 12;
 }
 
 message Node {
@@ -43,4 +46,8 @@ message Node {
 message PriShare {
   int32 index = 1;
   bytes v = 2;
+}
+
+message PriPoly {
+  repeated bytes coeffs = 1;
 }
