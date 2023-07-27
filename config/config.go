@@ -1,5 +1,12 @@
 package config
 
+import (
+	"fmt"
+	"reflect"
+	"strconv"
+	"strings"
+)
+
 // Config aggregates all the configuration options.
 // It is data only, and minimal to none external dependencies.
 // This implies only native types, and no external dependencies.
@@ -46,7 +53,8 @@ type Transport struct {
 }
 
 type Bulletin struct {
-	Rendezvous string `default:"orbis-bulletin" description:"Rendezvous string"`
+	PersistentPeers string `default:"" description:"comma seperated list of persistent peer multiaddrs`
+	Rendezvous      string `default:"orbis-bulletin" description:"Rendezvous string"`
 }
 
 type Host struct {
@@ -62,4 +70,92 @@ type Host struct {
 
 type DB struct {
 	Path string `default:"data" description:"DB path"`
+}
+
+type configTypes interface {
+	Host | DB | Bulletin | Transport | Secret | Ring | DKG | GRPC | Logger
+}
+
+func Default[T configTypes]() (T, error) {
+	valT := new(T)
+
+	x := reflect.ValueOf(valT).Elem()
+	err := traverseAndBuildDefault(x)
+	if err != nil {
+		return *valT, fmt.Errorf("traverse: %w", err)
+	}
+	return *valT, nil
+}
+
+func traverseAndBuildDefault(v reflect.Value) error {
+	// ensure struct
+	for i := 0; i < v.NumField(); i++ {
+
+		field := v.Type().Field(i)
+		name, tag := field.Name, field.Tag
+
+		f := v.Field(i)
+		if !f.CanSet() {
+			return fmt.Errorf("can't set field %s", name)
+		}
+
+		kind := f.Kind()
+
+		// Generate the Cobra command flag.
+		val, _ := tag.Get("default"), tag.Get("description")
+
+		var err error
+		var defaultValue any
+		switch kind {
+		case reflect.Struct:
+			x := reflect.New(f.Type()).Elem()
+			err := traverseAndBuildDefault(x)
+			if err != nil {
+				return fmt.Errorf("traverse: %w", err)
+			}
+			f.Set(x)
+			continue
+		case reflect.Bool:
+			defaultValue, err = strconv.ParseBool(val)
+			if err != nil {
+				return fmt.Errorf("parseBool: %q, %w", val, err)
+			}
+		case reflect.String:
+			// cmd.Flags().String(snake, val, desc)
+			defaultValue = val
+		case reflect.Int:
+			defaultValue, err = strconv.Atoi(val)
+			if err != nil {
+				return fmt.Errorf("parseBool: %q, %w", val, err)
+			}
+			// cmd.Flags().Int(snake, parsed, desc)
+		case reflect.Uint:
+			defaultValue, err = strconv.ParseUint(val, 10, 64)
+			if err != nil {
+				return fmt.Errorf("parseBool: %q, %w", val, err)
+			}
+			// cmd.Flags().Uint(snake, uint(parsed), desc)
+		case reflect.Float64:
+			defaultValue, err = strconv.ParseFloat(val, 64)
+			if err != nil {
+				return fmt.Errorf("parseBool: %q, %w", val, err)
+			}
+			// cmd.Flags().Float64(snake, parsed, desc)
+		case reflect.Slice:
+			// TODO: support other slice types.
+			elmType := f.Type().Elem().Kind()
+			if elmType != reflect.String {
+				return fmt.Errorf("unsupported slice type: %q, for entry: %q", elmType, name)
+			}
+			// cmd.Flags().StringSlice(snake, strings.Split(val, ","), desc)
+			defaultValue = strings.Split(val, ",")
+		default:
+			return fmt.Errorf("unsupported type: %q, for entry: %q", kind, name)
+		}
+		fmt.Println(name, kind, val, defaultValue)
+		fmt.Println("can set", f.CanSet())
+		f.Set(reflect.ValueOf(defaultValue))
+	}
+
+	return nil
 }
