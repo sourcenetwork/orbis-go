@@ -78,4 +78,6 @@ message Message {
   bytes node_pub_key = 7; // authoring node pubkey (32bytes)
   string ring_id = 8; //
   bytes signature = 9; // signature of the message (including payload)
+  string target_id = 10; // id of target
+  bytes target_pub_key = 11; // pubkey of target
 }
