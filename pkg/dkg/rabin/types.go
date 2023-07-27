@@ -283,12 +283,12 @@ func dkgToProto(d *dkg) (*rabinv1alpha1.DKG, error) {
 			return nil, err
 		}
 		if secret := d.rdkg.Dealer().Secret(); secret != nil {
-			fmt.Println("polysecret")
+			log.Infof("polysecret")
 			polySecret, err = d.rdkg.Dealer().Secret().MarshalBinary()
 			if err != nil {
 				return nil, err
 			}
-			fmt.Println("polysecret:", polySecret)
+			log.Infof("polysecret: 0x%0X", polySecret)
 		}
 	}
 
@@ -409,7 +409,7 @@ func dkgFromProto(d *rabinv1alpha1.DKG) (dkg, error) {
 
 	// polynomial secret
 	var secret kyber.Scalar
-	fmt.Println("from proto, polysecret:", d.PolySecret)
+	log.Infof("from proto, polysecret: 0x%0X", d.PolySecret)
 	if d.PolySecret != nil {
 		secret = suite.Scalar()
 		err := secret.UnmarshalBinary(d.PolySecret)

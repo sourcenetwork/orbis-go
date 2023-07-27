@@ -81,7 +81,7 @@ func New(path string) (*DB, error) {
 func (db *DB) Debug() error {
 	it := db.bond.Iter(&bond.IterOptions{})
 	for it.First(); it.Valid(); it.Next() {
-		fmt.Printf("%x => %x\n--\n", it.Key(), it.Value())
+		log.Debugf("%0x => %0x\n--\n", it.Key(), it.Value())
 	}
 	return it.Close()
 }
