@@ -8,6 +8,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/samber/do"
+
 	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/ring/v1alpha1"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
@@ -113,7 +114,16 @@ nodeconfig {
 func (app *App) JoinRing(ctx context.Context, ring *ringv1alpha1.Ring) (*Ring, error) {
 	app.mu.Lock()
 	defer app.mu.Unlock()
-	return app.joinRing(ctx, ring, false /* fromState */)
+	r, err := app.joinRing(ctx, ring, false /* fromState */)
+	if err != nil {
+		return nil, err
+	}
+	app.rings[r.ID] = r
+	err = app.ringRepo.Create(ctx, ring)
+	if err != nil {
+		return nil, err
+	}
+	return r, nil
 }
 
 func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState bool) (*Ring, error) {
@@ -219,12 +229,13 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 		Bulletin:  bb,
 		DB:        db,
 		inj:       inj,
-		services:  rs.services, // this is dumb, but im being lazy, sorry.
+		N:         int(ring.N),
+		T:         int(ring.T),
+
+		services: rs.services, // this is dumb, but im being lazy, sorry.
 	}
 
 	// called in ring.Join() - go rs.handleEvents()
-
-	app.rings[rs.ID] = rs
 
 	return rs, nil
 }
