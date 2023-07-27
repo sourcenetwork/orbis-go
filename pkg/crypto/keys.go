@@ -16,6 +16,14 @@ var (
 	ErrBadKeyType = fmt.Errorf("bad key type")
 )
 
+type KeyType = icpb.KeyType
+
+var (
+	Ed25519   = icpb.KeyType_Ed25519
+	ECDSA     = icpb.KeyType_ECDSA
+	Secp256k1 = icpb.KeyType_Secp256k1
+)
+
 // PublicKey
 type PublicKey interface {
 	ic.PubKey
@@ -108,6 +116,25 @@ type PrivateKey interface {
 type privKey struct {
 	ic.PrivKey
 	suite suites.Suite
+}
+
+func GenerateKeyPair(kt KeyType) (PrivateKey, PublicKey, error) {
+	priv, pub, err := ic.GenerateKeyPair(int(kt), 0)
+	if err != nil {
+		return nil, nil, err
+	}
+	suite, err := SuiteForType(kt)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &privKey{
+			PrivKey: priv,
+			suite:   suite,
+		}, &pubKey{
+			PubKey: pub,
+			suite:  suite,
+		}, nil
 }
 
 func PrivateKeyFromLibP2P(privkey ic.PrivKey) (PrivateKey, error) {
