@@ -8,25 +8,44 @@ import (
 	"go.dedis.ch/protobuf"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/sourcenetwork/eventbus-go"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	orbisdkg "github.com/sourcenetwork/orbis-go/pkg/dkg"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
 )
 
-func (d *dkg) setupHandlers() {
-	// deal
-	d.transport.AddHandler(ProtocolDeal, d.ProcessMessage)
+func (d *dkg) setupHandlers() error {
+	// // deal
+	// d.transport.AddHandler(ProtocolDeal, d.ProcessMessage)
 
-	// response
-	d.transport.AddHandler(ProtocolResponse, d.ProcessMessage)
+	// // response
+	// d.transport.AddHandler(ProtocolResponse, d.ProcessMessage)
 
-	// secretcommits
-	d.transport.AddHandler(ProtocolSecretCommits, d.ProcessMessage)
+	// // secretcommits
+	// d.transport.AddHandler(ProtocolSecretCommits, d.ProcessMessage)
+
+	bus := d.bulletin.Events()
+	subCh, err := eventbus.Subscribe[*transport.Message](bus)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		for evt := range subCh {
+			err := d.ProcessMessage(evt)
+			if err != nil {
+				log.Errorf("processing bulletin message %s: %v", evt.GetType(), err)
+			}
+		}
+	}()
+	return nil
 }
 
 func (d *dkg) processDeal(deal *rabindkg.Deal) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
+	ctx := context.TODO()
 
 	response, err := d.rdkg.ProcessDeal(deal)
 	if err != nil {
@@ -44,10 +63,8 @@ func (d *dkg) processDeal(deal *rabindkg.Deal) error {
 		}
 		// TODO: can we skip the sender of the deal as well?
 
-		// TODO: context
-		err := d.send(context.TODO(), string(ProtocolResponse), buf, node)
-		if err != nil {
-			return fmt.Errorf("send response to node %q: %w", node.ID(), err)
+		if err := d.post(ctx, ResponseNamespace, buf, node); err != nil {
+			return fmt.Errorf("send response: %w", err)
 		}
 	}
 
@@ -103,8 +120,7 @@ func (d *dkg) processResponse(resp *rabindkg.Response) error {
 		}
 
 		log.Infof("Node %d sending secret commits to pariticipant %d", d.index, i)
-		// TODO: context
-		err := d.send(context.TODO(), string(ProtocolSecretCommits), buf, node)
+		err := d.post(context.TODO(), string(ProtocolSecretCommits), buf, node)
 		if err != nil {
 			return fmt.Errorf("send secret commits: %w", err)
 		}

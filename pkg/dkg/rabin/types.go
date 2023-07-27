@@ -8,11 +8,13 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/kyber/v3/group/edwards25519"
+	"go.dedis.ch/kyber/v3/share"
 	rabindkg "go.dedis.ch/kyber/v3/share/dkg/rabin"
 	rabinvss "go.dedis.ch/kyber/v3/share/vss/rabin"
 	"go.dedis.ch/kyber/v3/suites"
 
 	rabinv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/rabin/v1alpha1"
+	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto/suites/secp256k1"
 	"github.com/sourcenetwork/orbis-go/pkg/db"
 	orbisdkg "github.com/sourcenetwork/orbis-go/pkg/dkg"
@@ -77,6 +79,10 @@ var (
 
 	ErrDealNotCertified = fmt.Errorf("dkg: can't give SecretCommits if deal not certified")
 	ErrCouldntGetRepo   = fmt.Errorf("dkg: can't get repo")
+
+	DealNamespace          string = "deal"
+	ResponseNamespace      string = "response"
+	SecretCommitsNamespace string = "secretcommits"
 )
 
 func (d *dkg) dealToProto(deal *rabindkg.Deal) (*Deal, error) {
@@ -263,17 +269,70 @@ func dkgToProto(d *dkg) (*rabinv1alpha1.DKG, error) {
 		}
 	}
 
+	// polynomials and secrets
+	var fPoly *rabinv1alpha1.PriPoly
+	var gPoly *rabinv1alpha1.PriPoly
+	var polySecret []byte
+	if d.rdkg != nil {
+		fPoly, err = polyToProto(d.rdkg.Dealer().FPoly())
+		if err != nil {
+			return nil, err
+		}
+		gPoly, err = polyToProto(d.rdkg.Dealer().GPoly())
+		if err != nil {
+			return nil, err
+		}
+		if secret := d.rdkg.Dealer().Secret(); secret != nil {
+			fmt.Println("polysecret")
+			polySecret, err = d.rdkg.Dealer().Secret().MarshalBinary()
+			if err != nil {
+				return nil, err
+			}
+			fmt.Println("polysecret:", polySecret)
+		}
+	}
+
 	return &rabinv1alpha1.DKG{
-		RingId:    string(d.ringID),
-		Index:     int32(d.index),
-		Num:       d.num,
-		Threshold: d.threshold,
-		Suite:     suiteType,
-		State:     state,
-		Nodes:     nodes,
-		Pubkey:    pubkey,
-		PriShare:  prishare,
+		RingId:     string(d.ringID),
+		Index:      int32(d.index),
+		Num:        d.num,
+		Threshold:  d.threshold,
+		Suite:      suiteType,
+		State:      state,
+		Nodes:      nodes,
+		Pubkey:     pubkey,
+		PriShare:   prishare,
+		F:          fPoly,
+		G:          gPoly,
+		PolySecret: polySecret,
 	}, nil
+}
+
+func polyToProto(p *share.PriPoly) (*rabinv1alpha1.PriPoly, error) {
+	poly := &rabinv1alpha1.PriPoly{
+		Coeffs: make([][]byte, p.Threshold()),
+	}
+	var err error
+	for i, coeffs := range p.Coefficients() {
+		poly.Coeffs[i], err = coeffs.MarshalBinary()
+		if err != nil {
+			return nil, fmt.Errorf("couldn't marshal poly coeffecient: %w", err)
+		}
+	}
+	return poly, nil
+}
+
+func polyFromProto(suite suites.Suite, p *rabinv1alpha1.PriPoly) (*share.PriPoly, error) {
+	scalars := make([]kyber.Scalar, len(p.Coeffs))
+	for i, coeff := range p.Coeffs {
+		scalarCoeff := suite.Scalar()
+		err := scalarCoeff.UnmarshalBinary(coeff)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't unmarshal poly coeffecient")
+		}
+		scalars[i] = scalarCoeff
+	}
+	return share.CoefficientsToPriPoly(suite, scalars), nil
 }
 
 func dkgFromProto(d *rabinv1alpha1.DKG) (dkg, error) {
@@ -318,6 +377,47 @@ func dkgFromProto(d *rabinv1alpha1.DKG) (dkg, error) {
 		participants[i] = p2ptransport.NewNode(n.Id, pk, addr)
 	}
 
+	// pubkey
+	pubkey := suite.Point()
+	if d.Pubkey != nil {
+		err := pubkey.UnmarshalBinary(d.Pubkey)
+		if err != nil {
+			return dkg{}, fmt.Errorf("unmarshaling pubkey: %w", err)
+		}
+	}
+
+	// share
+	var share crypto.PriShare
+	if d.PriShare != nil {
+		share.I = int(d.PriShare.Index)
+		share.V = suite.Scalar()
+		err := share.V.UnmarshalBinary(d.PriShare.V)
+		if err != nil {
+			return dkg{}, fmt.Errorf("unmarshaling prishare: %w", err)
+		}
+	}
+
+	// f and g polys
+	fPoly, err := polyFromProto(suite, d.F)
+	if err != nil {
+		return dkg{}, err
+	}
+	gPoly, err := polyFromProto(suite, d.G)
+	if err != nil {
+		return dkg{}, err
+	}
+
+	// polynomial secret
+	var secret kyber.Scalar
+	fmt.Println("from proto, polysecret:", d.PolySecret)
+	if d.PolySecret != nil {
+		secret = suite.Scalar()
+		err := secret.UnmarshalBinary(d.PolySecret)
+		if err != nil {
+			return dkg{}, fmt.Errorf("unmarshaling secret: %w", err)
+		}
+	}
+
 	return dkg{
 		ringID:       types.RingID(d.RingId),
 		index:        int(d.Index),
@@ -326,6 +426,11 @@ func dkgFromProto(d *rabinv1alpha1.DKG) (dkg, error) {
 		suite:        suite,
 		state:        state,
 		participants: participants,
+		pubKey:       pubkey,
+		share:        share,
+		fPoly:        fPoly,
+		gPoly:        gPoly,
+		secret:       secret,
 	}, nil
 }
 

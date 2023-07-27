@@ -42,7 +42,7 @@ func (factory) Name() string {
 }
 
 func (factory) Repos() []string {
-	return []string{"deals", "responses", "secretCommits", "dkg"}
+	return []string{"dkg"}
 }
 
 // /rabin/{deals,shares}
