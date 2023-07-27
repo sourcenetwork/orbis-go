@@ -125,9 +125,3 @@ func (s *ringService) State(ctx context.Context, req *ringv1alpha1.StateRequest)
 
 	return resp, nil
 }
-func (s *ringService) Nodes(ctx context.Context, req *ringv1alpha1.NodesRequest) (*ringv1alpha1.NodesResponse, error) {
-
-	resp := &ringv1alpha1.NodesResponse{}
-
-	return resp, errUnimplemented
-}
