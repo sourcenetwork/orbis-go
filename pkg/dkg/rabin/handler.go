@@ -9,6 +9,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/sourcenetwork/eventbus-go"
+	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	orbisdkg "github.com/sourcenetwork/orbis-go/pkg/dkg"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
@@ -25,16 +26,22 @@ func (d *dkg) setupHandlers() error {
 	// d.transport.AddHandler(ProtocolSecretCommits, d.ProcessMessage)
 
 	bus := d.bulletin.Events()
-	subCh, err := eventbus.Subscribe[*transport.Message](bus)
+	subCh, err := eventbus.Subscribe[bulletin.Event](bus)
 	if err != nil {
 		return err
 	}
 
 	go func() {
 		for evt := range subCh {
-			err := d.ProcessMessage(evt)
+			log.Infof("recieved eventbus on %s from %s for %s", d.transport.Host().ID(), evt.Message.NodeId, evt.Message.TargetId)
+			if evt.Message.TargetId != d.transport.Host().ID() {
+				log.Info("ignoring bulletin event not for us")
+				continue
+			}
+
+			err := d.ProcessMessage(evt.Message)
 			if err != nil {
-				log.Errorf("processing bulletin message %s: %v", evt.GetType(), err)
+				log.Errorf("processing bulletin message %s: %v", evt.Message.GetType(), err)
 			}
 		}
 	}()
@@ -47,9 +54,12 @@ func (d *dkg) processDeal(deal *rabindkg.Deal) error {
 
 	ctx := context.TODO()
 
+	log.Infof("processing deal, index=%v nonce=%0x sig=%0x", deal.Index, deal.Deal.Nonce, deal.Deal.Signature)
 	response, err := d.rdkg.ProcessDeal(deal)
 	if err != nil {
 		return fmt.Errorf("process rabin dkg deal: %w", err)
+	} else {
+		log.Infof("succesfully processed deal %0x", deal.Deal.Signature)
 	}
 
 	buf, err := protobuf.Encode(response)
@@ -63,7 +73,19 @@ func (d *dkg) processDeal(deal *rabindkg.Deal) error {
 		}
 		// TODO: can we skip the sender of the deal as well?
 
-		if err := d.post(ctx, ResponseNamespace, buf, node); err != nil {
+		log.Infof("sending response on %s for %s", d.transport.Host().ID(), node.ID())
+		// /ring/<ringID>/dkg/rabin/<action>/<fromID>/<toID>
+
+		// each node generates deals [d0, d1, d2]
+		// each node processes each deal [d1, d2, d2]
+		// each node creates response for (dN, SELF, TARGET)
+
+		// /ring/<ringID>/dkg/rabin/RESPONSE/JOHN/ROY/<FOR>
+		forNodeID1 := d.participants[response.Index].ID()
+		// forNodeID2 := d.participants[response.Target].ID()
+		log.Infof("creating identifier from %s to %s for %s", d.NodeID(), node.ID(), forNodeID1)
+		msgID := fmt.Sprintf("%s/%s/%s/%s/%s", d.bbnamespace, ResponseNamespace, d.NodeID(), node.ID(), forNodeID1)
+		if err := d.post(ctx, ResponseNamespace, msgID, buf, node); err != nil {
 			return fmt.Errorf("send response: %w", err)
 		}
 	}
@@ -119,8 +141,12 @@ func (d *dkg) processResponse(resp *rabindkg.Response) error {
 			continue
 		}
 
+		// /ring/<ringID>/dkg/rabin/RESPONSE/JOHN/ROY/<FOR>
+		forNodeID1 := d.participants[sc.Index].ID()
+		// forNodeID2 := d.participants[response.Target].ID()
 		log.Infof("Node %d sending secret commits to pariticipant %d", d.index, i)
-		err := d.post(context.TODO(), string(ProtocolSecretCommits), buf, node)
+		msgID := fmt.Sprintf("%s/%s/%s/%s/%s", d.bbnamespace, SecretCommitsNamespace, d.NodeID(), d.participants[i].ID(), forNodeID1)
+		err := d.post(context.TODO(), SecretCommitsNamespace, msgID, buf, node)
 		if err != nil {
 			return fmt.Errorf("send secret commits: %w", err)
 		}

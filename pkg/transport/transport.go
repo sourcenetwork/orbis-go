@@ -21,7 +21,7 @@ type Transport interface {
 	Gossip(ctx context.Context, topic string, msg *Message) error
 	Connect(ctx context.Context, node Node) error
 	Host() Host
-	NewMessage(rid types.RingID, id string, gossip bool, payload []byte, msgType string) (*Message, error)
+	NewMessage(rid types.RingID, id string, gossip bool, payload []byte, msgType string, target Node) (*Message, error)
 	AddHandler(pid protocol.ID, handler Handler)
 	RemoveHandler(pid protocol.ID)
 }

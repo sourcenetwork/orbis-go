@@ -546,6 +546,10 @@ func (b *Bulletin) reconnectToPeer(ctx context.Context, pid peer.ID) {
 	log.Error("Failed to reconnect to peer. Giving up", "addr", paddr, "elapsed", time.Since(start))
 }
 
+func (bb *Bulletin) Host() *host.Host {
+	return bb.h
+}
+
 func randomSleep(interval time.Duration) {
 	r := time.Duration(rand.Int63n(dialRandomizerIntervalMilliseconds)) * time.Millisecond
 	time.Sleep(r + interval)

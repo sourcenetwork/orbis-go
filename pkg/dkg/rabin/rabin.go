@@ -17,6 +17,7 @@ import (
 
 	rabinv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/rabin/v1alpha1"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
+	"github.com/sourcenetwork/orbis-go/pkg/bulletin/p2p"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	"github.com/sourcenetwork/orbis-go/pkg/db"
 	orbisdkg "github.com/sourcenetwork/orbis-go/pkg/dkg"
@@ -69,7 +70,7 @@ type dkg struct {
 	// dependency services
 	db        *db.DB
 	transport transport.Transport
-	bulletin  bulletin.Bulletin
+	bulletin  *p2p.Bulletin
 
 	bbnamespace string
 
@@ -97,6 +98,11 @@ func New(repo *db.DB, rkeys []db.RepoKey, t transport.Transport, b bulletin.Bull
 		return nil, errors.Join(ErrCouldntGetRepo, err)
 	}
 
+	p2pbb, ok := b.(*p2p.Bulletin)
+	if !ok {
+		return nil, fmt.Errorf("need p2p bulleting atm")
+	}
+
 	return &dkg{
 		db:    repo,
 		rkeys: rkeys,
@@ -105,7 +111,7 @@ func New(repo *db.DB, rkeys []db.RepoKey, t transport.Transport, b bulletin.Bull
 		// secretCommitsRepo: secretCommitsRepo,
 		dkgRepo:   dkgRepo,
 		transport: t,
-		bulletin:  b,
+		bulletin:  p2pbb,
 		index:     -1,
 	}, nil
 }
@@ -253,7 +259,11 @@ func (d *dkg) initCommon(ctx context.Context) error {
 	d.commits = make(chan secretCommitsDispatch, d.numExpectedCommits())
 
 	d.bbnamespace = fmt.Sprintf("/ring/%s/dkg/rabin", string(d.ringID))
-	return d.bulletin.Register(ctx, d.bbnamespace)
+	err := d.bulletin.Register(ctx, d.bbnamespace)
+	time.Sleep(2 * time.Second)
+
+	log.Infof("registered to topic %s with peers %v", d.bbnamespace, d.bulletin.Host().PubSub().ListPeers(d.bbnamespace))
+	return err
 }
 
 func (d *dkg) Name() string {
@@ -290,6 +300,7 @@ func (d *dkg) Start(ctx context.Context) error {
 		_ = d.transport.Connect(ctx, p)
 		cancel() // clear
 	}
+	// time.Sleep(2 * time.Second)
 
 	log.Debug("Generating and persisting deals")
 	// TODO
@@ -308,7 +319,7 @@ func (d *dkg) Start(ctx context.Context) error {
 	}
 
 	for i, deal := range deals {
-		log.Infof("node %d sending deal to partitipants %d (%x)", d.index, i, deal.Deal.Signature)
+		log.Infof("node %s sending deal to partitipants %s", d.NodeID(), d.participants[i].ID())
 		if i == d.index {
 			// TODO: deliver to ourselves
 			continue
@@ -323,7 +334,8 @@ func (d *dkg) Start(ctx context.Context) error {
 			return fmt.Errorf("marshal deal: %w", err)
 		}
 
-		err = d.post(ctx, DealNamespace, buf, d.participants[i])
+		msgID := fmt.Sprintf("%s/%s/%s/%s", d.bbnamespace, DealNamespace, d.NodeID(), d.participants[i].ID())
+		err = d.post(ctx, DealNamespace, msgID, buf, d.participants[i])
 		if err != nil {
 			return fmt.Errorf("send deal: %w", err)
 		}
@@ -338,26 +350,23 @@ func (d *dkg) Start(ctx context.Context) error {
 	return nil
 }
 
-func (d *dkg) post(ctx context.Context, msgType string, buf []byte, node transport.Node) error {
+func (d *dkg) post(ctx context.Context, msgType string, msgID string, buf []byte, node transport.Node) error {
 	cid, err := types.CidFromBytes(buf)
 	if err != nil {
 		return fmt.Errorf("cid from bytes: %w", err)
 	}
 
-	msg, err := d.transport.NewMessage(d.ringID, cid.String(), false, buf, msgType)
+	msg, err := d.transport.NewMessage(d.ringID, cid.String(), false, buf, msgType, node)
 	if err != nil {
 		return fmt.Errorf("new message: %w", err)
 	}
 	log.Infof("dkg.send() node id: %s, addr: %s", node.ID(), node.Address())
 
-	// /ring/<ringID>/dkg/rabin/<action>/<fromIndex>/<toIndex>
-	bbid := fmt.Sprintf("%s/%s/%s/%s", d.bbnamespace, msgType, d.transport.Host().ID(), node.ID())
-
 	// if err := d.transport.Send(ctx, node, msg); err != nil {
 	// 	return fmt.Errorf("send message: %w", err)
 	// }
 
-	_, err = d.bulletin.Post(ctx, bbid, msg)
+	_, err = d.bulletin.Post(ctx, msgID, msg)
 	if err != nil {
 		return fmt.Errorf("dkg bulletin post: %w", err)
 	}
@@ -438,7 +447,7 @@ func (d *dkg) dispatch() {
 	// processDeals
 	for i := 0; i < d.numExpectedDeals() && d.state < PROCESSED_DEALS; i++ {
 		dd := <-d.deals
-		log.Infof("Node %d handling deal for dealer %d (%d/%d)", d.index, dd.deal.Index, i+1, d.numExpectedDeals())
+		log.Infof("Node %s handling deal for dealer %s (%d/%d)", d.NodeID(), d.participants[dd.deal.Index].ID(), i+1, d.numExpectedDeals())
 		dd.err <- d.processDeal(dd.deal)
 	}
 
@@ -575,6 +584,7 @@ func (d *dkg) numExpectedCommits() int {
 // deals, responses, and secret commmits from the internal
 // rabin implementation. Those are saved independantly.
 func (d *dkg) save(ctx context.Context) error {
+	log.Info("saving DKG state for node")
 	dkgp, err := dkgToProto(d)
 	if err != nil {
 		return fmt.Errorf("proto conversion: %w", err)
@@ -625,4 +635,8 @@ func (d *dkg) loadUnsafe(ctx context.Context) error {
 	d.secret = _d.secret
 
 	return nil
+}
+
+func (d *dkg) NodeID() string {
+	return d.transport.Host().ID()
 }

@@ -23,6 +23,11 @@ type Message []byte
 
 type Proof []byte
 
+type Event struct {
+	Message *transport.Message
+	ID      string
+}
+
 // Response
 type Response struct {
 	Data  *transport.Message

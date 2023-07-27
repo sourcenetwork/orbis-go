@@ -115,7 +115,7 @@ func (t *Transport) Host() transport.Host {
 	return &Host{t.h}
 }
 
-func (t *Transport) NewMessage(rid types.RingID, id string, gossip bool, payload []byte, msgType string) (*transport.Message, error) {
+func (t *Transport) NewMessage(rid types.RingID, id string, gossip bool, payload []byte, msgType string, target transport.Node) (*transport.Message, error) {
 
 	pubkeyBytes, err := t.Host().PublicKey().Raw()
 	if err != nil {
@@ -124,7 +124,7 @@ func (t *Transport) NewMessage(rid types.RingID, id string, gossip bool, payload
 
 	// todo: Signature (should be done on send)
 	// replay? nonce?
-	return &transport.Message{
+	msg := &transport.Message{
 		Timestamp:  time.Now().Unix(),
 		Id:         id,
 		RingId:     string(rid),
@@ -133,7 +133,18 @@ func (t *Transport) NewMessage(rid types.RingID, id string, gossip bool, payload
 		Type:       msgType,
 		Payload:    payload,
 		Gossip:     gossip,
-	}, nil
+	}
+
+	if target != nil {
+		msg.TargetId = target.ID()
+		pubkeyBuf, err := target.PublicKey().Raw()
+		if err != nil {
+			return nil, err
+		}
+		msg.TargetPubKey = pubkeyBuf
+	}
+
+	return msg, nil
 }
 
 func (t *Transport) AddHandler(pid protocol.ID, handler transport.Handler) {

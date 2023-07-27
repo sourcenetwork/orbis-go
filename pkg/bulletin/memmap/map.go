@@ -77,7 +77,11 @@ func (b *Bulletin) PostByString(ctx context.Context, identifier string, msg *tra
 	b.messages[identifier] = buf
 
 	if emit {
-		eventbus.Publish(b.bus, msg) // publish the event locally
+		evt := bulletin.Event{
+			Message: msg,
+			ID:      identifier,
+		}
+		eventbus.Publish(b.bus, evt) // publish the event locally
 	}
 
 	return bulletin.Response{
