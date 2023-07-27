@@ -14,13 +14,11 @@ service RingService {
   rpc PublicKey(PublicKeyRequest) returns (PublicKeyResponse) {}
   rpc Refresh(RefreshRequest) returns (RefreshResponse) {}
   rpc State(StateRequest) returns (StateResponse) {}
-  rpc Nodes(NodesRequest) returns (NodesResponse) {}
-  // rpc GetShares(GetSharesRequest) returns (GetSharesResponse) {}
 
-  // TODO: move to secret service?
-  // rpc StoreSecret(StoreSecretRequest) returns (StoreSecretResponse) {}
-  // rpc GetSecret(GetSecretRequest) returns (GetSecretResponse) {}
-  // rpc DeleteSecret(DeleteSecretRequest) returns (DeleteSecretResponse) {}
+  rpc ListSecrets(ListSecretsRequest) returns (ListSecretsResponse) {}
+  rpc StoreSecret(StoreSecretRequest) returns (StoreSecretResponse) {}
+  rpc GetSecret(GetSecretRequest) returns (GetSecretResponse) {}
+  rpc DeleteSecret(DeleteSecretRequest) returns (google.protobuf.Empty) {}
 }
 
 message ListRingsRequest {}
@@ -58,7 +56,7 @@ message PublicKeyRequest {
 }
 
 message PublicKeyResponse {
-  libp2p.crypto.v1.PublicKey public_key = 3;
+  libp2p.crypto.v1.PublicKey public_key = 1;
 }
 
 message RefreshResponse {}
@@ -72,12 +70,51 @@ message StateResponse {
   string pss_state = 2;
 }
 
-message NodesRequest {
-  string id = 1;
+message ListSecretsRequest {
+  string ring_id = 1;
 }
 
-message NodesResponse {
-  repeated Node nodes = 1;
+message ListSecretsResponse {
+  repeated Secret secrets = 1;
+}
+
+message StoreSecretRequest {
+  string ring_id = 1;
+  Secret secret = 2;
+}
+
+message StoreSecretResponse {
+  string secret_id = 1;
+}
+message GetSecretRequest {
+  string secret_id = 1;
+}
+
+message GetSecretResponse {
+  Secret secret = 1;
+}
+
+message DeleteSecretRequest {
+  string ring_id = 1;
+  string secret_id = 2;
+  bytes acp_proof = 3;
+}
+
+message ReencryptSecretRequest {
+  string ring_id = 1;
+  string secret_id = 2;
+  string rdr_pk = 3;
+  bytes acp_proof = 4;
+}
+
+message ReencryptSecretResponse {
+  bytes xnc_cmt = 1; // reencryption commitment
+  bytes enc_scrt = 2; // enncrypted secret
+}
+
+message Secret {
+  bytes enc_cmt = 1; // encryption commitment
+  bytes enc_scrt = 2; // enncrypted secret
 }
 
 message Ring {
