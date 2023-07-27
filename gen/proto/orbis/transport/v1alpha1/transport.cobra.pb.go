@@ -179,6 +179,10 @@ func _TransportServiceSendCommand(cfg *client.Config) *cobra.Command {
 	flag.WithPostSetHook(cmd.PersistentFlags(), cfg.FlagNamer("Message RingId"), func() { req.Message = _Message })
 	flag.BytesBase64Var(cmd.PersistentFlags(), &_Message.Signature, cfg.FlagNamer("Message Signature"), "")
 	flag.WithPostSetHook(cmd.PersistentFlags(), cfg.FlagNamer("Message Signature"), func() { req.Message = _Message })
+	cmd.PersistentFlags().StringVar(&_Message.TargetId, cfg.FlagNamer("Message TargetId"), "", "")
+	flag.WithPostSetHook(cmd.PersistentFlags(), cfg.FlagNamer("Message TargetId"), func() { req.Message = _Message })
+	flag.BytesBase64Var(cmd.PersistentFlags(), &_Message.TargetPubKey, cfg.FlagNamer("Message TargetPubKey"), "")
+	flag.WithPostSetHook(cmd.PersistentFlags(), cfg.FlagNamer("Message TargetPubKey"), func() { req.Message = _Message })
 
 	return cmd
 }
@@ -240,6 +244,10 @@ func _TransportServiceGossipCommand(cfg *client.Config) *cobra.Command {
 	flag.WithPostSetHook(cmd.PersistentFlags(), cfg.FlagNamer("Message RingId"), func() { req.Message = _Message })
 	flag.BytesBase64Var(cmd.PersistentFlags(), &_Message.Signature, cfg.FlagNamer("Message Signature"), "")
 	flag.WithPostSetHook(cmd.PersistentFlags(), cfg.FlagNamer("Message Signature"), func() { req.Message = _Message })
+	cmd.PersistentFlags().StringVar(&_Message.TargetId, cfg.FlagNamer("Message TargetId"), "", "")
+	flag.WithPostSetHook(cmd.PersistentFlags(), cfg.FlagNamer("Message TargetId"), func() { req.Message = _Message })
+	flag.BytesBase64Var(cmd.PersistentFlags(), &_Message.TargetPubKey, cfg.FlagNamer("Message TargetPubKey"), "")
+	flag.WithPostSetHook(cmd.PersistentFlags(), cfg.FlagNamer("Message TargetPubKey"), func() { req.Message = _Message })
 
 	return cmd
 }
