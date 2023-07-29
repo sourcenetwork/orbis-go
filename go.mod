@@ -170,6 +170,8 @@ require (
 
 replace (
 	github.com/go-bond/bond => github.com/sourcenetwork/bond v0.0.0-20230605094713-887163472771
-	github.com/sourcenetwork/go-libp2p-pubsub-rpc => github.com/sourcenetwork/go-libp2p-pubsub-rpc v0.0.0-20230723045113-08c70bbc09f2
+	github.com/sourcenetwork/go-libp2p-pubsub-rpc => ../go-libp2p-pubsub-rpc // github.com/sourcenetwork/go-libp2p-pubsub-rpc v0.0.0-20230723045113-08c70bbc09f2
 	go.dedis.ch/kyber/v3 => github.com/sourcenetwork/kyber/v3 v3.1.1-0.20230726113421-a4ed13f7d481
+	github.com/libp2p/go-libp2p-pubsub => ../go-libp2p-pubsub
+	github.com/sourcenetwork/eventbus-go => ../eventbus-go
 )

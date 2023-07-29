@@ -261,7 +261,6 @@ func (d *dkg) initCommon(ctx context.Context) error {
 	d.bbnamespace = fmt.Sprintf("/ring/%s/dkg/rabin", string(d.ringID))
 	err := d.bulletin.Register(ctx, d.bbnamespace)
 	time.Sleep(2 * time.Second)
-
 	log.Infof("registered to topic %s with peers %v", d.bbnamespace, d.bulletin.Host().PubSub().ListPeers(d.bbnamespace))
 	return err
 }
@@ -300,13 +299,8 @@ func (d *dkg) Start(ctx context.Context) error {
 		_ = d.transport.Connect(ctx, p)
 		cancel() // clear
 	}
-	// time.Sleep(2 * time.Second)
 
 	log.Debug("Generating and persisting deals")
-	// TODO
-	// if !d.initialized {
-	// 	return orbisdkg.ErrNotInitialized
-	// }
 
 	deals, err := d.rdkg.Deals()
 	if err != nil {
@@ -400,7 +394,7 @@ func (d *dkg) ProcessMessage(msg *transport.Message) error {
 		}
 
 	case ResponseNamespace:
-		log.Infof("dkg.ProcessMessage() ProtocolResponse: id: %s", msg.Id)
+		log.Infof("dkg.ProcessMessage() ProtocolResponse: id: %s - started", msg.Id)
 
 		var protoResponse rabinv1alpha1.Response
 
@@ -523,6 +517,7 @@ func (d *dkg) dispatchResponseProto(respproto *rabinv1alpha1.Response) error {
 }
 
 func (d *dkg) dispatchResponse(resp *rabindkg.Response) error {
+	log.Debug("dispatching response")
 	respDispatchEvent := responseDispatch{
 		err:     make(chan error),
 		respone: resp,
@@ -531,9 +526,11 @@ func (d *dkg) dispatchResponse(resp *rabindkg.Response) error {
 	select {
 	case d.responses <- respDispatchEvent:
 		// send
+		log.Debug("response succesfully dispatched")
 	default:
 		log.Warn("cant send on response dispatch channel")
 	}
+	log.Debug("waiting for dispatch error status")
 	return <-respDispatchEvent.err
 }
 

@@ -178,7 +178,7 @@ func (bb *Bulletin) Post(ctx context.Context, id string, msg *transport.Message)
 	if err != nil {
 		return bulletin.Response{}, err
 	}
-	if _, err := topic.Publish(ctx, msgbuf, rpc.WithRepublishing(true), rpc.WithIgnoreResponse(true)); err != nil {
+	if _, err := topic.Publish(ctx, msgbuf, rpc.WithIgnoreResponse(true)); err != nil {
 		return bulletin.Response{}, err
 	}
 	return resp, nil
@@ -372,7 +372,7 @@ func (bb *Bulletin) HandleStream(stream libp2pnetwork.Stream) {
 }
 
 func (bb *Bulletin) topicMessageHandler(from peer.ID, topic string, msg []byte) ([]byte, error) {
-	log.Debug("handling topic message")
+	log.Debugf("handling topic %s message from %s", topic, from)
 	bbMessage := new(Message)
 	err := proto.Unmarshal(msg, bbMessage)
 	if err != nil {

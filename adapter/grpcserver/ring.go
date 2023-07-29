@@ -40,7 +40,9 @@ func (s *ringService) ListRings(ctx context.Context, req *ringv1alpha1.ListRings
 
 func (s *ringService) CreateRing(ctx context.Context, req *ringv1alpha1.CreateRingRequest) (*ringv1alpha1.CreateRingResponse, error) {
 
-	r, err := s.app.JoinRing(ctx, req.Ring)
+	// new context
+	bgctx := context.Background()
+	r, err := s.app.JoinRing(bgctx, req.Ring)
 	if err != nil {
 		return nil, fmt.Errorf("create ring: %w", err)
 	}
@@ -52,7 +54,7 @@ func (s *ringService) CreateRing(ctx context.Context, req *ringv1alpha1.CreateRi
 		Id: string(r.ID),
 	}
 
-	err = r.Start(ctx)
+	err = r.Start(bgctx)
 	if err != nil {
 		return nil, fmt.Errorf("start ring: %w", err)
 	}

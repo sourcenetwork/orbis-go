@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/sourcenetwork/eventbus-go"
+
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
 )
 
@@ -18,6 +19,10 @@ var (
 	ErrReadTimeout      = fmt.Errorf("bulletin: read timeout")
 	ErrBadResponseType  = fmt.Errorf("bulletin: bad response type")
 )
+
+func ErrDuplicateMessageF(id string) error {
+	return fmt.Errorf("%w: %s", ErrDuplicateMessage, id)
+}
 
 type Message []byte
 

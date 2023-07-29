@@ -16,15 +16,6 @@ import (
 )
 
 func (d *dkg) setupHandlers() error {
-	// // deal
-	// d.transport.AddHandler(ProtocolDeal, d.ProcessMessage)
-
-	// // response
-	// d.transport.AddHandler(ProtocolResponse, d.ProcessMessage)
-
-	// // secretcommits
-	// d.transport.AddHandler(ProtocolSecretCommits, d.ProcessMessage)
-
 	bus := d.bulletin.Events()
 	subCh, err := eventbus.Subscribe[bulletin.Event](bus)
 	if err != nil {
@@ -33,16 +24,19 @@ func (d *dkg) setupHandlers() error {
 
 	go func() {
 		for evt := range subCh {
-			log.Infof("recieved eventbus on %s from %s for %s", d.transport.Host().ID(), evt.Message.NodeId, evt.Message.TargetId)
+			log.Infof("recieved eventbus on %s from %s for %s (%s)", d.transport.Host().ID(), evt.Message.NodeId, evt.Message.TargetId, evt.Message.GetType())
 			if evt.Message.TargetId != d.transport.Host().ID() {
 				log.Info("ignoring bulletin event not for us")
 				continue
 			}
 
-			err := d.ProcessMessage(evt.Message)
-			if err != nil {
-				log.Errorf("processing bulletin message %s: %v", evt.Message.GetType(), err)
-			}
+			// process in a dedicated goroutine so we dont block
+			go func(evt bulletin.Event) {
+				err := d.ProcessMessage(evt.Message)
+				if err != nil {
+					log.Errorf("processing bulletin message %s: %v", evt.Message.GetType(), err)
+				}
+			}(evt)
 		}
 	}()
 	return nil

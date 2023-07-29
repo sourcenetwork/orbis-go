@@ -21,6 +21,12 @@ func main() {
 	logging.SetAllLoggers(logging.LevelDPanic)
 	logging.SetLogLevelRegex("orbis.*", "info")
 
+	// logging.SetLogLevelRegex("orbis/bulletin.*", "debug")
+	// logging.SetLogLevelRegex("orbis/host.*", "debug")
+	// loggingv2.SetLogLevel("pubsub", "debug")
+	// logging.SetLogLevelRegex("eventbus.*", "debug")
+	// golog.SetLogLevelRegex("psrpc.*", "debug")
+
 	err := logging.SetLogLevelRegex("dht/.*", "error")
 	if err != nil {
 		log.Fatalf("Set log level: %s", err)

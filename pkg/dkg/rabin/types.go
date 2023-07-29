@@ -283,12 +283,10 @@ func dkgToProto(d *dkg) (*rabinv1alpha1.DKG, error) {
 			return nil, err
 		}
 		if secret := d.rdkg.Dealer().Secret(); secret != nil {
-			log.Infof("polysecret")
 			polySecret, err = d.rdkg.Dealer().Secret().MarshalBinary()
 			if err != nil {
 				return nil, err
 			}
-			log.Infof("polysecret: 0x%0X", polySecret)
 		}
 	}
 

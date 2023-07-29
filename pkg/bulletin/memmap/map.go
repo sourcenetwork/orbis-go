@@ -5,13 +5,17 @@ import (
 	"sync"
 
 	"github.com/golang/protobuf/proto"
+	logging "github.com/ipfs/go-log"
 	"github.com/sourcenetwork/eventbus-go"
+
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
 	"github.com/sourcenetwork/orbis-go/pkg/util/glob"
 )
 
 // type BaseBulletin = bulletin.Bulletin[string, []byte]
+
+var log = logging.Logger("orbis/bulletin/map")
 
 var _ bulletin.Bulletin = (*Bulletin)(nil)
 
@@ -61,6 +65,7 @@ func (b *Bulletin) Post(ctx context.Context, identifier string, msg *transport.M
 }
 
 func (b *Bulletin) PostByString(ctx context.Context, identifier string, msg *transport.Message, emit bool) (bulletin.Response, error) {
+	log.Debugf("handling post for ID %s, emit=%v", identifier, emit)
 	if identifier == "" {
 		return bulletin.Response{}, bulletin.ErrEmptyID
 	}
@@ -68,7 +73,7 @@ func (b *Bulletin) PostByString(ctx context.Context, identifier string, msg *tra
 	defer b.mu.Unlock()
 	// check duplicate
 	if _, exists := b.messages[identifier]; exists {
-		return bulletin.Response{}, bulletin.ErrDuplicateMessage
+		return bulletin.Response{}, bulletin.ErrDuplicateMessageF(identifier)
 	}
 	buf, err := proto.Marshal(msg)
 	if err != nil {
@@ -77,11 +82,15 @@ func (b *Bulletin) PostByString(ctx context.Context, identifier string, msg *tra
 	b.messages[identifier] = buf
 
 	if emit {
+		log.Debugf("publishing post event locally for %s", identifier)
 		evt := bulletin.Event{
 			Message: msg,
 			ID:      identifier,
 		}
-		eventbus.Publish(b.bus, evt) // publish the event locally
+		err = eventbus.Publish(b.bus, evt) // publish the event locally
+		if err != nil {
+			log.Errorf("failed to publish event to channel: %w", err)
+		}
 	}
 
 	return bulletin.Response{
@@ -96,6 +105,7 @@ func (b *Bulletin) Read(ctx context.Context, identifier string) (bulletin.Respon
 }
 
 func (b *Bulletin) ReadByString(ctx context.Context, identifier string) (bulletin.Response, error) {
+	log.Debug("handling read for id %s", identifier)
 	if identifier == "" {
 		return bulletin.Response{}, bulletin.ErrEmptyID
 	}

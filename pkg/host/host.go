@@ -114,7 +114,8 @@ func New(ctx context.Context, cfg config.Host) (*Host, error) {
 		return nil, fmt.Errorf("create libp2p host: %w", err)
 	}
 
-	gossipSub, err := pubsub.NewGossipSub(ctx, h)
+	pubsubTracer := new(pubsubTracer)
+	gossipSub, err := pubsub.NewGossipSub(ctx, h, pubsub.WithEventTracer(pubsubTracer))
 	if err != nil {
 		return nil, fmt.Errorf("create gossipsub: %w", err)
 	}
