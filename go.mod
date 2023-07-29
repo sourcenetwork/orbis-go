@@ -19,7 +19,7 @@ require (
 	github.com/multiformats/go-multiaddr v0.9.0
 	github.com/multiformats/go-multihash v0.2.1
 	github.com/samber/do v1.4.1
-	github.com/sourcenetwork/eventbus-go v0.0.0-20230306033122-703b6c56430e
+	github.com/sourcenetwork/eventbus-go v0.0.0-20230729092422-b795b65d3523
 	github.com/sourcenetwork/go-libp2p-pubsub-rpc v0.0.0-20230209220544-e16d5e34c4fc
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.15.0
@@ -170,8 +170,6 @@ require (
 
 replace (
 	github.com/go-bond/bond => github.com/sourcenetwork/bond v0.0.0-20230605094713-887163472771
-	github.com/sourcenetwork/go-libp2p-pubsub-rpc => ../go-libp2p-pubsub-rpc // github.com/sourcenetwork/go-libp2p-pubsub-rpc v0.0.0-20230723045113-08c70bbc09f2
+	github.com/sourcenetwork/go-libp2p-pubsub-rpc => github.com/sourcenetwork/go-libp2p-pubsub-rpc v0.0.0-20230729092549-3be5c22247d3
 	go.dedis.ch/kyber/v3 => github.com/sourcenetwork/kyber/v3 v3.1.1-0.20230726113421-a4ed13f7d481
-	github.com/libp2p/go-libp2p-pubsub => ../go-libp2p-pubsub
-	github.com/sourcenetwork/eventbus-go => ../eventbus-go
 )

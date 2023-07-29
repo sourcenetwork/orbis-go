@@ -635,10 +635,10 @@ github.com/sourcegraph/annotate v0.0.0-20160123013949-f4cad6c6324d/go.mod h1:Udh
 github.com/sourcegraph/syntaxhighlight v0.0.0-20170531221838-bd320f5d308e/go.mod h1:HuIsMU8RRBOtsCgI77wP899iHVBQpCmg4ErYMZB+2IA=
 github.com/sourcenetwork/bond v0.0.0-20230605094713-887163472771 h1:hCxb47E2bf4eP98cVsOMDwUgPuJyfHlg6lKjQvqRa14=
 github.com/sourcenetwork/bond v0.0.0-20230605094713-887163472771/go.mod h1:cIWt4rJzDTuwhVV2cuRDu7fJraiBiAEAcqNl8wZ57m4=
-github.com/sourcenetwork/eventbus-go v0.0.0-20230306033122-703b6c56430e h1:GY+j+821dqJEnW8cA2jEAB8cx0ILj/QDqHKwPs4Kjvc=
-github.com/sourcenetwork/eventbus-go v0.0.0-20230306033122-703b6c56430e/go.mod h1:A5EDFyKDoTaxKXxG9JW6Asa+t1rEfgY7UOmebkUo+qg=
-github.com/sourcenetwork/go-libp2p-pubsub-rpc v0.0.0-20230723045113-08c70bbc09f2 h1:4S3uy1HKcroev5M9BXrghkMDfw5j6nHxYk0YZ2ZJbwI=
-github.com/sourcenetwork/go-libp2p-pubsub-rpc v0.0.0-20230723045113-08c70bbc09f2/go.mod h1:uLjOOOCxT73L/FlrqnRQdIbkfZ3uCX16GQja5fFcRdk=
+github.com/sourcenetwork/eventbus-go v0.0.0-20230729092422-b795b65d3523 h1:kmV4nlhB9wWNQmmA6F9l9PPGGPOJv8gLj3pYSVknTAk=
+github.com/sourcenetwork/eventbus-go v0.0.0-20230729092422-b795b65d3523/go.mod h1:rUPMRb3HndCroSLh0DANaqFXkeqHIc0v8sCNxmdhZ0g=
+github.com/sourcenetwork/go-libp2p-pubsub-rpc v0.0.0-20230729092549-3be5c22247d3 h1:fsMqZ6lxR7yZFofzv0Hf3oPmJSfDaRisox4QsQ4WGSE=
+github.com/sourcenetwork/go-libp2p-pubsub-rpc v0.0.0-20230729092549-3be5c22247d3/go.mod h1:uLjOOOCxT73L/FlrqnRQdIbkfZ3uCX16GQja5fFcRdk=
 github.com/sourcenetwork/kyber/v3 v3.1.1-0.20230726113421-a4ed13f7d481 h1:9Rb6z0YJYwmY2a+ygrGD8qrS7JP38SEpzTZDzJ7wnPA=
 github.com/sourcenetwork/kyber/v3 v3.1.1-0.20230726113421-a4ed13f7d481/go.mod h1:kXy7p3STAurkADD+/aZcsznZGKVHEqbtmdIzvPfrs1U=
 github.com/spaolacci/murmur3 v1.1.0 h1:7c1g84S4BPRrfL5Xrdp6fOJ206sU9y293DDHaoy0bLI=
