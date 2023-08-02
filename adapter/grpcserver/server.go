@@ -22,6 +22,7 @@ var log = logging.Logger("orbis/grpc/server")
 
 var (
 	errUnimplemented = status.Error(codes.Unimplemented, "not implemented yet")
+	errUnAuthorized  = status.Error(codes.PermissionDenied, "not authorized")
 )
 
 func NewGRPCServer(cfg config.GRPC, a *app.App) *grpc.Server {

@@ -32,6 +32,9 @@ type App struct {
 	bb   bulletin.Bulletin
 	db   *db.DB
 
+	// authn authn.Credential
+	// authz authz.Authz
+
 	inj *do.Injector
 
 	privateKey crypto.PrivateKey
