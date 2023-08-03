@@ -173,6 +173,8 @@ func _RingServiceCreateRingCommand(cfg *client.Config) *cobra.Command {
 	flag.WithPostSetHook(cmd.PersistentFlags(), cfg.FlagNamer("Ring Transport"), func() { req.Ring = _Ring })
 	flag.SliceVar(cmd.PersistentFlags(), flag.ParseMessageE[*Node], &_Ring.Nodes, cfg.FlagNamer("Ring Nodes"), "")
 	flag.WithPostSetHook(cmd.PersistentFlags(), cfg.FlagNamer("Ring Nodes"), func() { req.Ring = _Ring })
+	cmd.PersistentFlags().StringVar(&_Ring.Authorization, cfg.FlagNamer("Ring Authorization"), "", "")
+	flag.WithPostSetHook(cmd.PersistentFlags(), cfg.FlagNamer("Ring Authorization"), func() { req.Ring = _Ring })
 
 	return cmd
 }
@@ -472,6 +474,7 @@ func _RingServiceGetSecretCommand(cfg *client.Config) *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVar(&req.SecretId, cfg.FlagNamer("SecretId"), "", "")
+	cmd.PersistentFlags().StringVar(&req.RingId, cfg.FlagNamer("RingId"), "", "")
 
 	return cmd
 }
