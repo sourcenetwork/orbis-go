@@ -7,7 +7,6 @@ import (
 	"github.com/sourcenetwork/orbis-go/config"
 	hostv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/host/v1alpha1"
 	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/ring/v1alpha1"
-	secretv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/secret/v1alpha1"
 	transportv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/transport/v1alpha1"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -38,7 +37,6 @@ func NewGRPCServer(cfg config.GRPC, a *app.App) *grpc.Server {
 	hostv1alpha1.RegisterHostServiceServer(s, newHostService(a.Host()))
 	transportv1alpha1.RegisterTransportServiceServer(s, newTransportService(a.Transport()))
 	ringv1alpha1.RegisterRingServiceServer(s, newRingService(a))
-	secretv1alpha1.RegisterSecretServiceServer(s, newSecretService())
 
 	return s
 }
