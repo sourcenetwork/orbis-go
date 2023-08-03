@@ -10,6 +10,7 @@ import (
 	"github.com/samber/do"
 
 	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/ring/v1alpha1"
+	"github.com/sourcenetwork/orbis-go/pkg/authz"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto/proof"
@@ -30,6 +31,8 @@ type Ring struct {
 	DKG dkg.DKG
 	PSS pss.PSS
 	PRE pre.PRE
+
+	Authz authz.Authz
 
 	// collection of registered services
 	// that require startup/shutdown and
@@ -128,6 +131,12 @@ func (app *App) JoinRing(ctx context.Context, ring *ringv1alpha1.Ring) (*Ring, e
 
 func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState bool) (*Ring, error) {
 	rid := types.RingID(ring.Id)
+	app.mu.Lock()
+	defer app.mu.Unlock()
+
+	if _, exists := app.rings[rid]; exists {
+		return nil, fmt.Errorf("already joined ring %s", rid)
+	}
 
 	rs := &Ring{}
 
@@ -172,6 +181,12 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 		return nil, fmt.Errorf("invoke bulletin: %w", err)
 	}
 	do.ProvideValue(inj, bb)
+
+	authz, err := do.InvokeNamed[authz.Authz](inj, ring.Authorization)
+	if err != nil {
+		return nil, fmt.Errorf("invoke authz: %w", err)
+	}
+	do.ProvideValue(inj, authz)
 
 	// setup and register local services
 	dkgRepoKeys := app.repoKeysForService(dkgFactory.Name())
@@ -235,9 +250,15 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 		services: rs.services, // this is dumb, but im being lazy, sorry.
 	}
 
+	app.rings[rs.ID] = rs
+
 	// called in ring.Join() - go rs.handleEvents()
 
 	return rs, nil
+}
+
+func (app *App) GetRing(ctx context.Context, rid types.RingID) (*Ring, error) {
+	return nil, nil
 }
 
 func nodesFromIDs(ring *ringv1alpha1.Ring) ([]transport.Node, error) {

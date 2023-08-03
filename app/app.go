@@ -9,6 +9,8 @@ import (
 
 	"github.com/sourcenetwork/orbis-go/config"
 	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/ring/v1alpha1"
+	"github.com/sourcenetwork/orbis-go/pkg/authn"
+	"github.com/sourcenetwork/orbis-go/pkg/authz"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	p2pbb "github.com/sourcenetwork/orbis-go/pkg/bulletin/p2p"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
@@ -32,8 +34,9 @@ type App struct {
 	bb   bulletin.Bulletin
 	db   *db.DB
 
-	// authn authn.Credential
-	// authz authz.Authz
+	authn    authn.CredentialService
+	resolver authn.KeyResolver
+	authz    authz.Authz
 
 	inj *do.Injector
 
@@ -56,6 +59,8 @@ type App struct {
 	// service
 	serviceRepos map[string][]string
 
+	config config.Config
+
 	mu sync.Mutex
 }
 
@@ -73,6 +78,14 @@ func (a *App) Transport() transport.Transport {
 
 func (a *App) Injector() *do.Injector {
 	return a.inj
+}
+
+func (a *App) Authn() authn.CredentialService {
+	return a.authn
+}
+
+func (a *App) Authz() authz.Authz {
+	return a.authz
 }
 
 func New(ctx context.Context, host *host.Host, opts ...Option) (*App, error) {
@@ -145,6 +158,10 @@ func New(ctx context.Context, host *host.Host, opts ...Option) (*App, error) {
 // }
 
 func (a *App) setupRepoKeysForService(namespace string, records []string) error {
+	if len(records) == 0 {
+		return nil
+	}
+
 	repoKeys := keysForRepoTypes(records)
 	serviceKeys := make([]string, len(records))
 	for i, k := range repoKeys {
