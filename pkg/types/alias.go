@@ -6,7 +6,6 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 
 	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/ring/v1alpha1"
-	secretv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/secret/v1alpha1"
 )
 
 type Ring struct {
@@ -18,7 +17,7 @@ func RingFromManifest(manifest []byte) (*Ring, RingID, error) {
 }
 
 type Secret struct {
-	secretv1alpha1.Secret
+	ringv1alpha1.Secret
 }
 
 type Node struct {
