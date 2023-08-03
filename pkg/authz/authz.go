@@ -2,7 +2,14 @@ package authz
 
 import "context"
 
+const (
+	READ  = "read"
+	WRITE = "write"
+)
+
 type Authz interface {
+	Name() string
+
 	// Init completes any additional initialization the authz service needs
 	Init(ctx context.Context) error
 
@@ -11,5 +18,5 @@ type Authz interface {
 	// currently makes no assumption about the structure of contents of the
 	// subject and payload byte-arrays. This is left up to the implementation
 	// so a generic byte-array was the most appropriate.
-	Check(ctx context.Context, resource, subject []byte) (bool, error)
+	Check(ctx context.Context, resource, action, subject string) (bool, error)
 }
