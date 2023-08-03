@@ -85,9 +85,11 @@ message StoreSecretRequest {
 
 message StoreSecretResponse {
   string secret_id = 1;
+  string ring_id = 2;
 }
 message GetSecretRequest {
   string secret_id = 1;
+  string ring_id = 2;
 }
 
 message GetSecretResponse {
@@ -126,8 +128,8 @@ message Ring {
   string pre = 7;
   string bulletin = 8;
   string transport = 9;
-
   repeated Node nodes = 10;
+  string authorization = 11;
 }
 
 message Node {
