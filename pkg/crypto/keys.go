@@ -1,6 +1,9 @@
 package crypto
 
 import (
+	gocrypto "crypto"
+	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/sha512"
 	"fmt"
 
@@ -49,8 +52,22 @@ func PublicKeyFromProto(pk *icpb.PublicKey) (PublicKey, error) {
 	return publicKeyFromLibP2P(icpk)
 }
 
-func PublicKeyToProto(pk PublicKey) (*icpb.PublicKey, error) {
-	return ic.PublicKeyToProto(pk)
+func PublicKeyFromGoPublicKey(pubkey gocrypto.PublicKey) (PublicKey, error) {
+	var icpk ic.PubKey
+	var err error
+	switch pkt := pubkey.(type) {
+	case ed25519.PublicKey:
+		icpk, err = ic.UnmarshalEd25519PublicKey(pkt)
+	case ecdsa.PublicKey:
+		icpk, err = ic.ECDSAPublicKeyFromPubKey(pkt)
+	default:
+		return nil, fmt.Errorf("unknown key type")
+	}
+
+	if err != nil {
+		return nil, err
+	}
+	return publicKeyFromLibP2P(icpk)
 }
 
 func PublicKeyFromPoint(suite suites.Suite, point kyber.Point) (PublicKey, error) {
@@ -93,6 +110,14 @@ func publicKeyFromLibP2P(pubkey ic.PubKey) (*pubKey, error) {
 		suite:  suite,
 	}, nil
 
+}
+
+func PublicKeyToProto(pk PublicKey) (*icpb.PublicKey, error) {
+	return ic.PublicKeyToProto(pk)
+}
+
+func PublicKeyToStdKey(pk PublicKey) (gocrypto.PublicKey, error) {
+	return ic.PubKeyToStdKey(pk)
 }
 
 func (p *pubKey) Point() kyber.Point {
