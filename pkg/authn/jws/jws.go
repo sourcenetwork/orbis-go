@@ -117,8 +117,8 @@ func (c credentialSrv) GetAndVerifyRequestMetadata(ctx context.Context) (authn.S
 
 type dummyResolver struct{}
 
-func (dummyResolver) Resolve(_ context.Context, _ string) (crypto.PublicKey, error) {
-	return nil, nil
+func (dummyResolver) Resolve(_ context.Context, _ string) (authn.SubjectInfo, error) {
+	return authn.SubjectInfo{}, nil
 }
 
 // Converts a Public Key to a JWK
@@ -144,3 +144,7 @@ func JWKFromPublicKey(pk crypto.PublicKey) (*jose.JSONWebKey, error) {
 		Key: key,
 	}, nil
 }
+
+// func publicKeyFromJWK(jwk jose.JSONWebKey) (crypto.PublicKey, error) {
+// 	jwk.Algorithm
+// }
