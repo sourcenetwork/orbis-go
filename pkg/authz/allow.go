@@ -38,7 +38,7 @@ func newAllow(allow ALLOW) staticAuthz {
 }
 
 func (s staticAuthz) Name() string {
-	return fmt.Sprintf("%s_%s", "static", s.allow)
+	return fmt.Sprintf("%s-%s", "allow", s.allow)
 }
 
 func (staticAuthz) Init(_ context.Context) error {

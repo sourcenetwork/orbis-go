@@ -27,7 +27,8 @@ import (
 var log = logging.Logger("orbis/ring")
 
 type Ring struct {
-	ID types.RingID
+	ID       types.RingID
+	manifest *ringv1alpha1.Ring
 
 	DKG dkg.DKG
 	PSS pss.PSS
@@ -117,13 +118,10 @@ nodeconfig {
 */
 
 func (app *App) JoinRing(ctx context.Context, ring *ringv1alpha1.Ring) (*Ring, error) {
-	app.mu.Lock()
-	defer app.mu.Unlock()
 	r, err := app.joinRing(ctx, ring, false /* fromState */)
 	if err != nil {
 		return nil, err
 	}
-	app.rings[r.ID] = r
 	err = app.ringRepo.Create(ctx, ring)
 	if err != nil {
 		return nil, err
@@ -132,6 +130,7 @@ func (app *App) JoinRing(ctx context.Context, ring *ringv1alpha1.Ring) (*Ring, e
 }
 
 func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState bool) (*Ring, error) {
+	log.Infof("joining ring %s", ring.Id)
 	rid := types.RingID(ring.Id)
 	app.mu.Lock()
 	defer app.mu.Unlock()
@@ -149,6 +148,7 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 	inj := app.inj.Clone()
 
 	// factories
+	log.Info("pulling factory dependencies for ring")
 	authnFactory, err := do.InvokeNamed[types.Factory[authn.CredentialService]](inj, ring.Authentication)
 	if err != nil {
 		return nil, fmt.Errorf("invoke authn credential service: %w", err)
@@ -196,6 +196,7 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 	do.ProvideValue(inj, authz)
 
 	// setup and register local services
+	log.Info("Initializating local services for ring")
 	authn, err := authnFactory.New(inj, []db.RepoKey{}) // empty repo keys
 	if err != nil {
 		return nil, fmt.Errorf("create authn: %w", err)
@@ -249,6 +250,7 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 
 	rs = &Ring{
 		ID:        rid,
+		manifest:  ring,
 		DKG:       dkgSrv,
 		PSS:       pssSrv,
 		PRE:       preSrv,
@@ -258,10 +260,9 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 		inj:       inj,
 		N:         int(ring.N),
 		T:         int(ring.T),
-
-		services: rs.services, // this is dumb, but im being lazy, sorry.
-		Authz:    authz,
-		Authn:    authn,
+		services:  rs.services, // this is dumb, but im being lazy, sorry.
+		Authz:     authz,
+		Authn:     authn,
 	}
 
 	app.rings[rs.ID] = rs
@@ -271,8 +272,23 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 	return rs, nil
 }
 
-func (app *App) GetRing(ctx context.Context, rid types.RingID) (*Ring, error) {
-	return nil, nil
+func (a *App) GetRing(rid types.RingID) (*Ring, bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	r, ok := a.rings[rid]
+	return r, ok
+}
+
+func (a *App) ListRings() []*Ring {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	rings := make([]*Ring, len(a.rings))
+	i := 0
+	for _, r := range a.rings {
+		rings[i] = r
+		i++
+	}
+	return rings
 }
 
 func nodesFromIDs(nodes []*ringv1alpha1.Node) ([]transport.Node, error) {
@@ -345,6 +361,10 @@ func (r *Ring) State() State {
 
 func (r *Ring) Nodes() []pss.Node {
 	return nil
+}
+
+func (r *Ring) Manifest() *ringv1alpha1.Ring {
+	return r.manifest
 }
 
 func (r *Ring) registerService(srv service) error {

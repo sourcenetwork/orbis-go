@@ -56,6 +56,7 @@ func setupApp(ctx context.Context, cfg config.Config) (*app.App, error) {
 
 		// shared global transport and bulletin.
 		app.WithService[transport.Transport](tp),
+
 		app.WithService[bulletin.Bulletin](bb),
 
 		// Authentication and Authorization services

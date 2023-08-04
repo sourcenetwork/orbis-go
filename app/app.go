@@ -9,13 +9,9 @@ import (
 
 	"github.com/sourcenetwork/orbis-go/config"
 	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/ring/v1alpha1"
-	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
-	p2pbb "github.com/sourcenetwork/orbis-go/pkg/bulletin/p2p"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	"github.com/sourcenetwork/orbis-go/pkg/db"
 	"github.com/sourcenetwork/orbis-go/pkg/host"
-	"github.com/sourcenetwork/orbis-go/pkg/transport"
-	p2ptp "github.com/sourcenetwork/orbis-go/pkg/transport/p2p"
 	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
 
@@ -28,8 +24,6 @@ var (
 // App implements App all services.
 type App struct {
 	host *host.Host
-	tp   transport.Transport
-	bb   bulletin.Bulletin
 	db   *db.DB
 
 	inj *do.Injector
@@ -66,9 +60,6 @@ type repoParam struct {
 func (a *App) Host() *host.Host {
 	return a.host
 }
-func (a *App) Transport() transport.Transport {
-	return a.tp
-}
 
 func (a *App) Injector() *do.Injector {
 	return a.inj
@@ -88,26 +79,24 @@ func New(ctx context.Context, host *host.Host, opts ...Option) (*App, error) {
 
 	inj := do.New()
 
-	// register global services
-	tp, err := p2ptp.New(ctx, host, config.Transport{})
-	if err != nil {
-		return nil, fmt.Errorf("create transport: %w", err)
-	}
-	do.ProvideNamedValue[transport.Transport](inj, tp.Name(), tp)
+	// // register global services
+	// tp, err := p2ptp.New(ctx, host, config.Transport{})
+	// if err != nil {
+	// 	return nil, fmt.Errorf("create transport: %w", err)
+	// }
+	// do.ProvideNamedValue[transport.Transport](inj, tp.Name(), tp)
 
-	bb, err := p2pbb.New(ctx, host, config.Bulletin{})
-	if err != nil {
-		return nil, fmt.Errorf("create bulletin: %w", err)
-	}
-	do.ProvideNamedValue[bulletin.Bulletin](inj, bb.Name(), bb)
+	// bb, err := p2pbb.New(ctx, host, config.Bulletin{})
+	// if err != nil {
+	// 	return nil, fmt.Errorf("create bulletin: %w", err)
+	// }
+	// do.ProvideNamedValue[bulletin.Bulletin](inj, bb.Name(), bb)
 
-	do.ProvideValue(inj, host)
+	// do.ProvideValue(inj, host)
 
 	a := &App{
 		host:         host,
 		inj:          inj,
-		tp:           tp,
-		bb:           bb,
 		privateKey:   cpk,
 		repoParams:   make(map[string]repoParam),
 		repoKeys:     make(map[string]db.RepoKey),

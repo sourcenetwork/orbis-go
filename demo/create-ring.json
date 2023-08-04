@@ -8,6 +8,8 @@
     "pre": "elgamal",
     "bulletin": "p2pbb",
     "transport": "p2p",
+    "authentication": "jws-did",
+    "authorization": "allow-all",
     "nodes": [
       {
         "id": "12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqu",

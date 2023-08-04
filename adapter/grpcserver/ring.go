@@ -33,22 +33,29 @@ func newRingService(a *app.App) *ringService {
 
 func (s *ringService) ListRings(ctx context.Context, req *ringv1alpha1.ListRingsRequest) (*ringv1alpha1.ListRingsResponse, error) {
 
-	resp := &ringv1alpha1.ListRingsResponse{}
+	rings := s.app.ListRings()
+	if len(rings) == 0 {
+		return &ringv1alpha1.ListRingsResponse{}, nil
+	}
 
-	return resp, nil
+	ringResp := make([]*ringv1alpha1.Ring, len(rings))
+	for i, r := range rings {
+		ringResp[i] = r.Manifest()
+	}
+
+	return &ringv1alpha1.ListRingsResponse{
+		Rings: ringResp,
+	}, nil
 }
 
 func (s *ringService) CreateRing(ctx context.Context, req *ringv1alpha1.CreateRingRequest) (*ringv1alpha1.CreateRingResponse, error) {
-
+	fmt.Println("hello world")
 	// new context
 	bgctx := context.Background()
 	r, err := s.app.JoinRing(bgctx, req.Ring)
 	if err != nil {
 		return nil, fmt.Errorf("create ring: %w", err)
 	}
-
-	s.rings[r.ID] = r
-	s.manifests[r.ID] = req.Ring
 
 	resp := &ringv1alpha1.CreateRingResponse{
 		Id: string(r.ID),
@@ -64,13 +71,13 @@ func (s *ringService) CreateRing(ctx context.Context, req *ringv1alpha1.CreateRi
 
 func (s *ringService) GetRing(ctx context.Context, req *ringv1alpha1.GetRingRequest) (*ringv1alpha1.GetRingResponse, error) {
 
-	r, ok := s.manifests[types.RingID(req.Id)]
+	r, ok := s.app.GetRing(types.RingID(req.Id))
 	if !ok {
 		return nil, status.Error(codes.NotFound, "ring not found")
 	}
 
 	resp := &ringv1alpha1.GetRingResponse{
-		Ring: r,
+		Ring: r.Manifest(),
 	}
 
 	return resp, nil

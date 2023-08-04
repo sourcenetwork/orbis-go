@@ -51,6 +51,15 @@ func WithService[S any](s S) Option {
 	}
 }
 
+// WithStaticService is like `WithService` but only one of a given
+// type can be injected, and it doesn't used a named injection.
+func WithStaticService[S any](s S) Option {
+	return func(a *App) error {
+		do.ProvideValue(a.inj, s)
+		return nil
+	}
+}
+
 // func WithStatelessFactory[T any](f types.StatelessFactory[T]) {}
 
 // WithFactory registers a `types.Factory[T]` into the dependency

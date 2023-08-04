@@ -3,6 +3,8 @@ package grpcserver
 import (
 	"context"
 
+	"github.com/samber/do"
+	"github.com/sourcenetwork/orbis-go/app"
 	transportv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/transport/v1alpha1"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
 	"github.com/sourcenetwork/orbis-go/pkg/transport/p2p"
@@ -15,28 +17,31 @@ import (
 
 type transportService struct {
 	transportv1alpha1.UnimplementedTransportServiceServer
-	tp transport.Transport
+	app *app.App
 }
 
-func newTransportService(tp transport.Transport) *transportService {
+func newTransportService(app *app.App) *transportService {
 	return &transportService{
-		tp: tp,
+		app: app,
 	}
 }
 
 func (s *transportService) GetHost(ctx context.Context, req *transportv1alpha1.GetHostRequest) (*transportv1alpha1.GetHostResponse, error) {
 
-	h := s.tp.Host()
+	tp, ok := getTransport(s.app.Injector(), req.Transport)
+	if !ok {
+		return nil, status.Error(codes.NotFound, "transport doens't exist")
+	}
 
-	raw, err := h.PublicKey().Raw()
+	raw, err := tp.Host().PublicKey().Raw()
 	if err != nil {
 		return nil, err
 	}
 
 	resp := &transportv1alpha1.GetHostResponse{
 		Node: &transportv1alpha1.Node{
-			Id:      h.ID(),
-			Address: h.Address().String(),
+			Id:      tp.Host().ID(),
+			Address: tp.Host().Address().String(),
 			PublicKey: &libp2pcrypto.PublicKey{
 				Type: libp2pcrypto.KeyType_Ed25519.Enum(),
 				Data: raw,
@@ -55,6 +60,10 @@ func (s *transportService) Send(ctx context.Context, req *transportv1alpha1.Send
 }
 
 func (s *transportService) Connect(ctx context.Context, req *transportv1alpha1.ConnectRequest) (*transportv1alpha1.ConnectResponse, error) {
+	tp, ok := getTransport(s.app.Injector(), req.Transport)
+	if !ok {
+		return nil, status.Error(codes.NotFound, "transport doens't exist")
+	}
 
 	addr, err := multiaddr.NewMultiaddr(req.GetAddress())
 	if err != nil {
@@ -63,7 +72,7 @@ func (s *transportService) Connect(ctx context.Context, req *transportv1alpha1.C
 
 	n := p2p.NewNode(req.GetId(), nil, addr)
 
-	err = s.tp.Connect(ctx, n)
+	err = tp.Connect(ctx, n)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -74,8 +83,12 @@ func (s *transportService) Connect(ctx context.Context, req *transportv1alpha1.C
 }
 
 func (s *transportService) Gossip(ctx context.Context, req *transportv1alpha1.GossipRequest) (*transportv1alpha1.GossipResponse, error) {
+	tp, ok := getTransport(s.app.Injector(), req.Transport)
+	if !ok {
+		return nil, status.Error(codes.NotFound, "transport doens't exist")
+	}
 
-	err := s.tp.Gossip(ctx, req.GetTopic(), req.GetMessage())
+	err := tp.Gossip(ctx, req.GetTopic(), req.GetMessage())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -86,14 +99,18 @@ func (s *transportService) Gossip(ctx context.Context, req *transportv1alpha1.Go
 }
 
 func (s *transportService) NewMessage(ctx context.Context, req *transportv1alpha1.NewMessageRequest) (*transportv1alpha1.NewMessageResponse, error) {
+	tp, ok := getTransport(s.app.Injector(), req.Transport)
+	if !ok {
+		return nil, status.Error(codes.NotFound, "transport doens't exist")
+	}
 
-	pubkey, err := s.tp.Host().PublicKey().Raw()
+	pubkey, err := tp.Host().PublicKey().Raw()
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	// TODO: Check what else needs to be signed.
-	sig, err := s.tp.Host().Sign(req.Payload)
+	sig, err := tp.Host().Sign(req.Payload)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -105,7 +122,7 @@ func (s *transportService) NewMessage(ctx context.Context, req *transportv1alpha
 		Gossip:  req.Gossip,
 		RingId:  req.RingId,
 
-		NodeId:     s.tp.Host().ID(),
+		NodeId:     tp.Host().ID(),
 		NodePubKey: pubkey,
 		Signature:  sig,
 	}
@@ -115,4 +132,12 @@ func (s *transportService) NewMessage(ctx context.Context, req *transportv1alpha
 	}
 
 	return resp, nil
+}
+
+func getTransport(inj *do.Injector, transportName string) (transport.Transport, bool) {
+	tp, err := do.InvokeNamed[transport.Transport](inj, transportName)
+	if err != nil {
+		return nil, false
+	}
+	return tp, true
 }
