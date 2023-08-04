@@ -118,6 +118,8 @@ nodeconfig {
 */
 
 func (app *App) JoinRing(ctx context.Context, ring *ringv1alpha1.Ring) (*Ring, error) {
+	app.mu.Lock()
+	defer app.mu.Unlock()
 	r, err := app.joinRing(ctx, ring, false /* fromState */)
 	if err != nil {
 		return nil, err
@@ -126,14 +128,13 @@ func (app *App) JoinRing(ctx context.Context, ring *ringv1alpha1.Ring) (*Ring, e
 	if err != nil {
 		return nil, err
 	}
+	app.rings[r.ID] = r
 	return r, nil
 }
 
 func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState bool) (*Ring, error) {
 	log.Infof("joining ring %s", ring.Id)
 	rid := types.RingID(ring.Id)
-	app.mu.Lock()
-	defer app.mu.Unlock()
 
 	if _, exists := app.rings[rid]; exists {
 		return nil, fmt.Errorf("already joined ring %s", rid)
@@ -265,8 +266,6 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 		Authn:     authn,
 	}
 
-	app.rings[rs.ID] = rs
-
 	// called in ring.Join() - go rs.handleEvents()
 
 	return rs, nil
@@ -391,20 +390,24 @@ func (r *Ring) Start(ctx context.Context) error {
 func (app *App) LoadRings(ctx context.Context) error {
 	app.mu.Lock()
 	defer app.mu.Unlock()
+	log.Info("Loading rings from state")
 
 	rings, err := app.ringRepo.GetAll(ctx)
 	if err != nil {
 		return err
 	}
 
+	log.Infof("Found %d rings, rejoining", len(rings))
 	for _, r := range rings {
 		ring, err := app.joinRing(ctx, r, true /* fromState */)
 		if err != nil {
 			return err
 		}
+		ring.manifest = r
 
 		app.rings[ring.ID] = ring
 	}
+	log.Infof("Finished loading %d rings from state", len(rings))
 
 	return nil
 }

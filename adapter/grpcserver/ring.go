@@ -121,18 +121,21 @@ func (s *ringService) Refresh(ctx context.Context, req *ringv1alpha1.RefreshRequ
 
 func (s *ringService) State(ctx context.Context, req *ringv1alpha1.StateRequest) (*ringv1alpha1.StateResponse, error) {
 
-	r, ok := s.rings[types.RingID(req.Id)]
+	r, ok := s.app.GetRing(types.RingID(req.Id))
 	if !ok {
 		return nil, status.Error(codes.NotFound, "ring not found")
 	}
 
 	states := r.State()
 	services := make([]*ringv1alpha1.ServiceState, len(states))
+	i := 0
 	for name, state := range states {
-		services = append(services, &ringv1alpha1.ServiceState{
+		log.Infof("state: '%s'", state)
+		services[i] = &ringv1alpha1.ServiceState{
 			Name:  name,
 			State: state,
-		})
+		}
+		i++
 	}
 	resp := &ringv1alpha1.StateResponse{
 		Services: services,

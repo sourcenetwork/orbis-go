@@ -23,22 +23,24 @@ import (
 )
 
 const (
-	RECIEVING orbisdkg.State = orbisdkg.CUSTOM_STATE_MASK | iota // 0b10000000
+	RECIEVING orbisdkg.State = orbisdkg.CUSTOM_STATE_MASK | iota + 1 // 0b10000000
 	// Processed all the deals, waiting for responses
 	PROCESSED_DEALS     // 0b10000001
 	PROCESSED_RESPONSES // 0b10000010
 	PROCESSED_COMMITS   // 0b10000011
 
-	PROCESSING = PROCESSED_DEALS | PROCESSED_RESPONSES
+	// PROCESSING = PROCESSED_DEALS | PROCESSED_RESPONSES
 )
 
 var (
 	ErrMissingRepoKeys = fmt.Errorf("missing repo keys")
 
 	stateToString = map[orbisdkg.State]string{
+		orbisdkg.UNSPECIFIED: "Unspecified",
+		orbisdkg.STARTED:     "Started",
 		orbisdkg.INITIALIZED: "Initialized",
 		orbisdkg.CERTIFIED:   "Certified",
-		RECIEVING:            "Receiving",
+		RECIEVING:            "Receiving Deals",
 		PROCESSED_DEALS:      "Processed Deals",
 		PROCESSED_RESPONSES:  "Processed Reponses",
 		PROCESSED_COMMITS:    "Processed Commits",
@@ -363,6 +365,8 @@ func dkgFromProto(d *rabinv1alpha1.DKG) (dkg, error) {
 		state = orbisdkg.STARTED
 	case rabinv1alpha1.State_STATE_CERTIFIED:
 		state = orbisdkg.CERTIFIED
+	case rabinv1alpha1.State_STATE_PROCESSED_RECEVING:
+		state = RECIEVING
 	case rabinv1alpha1.State_STATE_PROCESSED_DEALS:
 		state = PROCESSED_DEALS
 	case rabinv1alpha1.State_STATE_PROCESSED_RESPONSES:
@@ -416,7 +420,6 @@ func dkgFromProto(d *rabinv1alpha1.DKG) (dkg, error) {
 
 	// polynomial secret
 	var secret kyber.Scalar
-	log.Infof("from proto, polysecret: 0x%0X", d.PolySecret)
 	if d.PolySecret != nil {
 		secret = suite.Scalar()
 		err := secret.UnmarshalBinary(d.PolySecret)

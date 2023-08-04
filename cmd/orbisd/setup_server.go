@@ -36,6 +36,13 @@ func setupServer(cfg config.Config) error {
 		return fmt.Errorf("setup gRPC server: %w", err)
 	}
 
+	// load existing ring state
+	log.Info("Loading rings from state")
+	err = app.LoadRings(ctx)
+	if err != nil {
+		return fmt.Errorf("loading rings: %w", err)
+	}
+
 	// Catch and handle signals
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
