@@ -42,7 +42,7 @@ func (s *ringService) GetSecret(ctx context.Context, req *ringv1alpha1.GetSecret
 		return resp, err
 	}
 
-	authInfo, err := s.app.Authn().GetAndVerifyRequestMetadata(ctx)
+	authInfo, err := ring.Authn.GetAndVerifyRequestMetadata(ctx)
 	ok, err := ring.Authz.Check(ctx, req.SecretId, authz.READ, authInfo.Subject)
 	if err != nil {
 		return resp, err

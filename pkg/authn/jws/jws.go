@@ -16,12 +16,11 @@ import (
 
 const (
 	OrbisJWSAudience = "orbis"
+	tokenMetadataKey = "authorization"
 )
 
 var (
 	verifyLeewayTime = 10 * time.Second
-
-	_ authn.CredentialService = NewSelfSignedCredentialService(dummyResolver{}, authn.GRPCMetadataParser{})
 )
 
 var _ authn.CredentialService = (*credentialSrv)(nil)
@@ -51,7 +50,7 @@ func (c credentialSrv) GetAndVerifyRequestMetadata(ctx context.Context) (authn.S
 		return authn.SubjectInfo{}, fmt.Errorf("missing request metadata")
 	}
 
-	vals := md.Get("authorization")
+	vals := md.Get(tokenMetadataKey)
 	if len(vals) == 0 {
 		return authn.SubjectInfo{}, fmt.Errorf("missing authorization token")
 	}
@@ -78,7 +77,7 @@ func (c credentialSrv) GetAndVerifyRequestMetadata(ctx context.Context) (authn.S
 	if err != nil {
 		return authn.SubjectInfo{}, fmt.Errorf("resolving kid: %w", err)
 	}
-	key, err := JWKFromPublicKey(userInfo.PubKey)
+	key, err := crypto.PublicKeyToStdKey(userInfo.PubKey)
 	if err != nil {
 		return authn.SubjectInfo{}, fmt.Errorf("extracting JWK from resolved public key: %w", err)
 	}
@@ -89,7 +88,7 @@ func (c credentialSrv) GetAndVerifyRequestMetadata(ctx context.Context) (authn.S
 		return authn.SubjectInfo{}, fmt.Errorf("verifying JWS: %w", err)
 	}
 
-	claims := jwt.Claims{}
+	claims := claims{}
 	err = json.Unmarshal(payload, &claims)
 	if err != nil {
 		return authn.SubjectInfo{}, fmt.Errorf("unmarshaling JWS payload: %w", err)
@@ -145,6 +144,6 @@ func JWKFromPublicKey(pk crypto.PublicKey) (*jose.JSONWebKey, error) {
 	}, nil
 }
 
-// func publicKeyFromJWK(jwk jose.JSONWebKey) (crypto.PublicKey, error) {
-// 	jwk.Algorithm
-// }
+type claims struct {
+	jwt.Claims
+}

@@ -10,6 +10,7 @@ import (
 	"github.com/samber/do"
 
 	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/ring/v1alpha1"
+	"github.com/sourcenetwork/orbis-go/pkg/authn"
 	"github.com/sourcenetwork/orbis-go/pkg/authz"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
@@ -32,7 +33,9 @@ type Ring struct {
 	PSS pss.PSS
 	PRE pre.PRE
 
-	Authz authz.Authz
+	Authz    authz.Authz
+	Authn    authn.CredentialService
+	Resolver authn.KeyResolver
 
 	// collection of registered services
 	// that require startup/shutdown and
@@ -147,6 +150,11 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 	inj := app.inj.Clone()
 
 	// factories
+	authnFactory, err := do.InvokeNamed[types.Factory[authn.CredentialService]](inj, ring.Authentication)
+	if err != nil {
+		return nil, fmt.Errorf("invoke authn credential service: %w", err)
+	}
+
 	dkgFactory, err := do.InvokeNamed[types.Factory[dkg.DKG]](inj, ring.Dkg)
 	if err != nil {
 		return nil, fmt.Errorf("invoke dkg factory: %w", err)
@@ -163,7 +171,7 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 	}
 
 	// get global services
-	db, err := do.Invoke[*db.DB](inj)
+	d, err := do.Invoke[*db.DB](inj)
 	if err != nil {
 		return nil, fmt.Errorf("invoke db: %w", err)
 	}
@@ -189,6 +197,11 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 	do.ProvideValue(inj, authz)
 
 	// setup and register local services
+	authn, err := authnFactory.New(inj, []db.RepoKey{}) // empty repo keys
+	if err != nil {
+		return nil, fmt.Errorf("create authn: %w", err)
+	}
+
 	dkgRepoKeys := app.repoKeysForService(dkgFactory.Name())
 	log.Debugf("dkg repo keys: %v", dkgRepoKeys)
 	dkgSrv, err := dkgFactory.New(inj, dkgRepoKeys)
@@ -242,12 +255,14 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 		PRE:       preSrv,
 		Transport: tp,
 		Bulletin:  bb,
-		DB:        db,
+		DB:        d,
 		inj:       inj,
 		N:         int(ring.N),
 		T:         int(ring.T),
 
 		services: rs.services, // this is dumb, but im being lazy, sorry.
+		Authz:    authz,
+		Authn:    authn,
 	}
 
 	app.rings[rs.ID] = rs

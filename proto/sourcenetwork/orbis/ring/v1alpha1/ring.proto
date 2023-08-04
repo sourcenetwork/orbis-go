@@ -130,6 +130,7 @@ message Ring {
   string transport = 9;
   repeated Node nodes = 10;
   string authorization = 11;
+  string authentication = 12;
 }
 
 message Node {

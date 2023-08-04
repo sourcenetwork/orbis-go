@@ -49,22 +49,26 @@ func setupApp(ctx context.Context, cfg config.Config) (*app.App, error) {
 	//
 	// Factories are singletons that produce newly instanciated
 	// objects for each new consumer/caller (rings)
+	//
+	// Options are called in order, `app.DefaultOptions` *should* be called first.
 	opts := []app.Option{
-		app.DefaultOptions(),
+		app.DefaultOptions(cfg),
 
+		// shared global transport and bulletin.
 		app.WithService[transport.Transport](tp),
 		app.WithService[bulletin.Bulletin](bb),
 
+		// Authentication and Authorization services
 		app.WithService(authz.NewAllow(authz.ALLOW_ALL)),
 		app.WithService(did.NewResolver(key.Resolver{})),
-
 		app.WithFactory[authn.CredentialService](jws.SelfSignedFactory),
+
+		// DKG, PRE, and PSS Factories
 		app.WithFactory[dkg.DKG](rabin.Factory),
 		app.WithFactory[pre.PRE](elgamal.Factory),
-
-		// Enable support the AVPSS, ECPSS, and CHURP based PSS systems.
 		app.WithFactory[pss.PSS](avpss.Factory),
 
+		// TODO: Enable support the AVPSS, ECPSS, and CHURP based PSS systems.
 		// Also enable basic VSS for testing (no networking/bulleting required).
 		// app.WithProactiveSecretSharing(vss.Provider),
 
@@ -77,7 +81,7 @@ func setupApp(ctx context.Context, cfg config.Config) (*app.App, error) {
 		return nil, fmt.Errorf("create app: %w", err)
 	}
 
-	// load state
+	// load existing ring state
 	log.Info("Loading rings from state")
 	err = app.LoadRings(ctx)
 	if err != nil {

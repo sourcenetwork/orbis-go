@@ -3,8 +3,6 @@ package authn
 import (
 	"context"
 
-	"google.golang.org/grpc/metadata"
-
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 )
 
@@ -48,10 +46,4 @@ type Metadata interface {
 // FromIncomingContext is a helper to strongly define
 type RequestMetadataParser interface {
 	Parse(ctx context.Context) (Metadata, bool)
-}
-
-type GRPCMetadataParser struct{}
-
-func (GRPCMetadataParser) Parse(ctx context.Context) (Metadata, bool) {
-	return metadata.FromIncomingContext(ctx)
 }

@@ -175,6 +175,8 @@ func _RingServiceCreateRingCommand(cfg *client.Config) *cobra.Command {
 	flag.WithPostSetHook(cmd.PersistentFlags(), cfg.FlagNamer("Ring Nodes"), func() { req.Ring = _Ring })
 	cmd.PersistentFlags().StringVar(&_Ring.Authorization, cfg.FlagNamer("Ring Authorization"), "", "")
 	flag.WithPostSetHook(cmd.PersistentFlags(), cfg.FlagNamer("Ring Authorization"), func() { req.Ring = _Ring })
+	cmd.PersistentFlags().StringVar(&_Ring.Authentication, cfg.FlagNamer("Ring Authentication"), "", "")
+	flag.WithPostSetHook(cmd.PersistentFlags(), cfg.FlagNamer("Ring Authentication"), func() { req.Ring = _Ring })
 
 	return cmd
 }

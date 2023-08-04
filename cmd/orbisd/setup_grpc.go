@@ -5,19 +5,29 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/samber/do"
+	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/reflection"
+
 	"github.com/sourcenetwork/orbis-go/adapter/grpcserver"
 	"github.com/sourcenetwork/orbis-go/app"
 	"github.com/sourcenetwork/orbis-go/config"
+	"github.com/sourcenetwork/orbis-go/pkg/authn"
 	"github.com/sourcenetwork/orbis-go/pkg/cleaner"
-
-	"golang.org/x/sync/errgroup"
-	"google.golang.org/grpc/reflection"
 )
 
-func setupGRPCServer(cfg config.GRPC, errGrp *errgroup.Group, clnr *cleaner.Cleaner, o *app.App) error {
+func setupGRPCServer(cfg config.GRPC, errGrp *errgroup.Group, clnr *cleaner.Cleaner, a *app.App) error {
+
+	// inject Metadata parser
+	// NOTE(jsimnz): I dont really like this location for this, as I like to keep
+	// all the dependency injection "magic" together, so its easier to track/follow.
+	// But at least for now its going to live here since I wanted this particular
+	// dependency to live close to the request/server intialization flow.
+	do.ProvideValue[authn.RequestMetadataParser](a.Injector(), GRPCMetadataParser{})
 
 	// Create a gRPC server object
-	s := grpcserver.NewGRPCServer(cfg, o)
+	s := grpcserver.NewGRPCServer(cfg, a)
 
 	reflection.Register(s)
 
@@ -56,4 +66,12 @@ func setupGRPCServer(cfg config.GRPC, errGrp *errgroup.Group, clnr *cleaner.Clea
 	})
 
 	return nil
+}
+
+var _ authn.RequestMetadataParser = (*GRPCMetadataParser)(nil)
+
+type GRPCMetadataParser struct{}
+
+func (GRPCMetadataParser) Parse(ctx context.Context) (authn.Metadata, bool) {
+	return metadata.FromIncomingContext(ctx)
 }
