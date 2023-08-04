@@ -67,6 +67,8 @@ func _TransportServiceGetHostCommand(cfg *client.Config) *cobra.Command {
 		},
 	}
 
+	cmd.PersistentFlags().StringVar(&req.Transport, cfg.FlagNamer("Transport"), "", "")
+
 	return cmd
 }
 
@@ -107,6 +109,7 @@ func _TransportServiceConnectCommand(cfg *client.Config) *cobra.Command {
 		},
 	}
 
+	cmd.PersistentFlags().StringVar(&req.Transport, cfg.FlagNamer("Transport"), "", "")
 	cmd.PersistentFlags().StringVar(&req.Id, cfg.FlagNamer("Id"), "", "")
 	cmd.PersistentFlags().StringVar(&req.Address, cfg.FlagNamer("Address"), "", "")
 
@@ -224,6 +227,7 @@ func _TransportServiceGossipCommand(cfg *client.Config) *cobra.Command {
 		},
 	}
 
+	cmd.PersistentFlags().StringVar(&req.Transport, cfg.FlagNamer("Transport"), "", "")
 	cmd.PersistentFlags().StringVar(&req.Topic, cfg.FlagNamer("Topic"), "", "")
 	_Message := &Message{}
 	cmd.PersistentFlags().Int64Var(&_Message.Timestamp, cfg.FlagNamer("Message Timestamp"), 0, "")
@@ -289,6 +293,7 @@ func _TransportServiceNewMessageCommand(cfg *client.Config) *cobra.Command {
 		},
 	}
 
+	cmd.PersistentFlags().StringVar(&req.Transport, cfg.FlagNamer("Transport"), "", "")
 	cmd.PersistentFlags().StringVar(&req.Id, cfg.FlagNamer("Id"), "", "")
 	cmd.PersistentFlags().BoolVar(&req.Gossip, cfg.FlagNamer("Gossip"), false, "")
 	flag.BytesBase64Var(cmd.PersistentFlags(), &req.Payload, cfg.FlagNamer("Payload"), "")
