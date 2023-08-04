@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-jose/go-jose"
-	"github.com/go-jose/go-jose/jwt"
+	"github.com/go-jose/go-jose/v3"
+	"github.com/go-jose/go-jose/v3/jwt"
 	"golang.org/x/crypto/ed25519"
 
 	"github.com/sourcenetwork/orbis-go/pkg/authn"
@@ -30,10 +30,10 @@ type credentialSrv struct {
 	metadataParser authn.RequestMetadataParser
 }
 
-func NewSelfSignedCredentialService(resolver authn.KeyResolver, metadataFn authn.RequestMetadataParser) authn.CredentialService {
+func NewSelfSignedCredentialService(resolver authn.KeyResolver, metadataParser authn.RequestMetadataParser) authn.CredentialService {
 	return credentialSrv{
 		resolver:       resolver,
-		metadataParser: metadataFn,
+		metadataParser: metadataParser,
 	}
 }
 
@@ -77,7 +77,7 @@ func (c credentialSrv) GetAndVerifyRequestMetadata(ctx context.Context) (authn.S
 	if err != nil {
 		return authn.SubjectInfo{}, fmt.Errorf("resolving kid: %w", err)
 	}
-	key, err := crypto.PublicKeyToStdKey(userInfo.PubKey)
+	key, err := userInfo.PubKey.Std()
 	if err != nil {
 		return authn.SubjectInfo{}, fmt.Errorf("extracting JWK from resolved public key: %w", err)
 	}
@@ -112,12 +112,6 @@ func (c credentialSrv) GetAndVerifyRequestMetadata(ctx context.Context) (authn.S
 		Subject: userInfo.Subject,
 		PubKey:  userInfo.PubKey,
 	}, nil
-}
-
-type dummyResolver struct{}
-
-func (dummyResolver) Resolve(_ context.Context, _ string) (authn.SubjectInfo, error) {
-	return authn.SubjectInfo{}, nil
 }
 
 // Converts a Public Key to a JWK

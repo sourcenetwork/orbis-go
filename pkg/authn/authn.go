@@ -1,3 +1,4 @@
+//go:generate mockery --all --with-expecter
 package authn
 
 import (
