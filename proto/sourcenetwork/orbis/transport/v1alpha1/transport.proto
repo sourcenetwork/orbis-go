@@ -23,7 +23,9 @@ service TransportService {
   rpc NewMessage(NewMessageRequest) returns (NewMessageResponse) {}
 }
 
-message GetHostRequest {}
+message GetHostRequest {
+  string transport = 1;
+}
 
 message GetHostResponse {
   Node node = 1;
@@ -37,25 +39,28 @@ message SendRequest {
 message SendResponse {}
 
 message ConnectRequest {
-  string id = 1;
-  string address = 2; // multiaddress
+  string transport = 1;
+  string id = 2;
+  string address = 3; // multiaddress
 }
 
 message ConnectResponse {}
 
 message GossipRequest {
-  string topic = 1;
-  Message message = 2;
+  string transport = 1;
+  string topic = 2;
+  Message message = 3;
 }
 
 message GossipResponse {}
 
 message NewMessageRequest {
-  string id = 1;
-  bool gossip = 2;
-  bytes payload = 3;
-  string type = 4;
-  string ring_id = 5;
+  string transport = 1;
+  string id = 2;
+  bool gossip = 3;
+  bytes payload = 4;
+  string type = 5;
+  string ring_id = 6;
 }
 
 message NewMessageResponse {
