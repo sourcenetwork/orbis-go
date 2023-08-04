@@ -31,6 +31,7 @@ var (
 type PublicKey interface {
 	ic.PubKey
 	Point() kyber.Point
+	Std() (gocrypto.PublicKey, error)
 }
 
 type pubKey struct {
@@ -52,7 +53,7 @@ func PublicKeyFromProto(pk *icpb.PublicKey) (PublicKey, error) {
 	return publicKeyFromLibP2P(icpk)
 }
 
-func PublicKeyFromGoPublicKey(pubkey gocrypto.PublicKey) (PublicKey, error) {
+func PublicKeyFromStdPublicKey(pubkey gocrypto.PublicKey) (PublicKey, error) {
 	var icpk ic.PubKey
 	var err error
 	switch pkt := pubkey.(type) {
@@ -116,15 +117,15 @@ func PublicKeyToProto(pk PublicKey) (*icpb.PublicKey, error) {
 	return ic.PublicKeyToProto(pk)
 }
 
-func PublicKeyToStdKey(pk PublicKey) (gocrypto.PublicKey, error) {
-	return ic.PubKeyToStdKey(pk)
-}
-
 func (p *pubKey) Point() kyber.Point {
 	buf, _ := p.PubKey.Raw()
 	point := p.suite.Point()
 	point.UnmarshalBinary(buf)
 	return point
+}
+
+func (p *pubKey) Std() (gocrypto.PublicKey, error) {
+	return ic.PubKeyToStdKey(p.PubKey)
 }
 
 type libp2pPrivKey interface {
@@ -136,6 +137,7 @@ type PrivateKey interface {
 	libp2pPrivKey
 	Scalar() kyber.Scalar
 	GetPublic() PublicKey
+	// Std() gocrypto.PrivateKey
 }
 
 type privKey struct {

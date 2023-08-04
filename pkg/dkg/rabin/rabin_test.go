@@ -166,6 +166,7 @@ func assertEqualDKG(t *testing.T, dkg1, dkg2 *dkg) {
 	assert.NotEmpty(t, dkg1.threshold)
 	assert.Equal(t, dkg1.suite.String(), dkg2.suite.String())
 	assert.Equal(t, dkg1.state, dkg2.state)
+	// TODO: Improve participant equality check
 	assert.Len(t, dkg1.participants, len(dkg2.participants))
 	assert.NotEmpty(t, dkg1.participants)
 	require.NotEmpty(t, dkg1.rdkg.Dealer().FPoly())

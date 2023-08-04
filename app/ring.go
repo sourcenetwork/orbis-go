@@ -54,14 +54,13 @@ type Ring struct {
 	inj *do.Injector
 }
 
-type State struct {
-	DKG dkg.State
-	PSS pss.State
-}
+type State map[string]string
 
 type service interface {
 	Start(context.Context) error
 	Close(context.Context) error
+	State() string
+	Name() string
 }
 
 /*
@@ -143,9 +142,9 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 
 	rs := &Ring{}
 
-	// rings get their own cloned dependency injector handler
+	// rings get their own cloned dependency injector handler,
 	// since we actually create and initialize services which
-	// are scoped to rings, compared to the factories
+	// are only scoped to rings, compared to the factories
 	// which are global.
 	inj := app.inj.Clone()
 
@@ -209,7 +208,7 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 		return nil, fmt.Errorf("create dkg service: %w", err)
 	}
 
-	nodes, err := nodesFromIDs(ring)
+	nodes, err := nodesFromIDs(ring.Nodes)
 	if err != nil {
 		return nil, fmt.Errorf("conver nodes from ring ids")
 	}
@@ -276,10 +275,10 @@ func (app *App) GetRing(ctx context.Context, rid types.RingID) (*Ring, error) {
 	return nil, nil
 }
 
-func nodesFromIDs(ring *ringv1alpha1.Ring) ([]transport.Node, error) {
+func nodesFromIDs(nodes []*ringv1alpha1.Node) ([]transport.Node, error) {
 
-	var nodes []transport.Node
-	for _, n := range ring.Nodes {
+	var tNodes []transport.Node
+	for _, n := range nodes {
 
 		id, err := peer.Decode(n.Id)
 		if err != nil {
@@ -302,10 +301,10 @@ func nodesFromIDs(ring *ringv1alpha1.Ring) ([]transport.Node, error) {
 		}
 
 		node := p2ptransport.NewNode(n.Id, key, addr)
-		nodes = append(nodes, node)
+		tNodes = append(tNodes, node)
 	}
 
-	return nodes, nil
+	return tNodes, nil
 }
 
 func (r *Ring) Store(context.Context, types.SecretID, *types.Secret, proof.VerifiableEncryption) error {
@@ -337,10 +336,11 @@ func (r *Ring) Threshold() int {
 }
 
 func (r *Ring) State() State {
-	return State{
-		DKG: r.DKG.State(),
-		PSS: r.PSS.State(),
+	state := make(State)
+	for _, s := range r.services {
+		state[s.Name()] = s.State()
 	}
+	return state
 }
 
 func (r *Ring) Nodes() []pss.Node {

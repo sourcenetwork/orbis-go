@@ -34,6 +34,15 @@ const (
 
 var (
 	ErrMissingRepoKeys = fmt.Errorf("missing repo keys")
+
+	stateToString = map[orbisdkg.State]string{
+		orbisdkg.INITIALIZED: "Initialized",
+		orbisdkg.CERTIFIED:   "Certified",
+		RECIEVING:            "Receiving",
+		PROCESSED_DEALS:      "Processed Deals",
+		PROCESSED_RESPONSES:  "Processed Reponses",
+		PROCESSED_COMMITS:    "Processed Commits",
+	}
 )
 
 type Deal = rabinv1alpha1.Deal

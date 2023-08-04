@@ -8,7 +8,7 @@ import (
 	"syscall"
 
 	"github.com/sourcenetwork/orbis-go/config"
-	"github.com/sourcenetwork/orbis-go/pkg/cleaner"
+	"github.com/sourcenetwork/orbis-go/pkg/util/cleaner"
 
 	"golang.org/x/sync/errgroup"
 )

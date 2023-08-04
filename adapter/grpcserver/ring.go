@@ -118,11 +118,17 @@ func (s *ringService) State(ctx context.Context, req *ringv1alpha1.StateRequest)
 	if !ok {
 		return nil, status.Error(codes.NotFound, "ring not found")
 	}
-	r.State()
 
+	states := r.State()
+	services := make([]*ringv1alpha1.ServiceState, len(states))
+	for name, state := range states {
+		services = append(services, &ringv1alpha1.ServiceState{
+			Name:  name,
+			State: state,
+		})
+	}
 	resp := &ringv1alpha1.StateResponse{
-		DkgState: r.State().DKG.String(),
-		PssState: r.State().PSS.String(),
+		Services: services,
 	}
 
 	return resp, nil

@@ -66,8 +66,12 @@ message StateRequest {
 }
 
 message StateResponse {
-  string dkg_state = 1;
-  string pss_state = 2;
+  repeated ServiceState services = 1;
+}
+
+message ServiceState {
+  string name = 1;
+  string state = 2;
 }
 
 message ListSecretsRequest {

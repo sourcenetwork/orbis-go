@@ -14,7 +14,7 @@ import (
 	"github.com/sourcenetwork/orbis-go/app"
 	"github.com/sourcenetwork/orbis-go/config"
 	"github.com/sourcenetwork/orbis-go/pkg/authn"
-	"github.com/sourcenetwork/orbis-go/pkg/cleaner"
+	"github.com/sourcenetwork/orbis-go/pkg/util/cleaner"
 )
 
 func setupGRPCServer(cfg config.GRPC, errGrp *errgroup.Group, clnr *cleaner.Cleaner, a *app.App) error {

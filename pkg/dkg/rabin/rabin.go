@@ -281,8 +281,8 @@ func (d *dkg) Share() crypto.PriShare {
 	return d.share
 }
 
-func (d *dkg) State() orbisdkg.State {
-	return d.state
+func (d *dkg) State() string {
+	return stateToString[d.state]
 }
 
 // Start the DKG setup process.
