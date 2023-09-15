@@ -18,7 +18,7 @@ x-orbisctl: &orbisctl
 services:
   orbisd1:
     <<: *orbisd
-    command: [ "start", "--config", "/demo/orbis.1.yaml"]
+    command: ["start", "--config", "/demo/orbis.1.yaml"]
     ports:
       - "9001:9001"
       - "8081:8081"
@@ -27,7 +27,7 @@ services:
   orbisd2:
     <<: *orbisd
     depends_on: [orbisd1]
-    command: [ "start", "--config", "/demo/orbis.2.yaml"]
+    command: ["start", "--config", "/demo/orbis.2.yaml"]
     ports:
       - "9002:9002"
       - "8082:8082"
@@ -36,7 +36,7 @@ services:
   orbisd3:
     <<: *orbisd
     depends_on: [orbisd2]
-    command: [ "start", "--config", "/demo/orbis.3.yaml"]
+    command: ["start", "--config", "/demo/orbis.3.yaml"]
     ports:
       - "9003:9003"
       - "8083:8083"
@@ -44,16 +44,40 @@ services:
 
   delay:
     image: alpine:3.14
-    command: ["sleep", "4"]
+    command: ["sleep", "1"]
 
   orbisctl1:
     <<: *orbisctl
-    command: ["-s", "orbisd1:8081", "ring-service", "create-ring", "-f", "/demo/create-ring.json"]
+    command:
+      [
+        "-s",
+        "orbisd1:8081",
+        "ring-service",
+        "create-ring",
+        "-f",
+        "/demo/create-ring.json",
+      ]
 
   orbisctl2:
     <<: *orbisctl
-    command: ["-s", "orbisd2:8082", "ring-service", "create-ring", "-f", "/demo/create-ring.json"]
+    command:
+      [
+        "-s",
+        "orbisd2:8082",
+        "ring-service",
+        "create-ring",
+        "-f",
+        "/demo/create-ring.json",
+      ]
 
   orbisctl3:
     <<: *orbisctl
-    command: ["-s", "orbisd3:8083", "ring-service", "create-ring", "-f", "/demo/create-ring.json"]
+    command:
+      [
+        "-s",
+        "orbisd3:8083",
+        "ring-service",
+        "create-ring",
+        "-f",
+        "/demo/create-ring.json",
+      ]
