@@ -45,7 +45,7 @@ type DKG interface {
 	Name() string
 
 	PublicKey() (crypto.PublicKey, error)
-	Share() crypto.PriShare
+	Share() crypto.DistKeyShare
 
 	State() string
 

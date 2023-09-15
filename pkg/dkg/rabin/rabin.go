@@ -49,8 +49,8 @@ type dkg struct {
 	threshold int32
 	suite     suites.Suite
 
-	pubKey kyber.Point     // DKG group Public key
-	share  crypto.PriShare // DKG node private share
+	pubKey       kyber.Point         // DKG group Public key
+	distKeyShare crypto.DistKeyShare // DKG node private share
 
 	secret kyber.Scalar   // vss dealer polynomial secret
 	fPoly  *share.PriPoly // rabin dkg internal private polynomial (f)
@@ -260,6 +260,7 @@ func (d *dkg) initCommon(ctx context.Context) error {
 
 	d.bbnamespace = fmt.Sprintf("/ring/%s/dkg/rabin", string(d.ringID))
 	err := d.bulletin.Register(ctx, d.bbnamespace)
+	// TODO: remove this sleep
 	time.Sleep(2 * time.Second)
 	log.Infof("registered to topic %s with peers %v", d.bbnamespace, d.bulletin.Host().PubSub().ListPeers(d.bbnamespace))
 	return err
@@ -273,12 +274,8 @@ func (d *dkg) PublicKey() (crypto.PublicKey, error) {
 	return crypto.PublicKeyFromPoint(d.suite, d.pubKey)
 }
 
-// func (d *dkg) Share() crypto.PriShare {
-// 	return d.share
-// }
-
-func (d *dkg) Share() crypto.PriShare {
-	return d.share
+func (d *dkg) Share() crypto.DistKeyShare {
+	return d.distKeyShare
 }
 
 func (d *dkg) State() string {
@@ -313,7 +310,7 @@ func (d *dkg) Start(ctx context.Context) error {
 	}
 
 	for i, deal := range deals {
-		log.Infof("node %s sending deal to partitipants %s", d.NodeID(), d.participants[i].ID())
+		log.Debugf("node %s sending deal to partitipants %s", d.NodeID(), d.participants[i].ID())
 		if i == d.index {
 			// TODO: deliver to ourselves
 			continue
@@ -354,11 +351,7 @@ func (d *dkg) post(ctx context.Context, msgType string, msgID string, buf []byte
 	if err != nil {
 		return fmt.Errorf("new message: %w", err)
 	}
-	log.Infof("dkg.send() node id: %s, addr: %s", node.ID(), node.Address())
-
-	// if err := d.transport.Send(ctx, node, msg); err != nil {
-	// 	return fmt.Errorf("send message: %w", err)
-	// }
+	log.Debugf("dkg.send() node id: %s, addr: %s", node.ID(), node.Address())
 
 	_, err = d.bulletin.Post(ctx, msgID, msg)
 	if err != nil {
@@ -375,11 +368,9 @@ func (d *dkg) Close(_ context.Context) error {
 func (d *dkg) ProcessMessage(msg *transport.Message) error {
 	// TODO maybe?: validate msg.PublicKey matches payload pubkeys
 
-	log.Debugf("process message: id: %q, type: %q", msg.Id, msg.GetType())
-
 	switch msg.GetType() {
 	case DealNamespace:
-		log.Infof("dkg.ProcessMessage() ProtocolDeal: id: %s", msg.Id)
+		log.Debugf("dkg.ProcessMessage() ProtocolDeal: id: %s", msg.Id)
 
 		var protoDeal rabinv1alpha1.Deal
 
@@ -394,7 +385,7 @@ func (d *dkg) ProcessMessage(msg *transport.Message) error {
 		}
 
 	case ResponseNamespace:
-		log.Infof("dkg.ProcessMessage() ProtocolResponse: id: %s - started", msg.Id)
+		log.Debugf("dkg.ProcessMessage() ProtocolResponse: id: %s - started", msg.Id)
 
 		var protoResponse rabinv1alpha1.Response
 
@@ -409,7 +400,7 @@ func (d *dkg) ProcessMessage(msg *transport.Message) error {
 		}
 
 	case SecretCommitsNamespace:
-		log.Infof("dkg.ProcessMessage() ProtocolSecretCommits: id: %s", msg.Id)
+		log.Debugf("dkg.ProcessMessage() ProtocolSecretCommits: id: %s", msg.Id)
 		var protoSecretCommits rabinv1alpha1.SecretCommits
 
 		err := proto.Unmarshal(msg.Payload, &protoSecretCommits)
@@ -441,7 +432,7 @@ func (d *dkg) dispatch() {
 	// processDeals
 	for i := 0; i < d.numExpectedDeals() && d.state < PROCESSED_DEALS; i++ {
 		dd := <-d.deals
-		log.Infof("Node %s handling deal for dealer %s (%d/%d)", d.NodeID(), d.participants[dd.deal.Index].ID(), i+1, d.numExpectedDeals())
+		log.Debugf("Node %s handling deal for dealer %s (%d/%d)", d.NodeID(), d.participants[dd.deal.Index].ID(), i+1, d.numExpectedDeals())
 		dd.err <- d.processDeal(dd.deal)
 	}
 
@@ -454,7 +445,7 @@ func (d *dkg) dispatch() {
 	// processResponses
 	for i := 0; i < d.numExpectedResponses() && d.state < PROCESSED_RESPONSES; i++ {
 		rd := <-d.responses
-		log.Infof("Node %d handling response for dealer %d (%d/%d)", d.index, rd.respone.Index, i+1, d.numExpectedResponses())
+		log.Debugf("Node %d handling response for dealer %d (%d/%d)", d.index, rd.respone.Index, i+1, d.numExpectedResponses())
 		rd.err <- d.processResponse(rd.respone)
 	}
 
@@ -467,7 +458,7 @@ func (d *dkg) dispatch() {
 	// processSecrets
 	for i := 0; i < d.numExpectedCommits(); i++ {
 		sd := <-d.commits
-		log.Infof("Node %d handling secret for dealer %d (%d/%d)", d.index, sd.secretCommits.Index, i+1, d.numExpectedCommits())
+		log.Debugf("Node %d handling secret for dealer %d (%d/%d)", d.index, sd.secretCommits.Index, i+1, d.numExpectedCommits())
 		sd.err <- d.processSecretCommits(sd.secretCommits)
 	}
 
@@ -517,7 +508,7 @@ func (d *dkg) dispatchResponseProto(respproto *rabinv1alpha1.Response) error {
 }
 
 func (d *dkg) dispatchResponse(resp *rabindkg.Response) error {
-	log.Debug("dispatching response")
+	log.Debugf("dispatching response")
 	respDispatchEvent := responseDispatch{
 		err:     make(chan error),
 		respone: resp,
@@ -526,11 +517,11 @@ func (d *dkg) dispatchResponse(resp *rabindkg.Response) error {
 	select {
 	case d.responses <- respDispatchEvent:
 		// send
-		log.Debug("response succesfully dispatched")
+		log.Debugf("response succesfully dispatched")
 	default:
-		log.Warn("cant send on response dispatch channel")
+		log.Warnf("cant send on response dispatch channel")
 	}
-	log.Debug("waiting for dispatch error status")
+	log.Debugf("waiting for dispatch error status")
 	return <-respDispatchEvent.err
 }
 
@@ -557,7 +548,7 @@ func (d *dkg) dispatchSecretCommit(sc *rabindkg.SecretCommits) error {
 	case d.commits <- scDispatchEvent:
 		// send
 	default:
-		log.Warn("can't send on commits dispatch channel")
+		log.Warnf("can't send on commits dispatch channel")
 	}
 	return <-scDispatchEvent.err // recieve
 }
@@ -581,7 +572,7 @@ func (d *dkg) numExpectedCommits() int {
 // deals, responses, and secret commmits from the internal
 // rabin implementation. Those are saved independantly.
 func (d *dkg) save(ctx context.Context) error {
-	log.Info("saving DKG state for node")
+	log.Debugf("saving DKG state for node")
 	dkgp, err := dkgToProto(d)
 	if err != nil {
 		return fmt.Errorf("proto conversion: %w", err)

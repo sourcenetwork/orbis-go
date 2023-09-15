@@ -231,14 +231,14 @@ func dkgToProto(d *dkg) (*rabinv1alpha1.DKG, error) {
 		state = rabinv1alpha1.State_STATE_STARTED
 	case orbisdkg.CERTIFIED:
 		state = rabinv1alpha1.State_STATE_CERTIFIED
+	case RECIEVING:
+		state = rabinv1alpha1.State_STATE_RECEVING
 	case PROCESSED_DEALS:
 		state = rabinv1alpha1.State_STATE_PROCESSED_DEALS
 	case PROCESSED_RESPONSES:
 		state = rabinv1alpha1.State_STATE_PROCESSED_RESPONSES
 	case PROCESSED_COMMITS:
 		state = rabinv1alpha1.State_STATE_PROCESSED_COMMITS
-	case RECIEVING:
-		state = rabinv1alpha1.State_STATE_PROCESSED_RECEVING
 	default:
 		return nil, fmt.Errorf("invalid state: %v, 0x%0x", d.state, d.state)
 	}
@@ -269,13 +269,14 @@ func dkgToProto(d *dkg) (*rabinv1alpha1.DKG, error) {
 	}
 
 	var prishare *rabinv1alpha1.PriShare
-	if d.share.PriShare != nil {
-		sbuf, err := d.share.V.MarshalBinary()
+	share := d.distKeyShare.PriShare
+	if share != nil {
+		sbuf, err := share.V.MarshalBinary()
 		if err != nil {
 			return nil, fmt.Errorf("couldn't marshal private share: %w", err)
 		}
 		prishare = &rabinv1alpha1.PriShare{
-			Index: int32(d.share.I),
+			Index: int32(share.I),
 			V:     sbuf,
 		}
 	}
@@ -365,7 +366,7 @@ func dkgFromProto(d *rabinv1alpha1.DKG) (dkg, error) {
 		state = orbisdkg.STARTED
 	case rabinv1alpha1.State_STATE_CERTIFIED:
 		state = orbisdkg.CERTIFIED
-	case rabinv1alpha1.State_STATE_PROCESSED_RECEVING:
+	case rabinv1alpha1.State_STATE_RECEVING:
 		state = RECIEVING
 	case rabinv1alpha1.State_STATE_PROCESSED_DEALS:
 		state = PROCESSED_DEALS
@@ -398,11 +399,12 @@ func dkgFromProto(d *rabinv1alpha1.DKG) (dkg, error) {
 	}
 
 	// share
-	var share crypto.PriShare
+	// TODO: Commitments
+	var distKeyShare crypto.DistKeyShare
 	if d.PriShare != nil {
-		share.I = int(d.PriShare.Index)
-		share.V = suite.Scalar()
-		err := share.V.UnmarshalBinary(d.PriShare.V)
+		distKeyShare.PriShare.I = int(d.PriShare.Index)
+		distKeyShare.PriShare.V = suite.Scalar()
+		err := distKeyShare.PriShare.V.UnmarshalBinary(d.PriShare.V)
 		if err != nil {
 			return dkg{}, fmt.Errorf("unmarshaling prishare: %w", err)
 		}
@@ -437,7 +439,7 @@ func dkgFromProto(d *rabinv1alpha1.DKG) (dkg, error) {
 		state:        state,
 		participants: participants,
 		pubKey:       pubkey,
-		share:        share,
+		distKeyShare: distKeyShare,
 		fPoly:        fPoly,
 		gPoly:        gPoly,
 		secret:       secret,

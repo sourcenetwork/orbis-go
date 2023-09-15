@@ -13,6 +13,7 @@ import (
 	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/kyber/v3/group/edwards25519"
 	rabindkg "go.dedis.ch/kyber/v3/share/dkg/rabin"
+	"go.dedis.ch/kyber/v3/suites"
 	"go.dedis.ch/kyber/v3/util/random"
 
 	"github.com/sourcenetwork/orbis-go/config"
@@ -84,10 +85,10 @@ func randomPort() int {
 	return rand.Intn(portRangeEnd-portRangeStart) + portRangeStart
 }
 
-func randomNodes(num int, kt crypto.KeyType) []transport.Node {
+func randomNodes(num int, ste suites.Suite) []transport.Node {
 	nodes := make([]transport.Node, num)
 	for i := 0; i < num; i++ {
-		_, pub, err := crypto.GenerateKeyPair(kt)
+		_, pub, err := crypto.GenerateKeyPair(ste)
 		if err != nil {
 			panic(err)
 		}
@@ -146,7 +147,7 @@ func newBasicDKG(t *testing.T, ctx context.Context) (*dkg, crypto.PrivateKey) {
 	require.NoError(t, err)
 	pub := cpriv.GetPublic()
 
-	nodes := randomNodes(2, crypto.Ed25519)
+	nodes := randomNodes(2, suites.MustFind("Ed25519"))
 	nodes = append(nodes, randomNodeFromPublicKey(pub))
 
 	err = dkg.Init(context.Background(), cpriv, types.RingID("0x123"), nodes, 3, 2, false)

@@ -24,9 +24,9 @@ func (d *dkg) setupHandlers() error {
 
 	go func() {
 		for evt := range subCh {
-			log.Infof("recieved eventbus on %s from %s for %s (%s)", d.transport.Host().ID(), evt.Message.NodeId, evt.Message.TargetId, evt.Message.GetType())
+			log.Debugf("recieved eventbus on %s from %s for %s (%s)", d.transport.Host().ID(), evt.Message.NodeId, evt.Message.TargetId, evt.Message.GetType())
 			if evt.Message.TargetId != d.transport.Host().ID() {
-				log.Info("ignoring bulletin event not for us")
+				log.Debugf("ignoring bulletin event not for us")
 				continue
 			}
 
@@ -48,12 +48,12 @@ func (d *dkg) processDeal(deal *rabindkg.Deal) error {
 
 	ctx := context.TODO()
 
-	log.Infof("processing deal, index=%v nonce=%0x sig=%0x", deal.Index, deal.Deal.Nonce, deal.Deal.Signature)
+	log.Debugf("processing deal, index=%v nonce=%0x sig=%0x", deal.Index, deal.Deal.Nonce, deal.Deal.Signature)
 	response, err := d.rdkg.ProcessDeal(deal)
 	if err != nil {
 		return fmt.Errorf("process rabin dkg deal: %w", err)
 	} else {
-		log.Infof("succesfully processed deal %0x", deal.Deal.Signature)
+		log.Debugf("succesfully processed deal %0x", deal.Deal.Signature)
 	}
 
 	buf, err := protobuf.Encode(response)
@@ -67,7 +67,7 @@ func (d *dkg) processDeal(deal *rabindkg.Deal) error {
 		}
 		// TODO: can we skip the sender of the deal as well?
 
-		log.Infof("sending response on %s for %s", d.transport.Host().ID(), node.ID())
+		log.Debugf("sending response on %s for %s", d.transport.Host().ID(), node.ID())
 		// /ring/<ringID>/dkg/rabin/<action>/<fromID>/<toID>
 
 		// each node generates deals [d0, d1, d2]
@@ -77,7 +77,7 @@ func (d *dkg) processDeal(deal *rabindkg.Deal) error {
 		// /ring/<ringID>/dkg/rabin/RESPONSE/JOHN/ROY/<FOR>
 		forNodeID1 := d.participants[response.Index].ID()
 		// forNodeID2 := d.participants[response.Target].ID()
-		log.Infof("creating identifier from %s to %s for %s", d.NodeID(), node.ID(), forNodeID1)
+		log.Debugf("creating identifier from %s to %s for %s", d.NodeID(), node.ID(), forNodeID1)
 		msgID := fmt.Sprintf("%s/%s/%s/%s/%s", d.bbnamespace, ResponseNamespace, d.NodeID(), node.ID(), forNodeID1)
 		if err := d.post(ctx, ResponseNamespace, msgID, buf, node); err != nil {
 			return fmt.Errorf("send response: %w", err)
@@ -138,7 +138,7 @@ func (d *dkg) processResponse(resp *rabindkg.Response) error {
 		// /ring/<ringID>/dkg/rabin/RESPONSE/JOHN/ROY/<FOR>
 		forNodeID1 := d.participants[sc.Index].ID()
 		// forNodeID2 := d.participants[response.Target].ID()
-		log.Infof("Node %d sending secret commits to pariticipant %d", d.index, i)
+		log.Debugf("Node %d sending secret commits to pariticipant %d", d.index, i)
 		msgID := fmt.Sprintf("%s/%s/%s/%s/%s", d.bbnamespace, SecretCommitsNamespace, d.NodeID(), d.participants[i].ID(), forNodeID1)
 		err := d.post(context.TODO(), SecretCommitsNamespace, msgID, buf, node)
 		if err != nil {
@@ -173,7 +173,8 @@ func (d *dkg) processSecretCommits(sc *rabindkg.SecretCommits) error {
 		return fmt.Errorf("rabin dkg dist key share: %w", err)
 	}
 
-	d.share = crypto.PriShare{
+	d.distKeyShare = crypto.DistKeyShare{
+		Commits:  distkey.Commitments(),
 		PriShare: distkey.PriShare(),
 	}
 
