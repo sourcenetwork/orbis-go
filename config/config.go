@@ -53,7 +53,7 @@ type Transport struct {
 }
 
 type Bulletin struct {
-	PersistentPeers string `default:"" description:"comma seperated list of persistent peer multiaddrs`
+	PersistentPeers string `default:"" description:"comma seperated list of persistent peer multiaddrs"`
 	Rendezvous      string `default:"orbis-bulletin" description:"Rendezvous string"`
 }
 
