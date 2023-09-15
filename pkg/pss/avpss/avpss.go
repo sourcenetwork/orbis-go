@@ -52,11 +52,11 @@ func (a *AVPSS) PublicKey() crypto.PublicKey {
 func (a *AVPSS) PublicPoly() crypto.PubPoly {
 	return crypto.PubPoly{}
 }
-func (a *AVPSS) Share() crypto.PriShare {
-	return crypto.PriShare{}
+func (a *AVPSS) Share() crypto.DistKeyShare {
+	return crypto.DistKeyShare{}
 }
-func (a *AVPSS) State() pss.State {
-	return pss.State{}
+func (a *AVPSS) State() string {
+	return pss.State{}.String()
 }
 func (a *AVPSS) Num() int {
 	return 0

@@ -6,7 +6,6 @@ import (
 	"go.dedis.ch/kyber/v3/suites"
 
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
-	"github.com/sourcenetwork/orbis-go/pkg/transport"
 	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
 
@@ -36,16 +35,11 @@ type PSS interface {
 	PublicPoly() crypto.PubPoly
 
 	// Private share of this node
-	Share() crypto.PriShare
+	Share() crypto.DistKeyShare
 
 	// State of the PSS
-	State() State
+	State() string
 
 	Num() int
 	Threshold() int
-}
-
-type Node interface {
-	transport.Node
-	Index() int
 }
