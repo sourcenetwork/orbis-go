@@ -22,7 +22,7 @@ func loggingInterceptor() grpc.ServerOption {
 		if err != nil {
 			log.Errorf("gRPC %s(%+v), error: %v", info.FullMethod, req, err)
 		} else {
-			log.Infof("gRPC %s(%+v): %+v", info.FullMethod, req, resp)
+			log.Debugf("gRPC %s(%+v): %+v", info.FullMethod, req, resp)
 		}
 
 		return resp, err
