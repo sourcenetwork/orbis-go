@@ -56,13 +56,13 @@ type Bulletin interface {
 	// /ring/<ringID>/pss/<epochNum>/<action>/<nodeIndex>
 	// /ring/<ringID>/pre/<action>/<nodeIndex>
 	// /ring/<ringID>/dkg/rabin/<action>/<fromIndex>/<toIndex>
-	Post(context.Context, string, *transport.Message) (Response, error)
-	Read(context.Context, string) (Response, error)
+	Post(ctx context.Context, namespace string, msg *transport.Message) (Response, error)
+	Read(ctx context.Context, namespace string) (Response, error)
 	// Has(context.Context, string) (bool, error)
 
 	// Query Search the bulletin board using a glob based
 	// text search system.
-	Query(context.Context, string) (<-chan QueryResponse, error)
+	Query(ctx context.Context, namespace string) (<-chan QueryResponse, error)
 
 	// Verify(context.Context, Proof, string, Message) bool
 
