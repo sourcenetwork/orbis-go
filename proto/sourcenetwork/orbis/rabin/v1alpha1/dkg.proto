@@ -3,7 +3,6 @@ syntax = "proto3";
 package orbis.rabin.v1alpha1;
 
 import "libp2p/crypto/v1/crypto.proto";
-// import "sourcenetwork/orbis/crypto/v1alpha1/crypto.proto";
 
 enum SuiteType {
   NONE = 0;

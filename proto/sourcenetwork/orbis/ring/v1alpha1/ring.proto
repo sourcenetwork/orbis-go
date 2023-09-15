@@ -17,7 +17,7 @@ service RingService {
 
   rpc ListSecrets(ListSecretsRequest) returns (ListSecretsResponse) {}
   rpc StoreSecret(StoreSecretRequest) returns (StoreSecretResponse) {}
-  rpc GetSecret(GetSecretRequest) returns (GetSecretResponse) {}
+  rpc ReencryptSecret(ReencryptSecretRequest) returns (ReencryptSecretResponse) {}
   rpc DeleteSecret(DeleteSecretRequest) returns (google.protobuf.Empty) {}
 }
 
@@ -91,15 +91,6 @@ message StoreSecretResponse {
   string secret_id = 1;
   string ring_id = 2;
 }
-message GetSecretRequest {
-  string secret_id = 1;
-  string ring_id = 2;
-}
-
-message GetSecretResponse {
-  Secret secret = 1;
-}
-
 message DeleteSecretRequest {
   string ring_id = 1;
   string secret_id = 2;
@@ -109,10 +100,11 @@ message DeleteSecretRequest {
 message ReencryptSecretRequest {
   string ring_id = 1;
   string secret_id = 2;
-  string rdr_pk = 3;
+  libp2p.crypto.v1.PublicKey rdr_pk = 3;
   bytes acp_proof = 4;
 }
 
+// Reencryption commitment recovered from verified secret shares, and encrypted secret
 message ReencryptSecretResponse {
   bytes xnc_cmt = 1; // reencryption commitment
   bytes enc_scrt = 2; // enncrypted secret
@@ -121,6 +113,15 @@ message ReencryptSecretResponse {
 message Secret {
   bytes enc_cmt = 1; // encryption commitment
   bytes enc_scrt = 2; // enncrypted secret
+}
+
+message ReencryptedSecretShare {
+  string ring_id = 1;
+  string secret_id = 2;
+  int32 index = 3;
+  bytes xnc_ski = 4; // reencrypted share
+  bytes chlgi = 5; // challenge
+  bytes proofi = 6; // proof
 }
 
 message Ring {
