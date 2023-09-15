@@ -6,6 +6,7 @@ import (
 	"crypto/ed25519"
 	"crypto/sha512"
 	"fmt"
+	"strings"
 
 	ic "github.com/libp2p/go-libp2p/core/crypto"
 	icpb "github.com/libp2p/go-libp2p/core/crypto/pb"
@@ -14,12 +15,20 @@ import (
 	"go.dedis.ch/kyber/v3/suites"
 )
 
-var (
-	// suite = edwards25519.NewBlakeSHA256Ed25519()
-	ErrBadKeyType = fmt.Errorf("bad key type")
-)
-
 type KeyType = icpb.KeyType
+
+func KeyTypeFromString(keyType string) (KeyType, error) {
+	switch strings.ToLower(keyType) {
+	case "ed25519":
+		return Ed25519, nil
+	case "ecdsa":
+		return ECDSA, nil
+	case "secp256k1":
+		return Secp256k1, nil
+	default:
+		return 0, ErrBadKeyType
+	}
+}
 
 var (
 	Ed25519   = icpb.KeyType_Ed25519
@@ -80,17 +89,17 @@ func PublicKeyFromPoint(suite suites.Suite, point kyber.Point) (PublicKey, error
 
 	var pk ic.PubKey
 
-	switch suite.String() {
-	case "Ed25519":
+	switch strings.ToLower(suite.String()) {
+	case "ed25519":
 		pk, err = ic.UnmarshalEd25519PublicKey(buf)
-	case "Secp256k1":
+	case "secp256k1":
 		pk, err = ic.UnmarshalSecp256k1PublicKey(buf)
-	case "ECDSA":
+	case "ecdsa":
 		pk, err = ic.UnmarshalECDSAPublicKey(buf)
-	case "RSA":
+	case "rsa":
 		pk, err = ic.UnmarshalRsaPublicKey(buf)
 	default:
-		return nil, fmt.Errorf("unknown suite type")
+		return nil, ErrBadKeyType
 	}
 
 	if err != nil {
@@ -145,22 +154,22 @@ type privKey struct {
 	suite suites.Suite
 }
 
-func GenerateKeyPair(kt KeyType) (PrivateKey, PublicKey, error) {
-	priv, pub, err := ic.GenerateKeyPair(int(kt), 0)
+func GenerateKeyPair(ste suites.Suite) (PrivateKey, PublicKey, error) {
+	keyType, err := KeyTypeFromString(ste.String())
 	if err != nil {
 		return nil, nil, err
 	}
-	suite, err := SuiteForType(kt)
+	sk, pk, err := ic.GenerateKeyPair(int(keyType), 0)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	return &privKey{
-			PrivKey: priv,
-			suite:   suite,
+			PrivKey: sk,
+			suite:   ste,
 		}, &pubKey{
-			PubKey: pub,
-			suite:  suite,
+			PubKey: pk,
+			suite:  ste,
 		}, nil
 }
 
@@ -218,9 +227,13 @@ func (p *privKey) GetPublic() PublicKey {
 	}
 }
 
-// PriShare
-type PriShare struct {
-	*share.PriShare
+// DistKeyShare
+type DistKeyShare struct {
+	// Coefficients of the public polynomial holding the public key
+	Commits []kyber.Point
+
+	// PriShare of the distributed secret
+	PriShare *share.PriShare
 }
 
 // PubPoly

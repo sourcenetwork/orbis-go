@@ -1,10 +1,13 @@
 package crypto
 
 import (
+	"math/rand"
+
 	icpb "github.com/libp2p/go-libp2p/core/crypto/pb"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto/suites/secp256k1"
 	"go.dedis.ch/kyber/v3/group/edwards25519"
 	"go.dedis.ch/kyber/v3/suites"
+	"go.dedis.ch/kyber/v3/util/random"
 	"go.dedis.ch/protobuf"
 )
 
@@ -25,7 +28,10 @@ func SuiteForType(kt icpb.KeyType) (suites.Suite, error) {
 	case icpb.KeyType_Secp256k1:
 		return secp256k1.NewBlakeKeccackSecp256k1(), nil
 	case icpb.KeyType_Ed25519:
-		return edwards25519.NewBlakeSHA256Ed25519(), nil
+		// TODO
+		reader := rand.New(rand.NewSource(0))
+		r := random.New(reader)
+		return edwards25519.NewBlakeSHA256Ed25519WithRand(r), nil
 	default:
 		return nil, ErrBadKeyType
 	}
