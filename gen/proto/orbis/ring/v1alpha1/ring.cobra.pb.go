@@ -6,6 +6,7 @@ import (
 	client "github.com/NathanBaulch/protoc-gen-cobra/client"
 	flag "github.com/NathanBaulch/protoc-gen-cobra/flag"
 	iocodec "github.com/NathanBaulch/protoc-gen-cobra/iocodec"
+	pb "github.com/libp2p/go-libp2p/core/crypto/pb"
 	cobra "github.com/spf13/cobra"
 	grpc "google.golang.org/grpc"
 	proto "google.golang.org/protobuf/proto"
@@ -29,7 +30,7 @@ func RingServiceClientCommand(options ...client.Option) *cobra.Command {
 		_RingServiceStateCommand(cfg),
 		_RingServiceListSecretsCommand(cfg),
 		_RingServiceStoreSecretCommand(cfg),
-		_RingServiceGetSecretCommand(cfg),
+		_RingServiceReencryptSecretCommand(cfg),
 		_RingServiceDeleteSecretCommand(cfg),
 	)
 	return cmd
@@ -438,32 +439,32 @@ func _RingServiceStoreSecretCommand(cfg *client.Config) *cobra.Command {
 	return cmd
 }
 
-func _RingServiceGetSecretCommand(cfg *client.Config) *cobra.Command {
-	req := &GetSecretRequest{}
+func _RingServiceReencryptSecretCommand(cfg *client.Config) *cobra.Command {
+	req := &ReencryptSecretRequest{}
 
 	cmd := &cobra.Command{
-		Use:   cfg.CommandNamer("GetSecret"),
-		Short: "GetSecret RPC client",
+		Use:   cfg.CommandNamer("ReencryptSecret"),
+		Short: "ReencryptSecret RPC client",
 		Long:  "",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if cfg.UseEnvVars {
 				if err := flag.SetFlagsFromEnv(cmd.Parent().PersistentFlags(), true, cfg.EnvVarNamer, cfg.EnvVarPrefix, "RingService"); err != nil {
 					return err
 				}
-				if err := flag.SetFlagsFromEnv(cmd.PersistentFlags(), false, cfg.EnvVarNamer, cfg.EnvVarPrefix, "RingService", "GetSecret"); err != nil {
+				if err := flag.SetFlagsFromEnv(cmd.PersistentFlags(), false, cfg.EnvVarNamer, cfg.EnvVarPrefix, "RingService", "ReencryptSecret"); err != nil {
 					return err
 				}
 			}
 			return client.RoundTrip(cmd.Context(), cfg, func(cc grpc.ClientConnInterface, in iocodec.Decoder, out iocodec.Encoder) error {
 				cli := NewRingServiceClient(cc)
-				v := &GetSecretRequest{}
+				v := &ReencryptSecretRequest{}
 
 				if err := in(v); err != nil {
 					return err
 				}
 				proto.Merge(v, req)
 
-				res, err := cli.GetSecret(cmd.Context(), v)
+				res, err := cli.ReencryptSecret(cmd.Context(), v)
 
 				if err != nil {
 					return err
@@ -475,8 +476,14 @@ func _RingServiceGetSecretCommand(cfg *client.Config) *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().StringVar(&req.SecretId, cfg.FlagNamer("SecretId"), "", "")
 	cmd.PersistentFlags().StringVar(&req.RingId, cfg.FlagNamer("RingId"), "", "")
+	cmd.PersistentFlags().StringVar(&req.SecretId, cfg.FlagNamer("SecretId"), "", "")
+	_RdrPk := &pb.PublicKey{}
+	flag.EnumPointerVar(cmd.PersistentFlags(), &_RdrPk.Type, cfg.FlagNamer("RdrPk Type"), "")
+	flag.WithPostSetHook(cmd.PersistentFlags(), cfg.FlagNamer("RdrPk Type"), func() { req.RdrPk = _RdrPk })
+	flag.BytesBase64Var(cmd.PersistentFlags(), &_RdrPk.Data, cfg.FlagNamer("RdrPk Data"), "")
+	flag.WithPostSetHook(cmd.PersistentFlags(), cfg.FlagNamer("RdrPk Data"), func() { req.RdrPk = _RdrPk })
+	flag.BytesBase64Var(cmd.PersistentFlags(), &req.AcpProof, cfg.FlagNamer("AcpProof"), "")
 
 	return cmd
 }
