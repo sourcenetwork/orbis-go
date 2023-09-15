@@ -3,28 +3,30 @@ package app
 import (
 	"context"
 	"fmt"
+	"time"
 
-	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/samber/do"
+	"go.dedis.ch/kyber/v3"
+	"go.dedis.ch/kyber/v3/share"
 
 	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/ring/v1alpha1"
 	"github.com/sourcenetwork/orbis-go/pkg/authn"
 	"github.com/sourcenetwork/orbis-go/pkg/authz"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
+	"github.com/sourcenetwork/orbis-go/pkg/bulletin/p2p"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
-	"github.com/sourcenetwork/orbis-go/pkg/crypto/proof"
 	"github.com/sourcenetwork/orbis-go/pkg/db"
 	"github.com/sourcenetwork/orbis-go/pkg/dkg"
 	"github.com/sourcenetwork/orbis-go/pkg/pre"
+	"github.com/sourcenetwork/orbis-go/pkg/pre/elgamal"
 	"github.com/sourcenetwork/orbis-go/pkg/pss"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
 	p2ptransport "github.com/sourcenetwork/orbis-go/pkg/transport/p2p"
 	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
-
-var log = logging.Logger("orbis/ring")
 
 type Ring struct {
 	ID       types.RingID
@@ -42,6 +44,7 @@ type Ring struct {
 	// that require startup/shutdown and
 	// expose hooks.
 	services []service
+	nodes    []types.Node
 
 	Transport transport.Transport
 	Bulletin  bulletin.Bulletin
@@ -50,11 +53,15 @@ type Ring struct {
 	N int
 	T int
 
-	nodes []transport.Node
-
 	inj *do.Injector
-}
 
+	preReqMsg chan *transport.Message
+
+	encScrts map[string][]byte            // preStoreMsgID
+	encCmts  map[string][]byte            // preStoreMsgID
+	xncCmts  map[string]chan kyber.Point  // preEncryptMsgID
+	xncSki   map[string][]*share.PubShare // FIXME: should be a map of preEncryptMsgID
+}
 type State map[string]string
 
 type service interface {
@@ -64,76 +71,53 @@ type service interface {
 	Name() string
 }
 
-/*
-ring1
-manifest := {
-	"N": 9,
-	"T": 7,
-	"curve": "Ed25519",
+func (app *App) GetRing(ctx context.Context, id string) (*Ring, error) {
+	app.mu.Lock()
+	defer app.mu.Unlock()
 
-	"dkg": "rabin",
-	"pss": "avpss",
-	"pre": "elgamal",
-	"bulletin": "sourcehub",
-	"transport": "libp2p"
+	r, ok := app.rings[types.RingID(id)]
+	if !ok {
+		return nil, fmt.Errorf("ring not found: %s", id)
+	}
+
+	return r, nil
 }
 
-ring2
-manifest := {
-	"N": 9,
-	"T": 7,
-	"curve": "Ed25519",
+func (app *App) ListRing(ctx context.Context) ([]*Ring, error) {
+	app.mu.Lock()
+	defer app.mu.Unlock()
 
-	"dkg": "rabin",
-	"pss": "avpss",
-	"pre": "elgamal",
-	"bulletin": "sourcehub",
-	"transport": "libp2p"
+	return app.listRing(ctx)
 }
 
-ring3
-manifest := {
-	"N": 9,
-	"T": 7,
-	"curve": "Ed25519",
+func (app *App) listRing(ctx context.Context) ([]*Ring, error) {
+	var rings []*Ring
+	for _, r := range app.rings {
+		rings = append(rings, r)
+	}
 
-	"dkg": "rabin",
-	"pss": "avpss",
-	"pre": "elgamal",
-	"bulletin": "cosmos:sourcehub",
-	"transport": "libp2p"
+	return rings, nil
 }
-*/
-
-/*
-
-nodeconfig {
-	bulletin:
-		cosmos:
-			sourcehub:
-				rpcURL: 'localhost:1234/rpc'
-				chainID: sourcehub-1
-}
-
-*/
 
 func (app *App) JoinRing(ctx context.Context, ring *ringv1alpha1.Ring) (*Ring, error) {
 	app.mu.Lock()
 	defer app.mu.Unlock()
+
 	r, err := app.joinRing(ctx, ring, false /* fromState */)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("join ring: %w", err)
 	}
+
 	err = app.ringRepo.Create(ctx, ring)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create ring: %w", err)
 	}
 	app.rings[r.ID] = r
+
 	return r, nil
 }
 
 func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState bool) (*Ring, error) {
-	log.Infof("joining ring %s", ring.Id)
 	rid := types.RingID(ring.Id)
 
 	if _, exists := app.rings[rid]; exists {
@@ -167,7 +151,7 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 
 	preFactory, err := do.InvokeNamed[types.Factory[pre.PRE]](inj, ring.Pre)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invoke pre factory: %w", err)
 	}
 
 	// get global services
@@ -210,20 +194,20 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 		return nil, fmt.Errorf("create dkg service: %w", err)
 	}
 
-	nodes, err := nodesFromIDs(ring.Nodes)
+	tpNodes, err := nodesFromIDs(ring.Nodes)
 	if err != nil {
-		return nil, fmt.Errorf("conver nodes from ring ids")
+		return nil, fmt.Errorf("convert nodes from ring ids")
 	}
 
-	err = dkgSrv.Init(ctx, app.privateKey, rid, nodes, ring.N, ring.T, fromState)
+	err = dkgSrv.Init(ctx, app.privateKey, rid, tpNodes, ring.N, ring.T, fromState)
 	if err != nil {
-		return nil, fmt.Errorf("initializing dkg: %w", err)
+		return nil, fmt.Errorf("initialize dkg: %w", err)
 	}
 	do.ProvideValue(inj, dkgSrv)
 
 	err = rs.registerService(dkgSrv)
 	if err != nil {
-		return nil, fmt.Errorf("starting dkg: %w", err)
+		return nil, fmt.Errorf("start dkg: %w", err)
 	}
 
 	preRepoKeys := app.repoKeysForService(preFactory.Name())
@@ -232,7 +216,12 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 		return nil, fmt.Errorf("create pre service: %w", err)
 	}
 
-	err = preSrv.Init(rid, ring.N, ring.T, []types.Node{})
+	nodes := make([]types.Node, len(tpNodes))
+	for i, n := range tpNodes {
+		nodes[i] = *types.NewNode(i, n.ID(), n.Address(), n.PublicKey())
+	}
+
+	err = preSrv.Init(rid, ring.N, ring.T)
 	if err != nil {
 		return nil, fmt.Errorf("initialize pre: %w", err)
 	}
@@ -244,7 +233,7 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 		return nil, fmt.Errorf("create pss service: %w", err)
 	}
 
-	err = pssSrv.Init(rid, ring.N, ring.T, []types.Node{})
+	err = pssSrv.Init(rid, ring.N, ring.T, nodes)
 	if err != nil {
 		return nil, fmt.Errorf("create pss service: %w", err)
 	}
@@ -261,32 +250,45 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 		inj:       inj,
 		N:         int(ring.N),
 		T:         int(ring.T),
+
+		nodes:     nodes,
 		services:  rs.services, // this is dumb, but im being lazy, sorry.
+		preReqMsg: make(chan *transport.Message, 10),
+		encScrts:  make(map[string][]byte),
+		encCmts:   make(map[string][]byte),
+		xncCmts:   make(map[string]chan kyber.Point),
+		xncSki:    make(map[string][]*share.PubShare),
 		Authz:     authz,
 		Authn:     authn,
 	}
 
-	// called in ring.Join() - go rs.handleEvents()
+	go rs.preReencryptMessageHandler()
+
+	tp.AddHandler(protocol.ID(elgamal.EncryptedSecretRequest), rs.preTransportMessageHandler)
+	tp.AddHandler(protocol.ID(elgamal.EncryptedSecretReply), rs.preTransportMessageHandler)
+
+	bbnamespace := fmt.Sprintf("/ring/%s/pre/store", string(rid))
+	err = bb.Register(ctx, bbnamespace)
+	if err != nil {
+		return nil, fmt.Errorf("register bulletin: %w", err)
+	}
+
+	// TODO: this is a hack to wait for the bulletin to be registered
+	time.Sleep(1 * time.Second)
+	log.Infof("registered to topic %s with peers %v", bbnamespace, bb.(*p2p.Bulletin).Host().PubSub().ListPeers(bbnamespace))
 
 	return rs, nil
-}
-
-func (a *App) GetRing(rid types.RingID) (*Ring, bool) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	r, ok := a.rings[rid]
-	return r, ok
 }
 
 func (a *App) ListRings() []*Ring {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	rings := make([]*Ring, len(a.rings))
-	i := 0
+
+	var rings []*Ring
 	for _, r := range a.rings {
-		rings[i] = r
-		i++
+		rings = append(rings, r)
 	}
+
 	return rings
 }
 
@@ -322,19 +324,8 @@ func nodesFromIDs(nodes []*ringv1alpha1.Node) ([]transport.Node, error) {
 	return tNodes, nil
 }
 
-func (r *Ring) Store(context.Context, types.SecretID, *types.Secret, proof.VerifiableEncryption) error {
-	return nil
-}
-
-func (r *Ring) Get(context.Context, types.SecretID) (types.Secret, error) {
-	return types.Secret{}, nil
-}
-
-func (r *Ring) GetShares(context.Context, types.SecretID) ([]types.PrivSecretShare, error) {
-	return nil, nil
-}
-
 func (r *Ring) Delete(context.Context, types.SecretID) error {
+	// TODO: implement
 	return nil
 }
 
@@ -346,8 +337,11 @@ func (r *Ring) Refresh(context.Context, pss.Config) (pss.RefreshState, error) {
 	return pss.RefreshState{}, nil
 }
 
+func (r *Ring) Nodes() []types.Node {
+	return r.nodes
+}
 func (r *Ring) Threshold() int {
-	return 0
+	return r.T
 }
 
 func (r *Ring) State() State {
@@ -358,28 +352,16 @@ func (r *Ring) State() State {
 	return state
 }
 
-func (r *Ring) Nodes() []pss.Node {
-	return nil
-}
-
 func (r *Ring) Manifest() *ringv1alpha1.Ring {
 	return r.manifest
 }
 
-func (r *Ring) registerService(srv service) error {
-	if srv == nil {
-		return fmt.Errorf("service can't be nil")
-	}
-	r.services = append(r.services, srv)
-	return nil
-}
-
 func (r *Ring) Start(ctx context.Context) error {
-	var err error
+
 	for _, srv := range r.services {
-		err = srv.Start(ctx)
+		err := srv.Start(ctx)
 		if err != nil {
-			return err
+			return fmt.Errorf("start service %s: %w", srv.Name(), err)
 		}
 	}
 
@@ -401,7 +383,7 @@ func (app *App) LoadRings(ctx context.Context) error {
 	for _, r := range rings {
 		ring, err := app.joinRing(ctx, r, true /* fromState */)
 		if err != nil {
-			return err
+			return fmt.Errorf("join ring: %w", err)
 		}
 		ring.manifest = r
 
@@ -409,5 +391,13 @@ func (app *App) LoadRings(ctx context.Context) error {
 	}
 	log.Infof("Finished loading %d rings from state", len(rings))
 
+	return nil
+}
+
+func (r *Ring) registerService(srv service) error {
+	if srv == nil {
+		return fmt.Errorf("service can't be nil")
+	}
+	r.services = append(r.services, srv)
 	return nil
 }

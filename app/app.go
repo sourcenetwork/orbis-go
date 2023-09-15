@@ -7,6 +7,7 @@ import (
 
 	"github.com/samber/do"
 
+	logging "github.com/ipfs/go-log"
 	"github.com/sourcenetwork/orbis-go/config"
 	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/ring/v1alpha1"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
@@ -14,6 +15,8 @@ import (
 	"github.com/sourcenetwork/orbis-go/pkg/host"
 	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
+
+var log = logging.Logger("orbis/app")
 
 var (
 	ErrDuplicateRepo    = fmt.Errorf("duplicate named repos")
@@ -79,21 +82,6 @@ func New(ctx context.Context, host *host.Host, opts ...Option) (*App, error) {
 
 	inj := do.New()
 
-	// // register global services
-	// tp, err := p2ptp.New(ctx, host, config.Transport{})
-	// if err != nil {
-	// 	return nil, fmt.Errorf("create transport: %w", err)
-	// }
-	// do.ProvideNamedValue[transport.Transport](inj, tp.Name(), tp)
-
-	// bb, err := p2pbb.New(ctx, host, config.Bulletin{})
-	// if err != nil {
-	// 	return nil, fmt.Errorf("create bulletin: %w", err)
-	// }
-	// do.ProvideNamedValue[bulletin.Bulletin](inj, bb.Name(), bb)
-
-	// do.ProvideValue(inj, host)
-
 	a := &App{
 		host:         host,
 		inj:          inj,
@@ -113,24 +101,11 @@ func New(ctx context.Context, host *host.Host, opts ...Option) (*App, error) {
 
 	a.ringRepo, err = db.GetRepo[*ringv1alpha1.Ring](a.db, db.NewRepoKey("ring"), ringPkFunc)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get ring repo: %w", err)
 	}
+
 	return a, nil
 }
-
-// func (a *App) mountRepos() error {
-// 	for name, params := range a.repoParams {
-// 		if params.key == nil {
-// 			return ErrKeyMissing
-// 		}
-// 		if err := db.MountRepo(a.db, params.key, params.typ); err != nil {
-// 			return err
-// 		}
-// 		a.repoKeys[name] = params.key
-// 	}
-// 	log.Debugf("app.mountRepos(): mounted repos: %v", a.repoKeys)
-// 	return nil
-// }
 
 func (a *App) setupRepoKeysForService(namespace string, records []string) error {
 	if len(records) == 0 {
