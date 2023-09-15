@@ -8,13 +8,9 @@ import (
 	"go.dedis.ch/kyber/v3/share"
 	"go.dedis.ch/kyber/v3/suites"
 
-	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	"github.com/sourcenetwork/orbis-go/pkg/db"
-	"github.com/sourcenetwork/orbis-go/pkg/dkg"
 	"github.com/sourcenetwork/orbis-go/pkg/pre"
-	"github.com/sourcenetwork/orbis-go/pkg/pss"
-	"github.com/sourcenetwork/orbis-go/pkg/transport"
 	"github.com/sourcenetwork/orbis-go/pkg/types"
 
 	logging "github.com/ipfs/go-log"
@@ -22,33 +18,20 @@ import (
 
 const name = "elgamal"
 
+var (
+	// For Bulletin handlers
+	InvalidReplyNamespace string = "invalidreply"
+
+	// For P2P handlers
+	EncryptedSecretRequest string = "encscrtrequest"
+	EncryptedSecretReply   string = "encscrtreply"
+)
+
 var log = logging.Logger("orbis/pre/elgamal")
 
 var (
-	_ pre.ReencryptReply = (*ReencryptReply)(nil)
-	_ pre.PRE            = (*ThesholdDealer)(nil)
+	_ pre.PRE = (*ThesholdDealer)(nil)
 )
-
-type ReencryptReply struct {
-	share     share.PubShare // nodes re-encrypted secret share
-	challenge kyber.Scalar   // random oracle challenge
-	proofi    kyber.Scalar   // nizk proofi of re-encryption
-}
-
-// Share
-func (rr ReencryptReply) Share() share.PubShare {
-	return rr.share
-}
-
-// Challenge
-func (rr ReencryptReply) Challenge() kyber.Scalar {
-	return rr.challenge
-}
-
-// Proof
-func (rr ReencryptReply) Proof() kyber.Scalar {
-	return rr.proofi
-}
 
 // ThesholdDealer is a semi-trusted dealer implementations
 // of the elgamal threshold re-encryption algorithm.
@@ -152,22 +135,14 @@ func (rr ReencryptReply) Proof() kyber.Scalar {
 //	  = rsG + K - (rsG + xsG) + xsG
 //	  = K
 type ThesholdDealer struct {
-	share     crypto.PriShare
-	poly      crypto.PubPoly
-	threshold int
-	num       int
-	ste       suites.Suite
-
-	encCmt kyber.Point       // Schnorr commitment of encrypted key.
-	rdrPk  crypto.PublicKey  // Reader's Public Key.
-	xncSki []*share.PubShare // Re-encrypted secret shares.
 }
 
-func New(*db.DB, []db.RepoKey, transport.Transport, bulletin.Bulletin, dkg.DKG) (pre.PRE, error) {
+func New(db *db.DB, repoKey []db.RepoKey) (pre.PRE, error) {
+
 	return &ThesholdDealer{}, nil
 }
 
-func (e *ThesholdDealer) Init(types.RingID, int32, int32, []types.Node) error {
+func (e *ThesholdDealer) Init(rid types.RingID, n int32, t int32) error {
 	return nil
 }
 
@@ -175,59 +150,71 @@ func (e *ThesholdDealer) Name() string {
 	return name
 }
 
-func (e *ThesholdDealer) Reencrypt(rdrPk crypto.PublicKey, encCmt kyber.Point) (pre.ReencryptReply, error) {
+func (e *ThesholdDealer) Reencrypt(distKeyShare crypto.DistKeyShare, scrt *types.Secret, rdrPk crypto.PublicKey) (pre.ReencryptReply, error) {
 
-	idx := e.share.I
-	ski := e.share.V
-
-	xncSki, chlgi, proofi, err := reencrypt(e.ste, ski, rdrPk.Point(), encCmt)
+	var reply pre.ReencryptReply
+	ste, err := crypto.SuiteForType(rdrPk.Type())
 	if err != nil {
-		return nil, err
+		return reply, fmt.Errorf("get suite for type: %w", err)
 	}
 
-	reply := ReencryptReply{
-		share: share.PubShare{
+	idx := distKeyShare.PriShare.I
+	ski := distKeyShare.PriShare.V
+
+	encCmt := ste.Point()
+	err = encCmt.UnmarshalBinary(scrt.EncCmt)
+	if err != nil {
+		return reply, fmt.Errorf("unmarshal encCmt: %w", err)
+	}
+
+	xncSki, chlgi, proofi, err := reencrypt(ste, ski, rdrPk.Point(), encCmt)
+	if err != nil {
+		return reply, err
+	}
+
+	reply = pre.ReencryptReply{
+		Share: share.PubShare{
 			I: idx,
 			V: xncSki,
 		},
-		challenge: chlgi,
-		proofi:    proofi,
+		Challenge: chlgi,
+		Proof:     proofi,
 	}
 
 	return reply, nil
 }
 
 // Verify verifies an incoming re-encryption reply from another node.
-func (e *ThesholdDealer) Verify(from pss.Node, r pre.ReencryptReply) error {
+func (e *ThesholdDealer) Verify(rdrPk crypto.PublicKey, dkgCmt crypto.PubPoly, encCmt kyber.Point, r pre.ReencryptReply) error {
 
-	xncSki := r.Share().V
-	idx := r.Share().I
-	err := verify(e.ste,
-		e.rdrPk.Point(),
-		e.encCmt,
-		xncSki,
-		r.Challenge(),
-		r.Proof(),
-		e.poly.PubPoly.Eval(idx).V,
-	)
+	ste, err := crypto.SuiteForType(rdrPk.Type())
 	if err != nil {
-		return fmt.Errorf("failed verification: %w", err)
+		return fmt.Errorf("get suite for type: %w", err)
 	}
 
-	e.xncSki[idx] = &share.PubShare{
-		I: idx,
-		V: xncSki,
+	xncSki := r.Share.V
+	idx := r.Share.I
+	err = verify(ste,
+		rdrPk.Point(),
+		encCmt,
+		xncSki,
+		r.Challenge,
+		r.Proof,
+		dkgCmt.PubPoly.Eval(idx).V,
+	)
+	if err != nil {
+		return fmt.Errorf("verification: %w", err)
 	}
 
 	return nil
 }
 
-func (e *ThesholdDealer) Recover() (kyber.Point, error) {
-	if len(e.xncSki) < e.threshold {
+func (e *ThesholdDealer) Recover(ste suites.Suite, xncSki []*share.PubShare, t int, n int) (kyber.Point, error) {
+	if len(xncSki) < t {
 		return nil, nil
 	}
 
-	return share.RecoverCommit(e.ste, e.xncSki, e.threshold, e.num)
+	return share.RecoverCommit(ste, xncSki, t, n)
 }
 
 // reencrypt re-encrypts a secret share using the reciever public key.
@@ -268,7 +255,7 @@ func reencrypt(
 
 	b, err := hashPoints(xncSki, uiHat, hiHat)
 	if err != nil {
-		return xncSki, chlgi, proofi, fmt.Errorf("failed to marshal Ui: %v", err)
+		return xncSki, chlgi, proofi, fmt.Errorf("marshal Ui: %v", err)
 	}
 	chlgi = ste.Scalar().SetBytes(b)
 
@@ -326,25 +313,6 @@ func verify(
 	}
 
 	return nil
-}
-
-func hashPoints(points ...kyber.Point) ([]byte, error) {
-	hash := sha256.New()
-	for _, p := range points {
-		_, err := p.MarshalTo(hash)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal point: %v", err)
-		}
-	}
-	return hash.Sum(nil), nil
-}
-
-// TODO: remove after Go 1.21
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 // EncryptSecret encrypts a secret using the aggregate public key of the DKG.
@@ -425,4 +393,23 @@ func DecryptSecret(
 	}
 
 	return scrt, err
+}
+
+func hashPoints(points ...kyber.Point) ([]byte, error) {
+	hash := sha256.New()
+	for _, p := range points {
+		_, err := p.MarshalTo(hash)
+		if err != nil {
+			return nil, fmt.Errorf("marshal point: %v", err)
+		}
+	}
+	return hash.Sum(nil), nil
+}
+
+// TODO: remove after Go 1.21
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
