@@ -50,6 +50,7 @@ func main() {
 
 	// Setup client commands for the Orbis client.
 	rootCmd.AddCommand(startCmd)
+	rootCmd.AddCommand(cobracli.SecretCmd())
 
 	opts := []client.Option{
 		client.WithTimeout(1 * time.Second),
