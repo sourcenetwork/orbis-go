@@ -41,7 +41,7 @@ type DistKeyService interface {
 }
 
 type CommitteeService interface {
-	Nodes() []pss.Node
+	Nodes() []types.Node
 }
 
 // SID is a Secret Identifier (SecretID)
