@@ -1,9 +1,8 @@
 package types
 
 import (
-	"crypto"
-
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 
 	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/ring/v1alpha1"
 )
@@ -21,18 +20,33 @@ type Secret struct {
 }
 
 type Node struct {
-	index int // -1 means invalid index
-	ringv1alpha1.Node
+	index     int // -1 means invalid index
+	id        string
+	address   ma.Multiaddr
+	publicKey crypto.PublicKey
+}
+
+func NewNode(idx int, id string, addr ma.Multiaddr, pk crypto.PublicKey) *Node {
+	return &Node{
+		index:     idx,
+		id:        id,
+		address:   addr,
+		publicKey: pk,
+	}
+}
+
+func (n *Node) ID() string {
+	return n.id
 }
 
 func (n *Node) Index() int {
 	return n.index
 }
 
-func (n *Node) Address() (ma.Multiaddr, error) {
-	return ma.NewMultiaddr(n.Node.Address)
+func (n *Node) Address() ma.Multiaddr {
+	return n.address
 }
 
 func (n *Node) PublicKey() crypto.PublicKey {
-	return nil
+	return n.publicKey
 }
