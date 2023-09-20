@@ -2,15 +2,12 @@ package app
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
-	"strings"
 
 	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/kyber/v3/share"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/libp2p/go-libp2p/core/crypto/pb"
 	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/ring/v1alpha1"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto/proof"
@@ -161,6 +158,8 @@ func (r *Ring) handleReencryptRequest(msg *transport.Message) error {
 		return fmt.Errorf("do process reencrypt: %s", err)
 	}
 
+	resp.RdrPk = req.RdrPk
+
 	payload, err := proto.Marshal(resp)
 	if err != nil {
 		return fmt.Errorf("marshal reencrypt secret response: %s", err)
@@ -177,13 +176,7 @@ func (r *Ring) handleReencryptRequest(msg *transport.Message) error {
 		return fmt.Errorf("originating node %s not found", msg.NodeId)
 	}
 
-	rawRdrPk, err := proto.Marshal(req.RdrPk)
-	if err != nil {
-		return fmt.Errorf("marshal reader public key: %s", err)
-	}
-
-	reencryptMsgID := preReencryptMsgID(string(r.ID), req.SecretId, rawRdrPk)
-	msg, err = r.Transport.NewMessage(r.ID, reencryptMsgID, false, payload, elgamal.EncryptedSecretReply, &origNode)
+	msg, err = r.Transport.NewMessage(r.ID, msg.Id, false, payload, elgamal.EncryptedSecretReply, &origNode)
 	if err != nil {
 		return fmt.Errorf("new transport message for reencrypt request: %w", err)
 	}
@@ -210,23 +203,7 @@ func (r *Ring) handleReencryptedShare(msg *transport.Message) error {
 		return fmt.Errorf("unmarshal reencrypt request: %s", err)
 	}
 
-	strRdrPrk, found := strings.CutPrefix(msg.Id, fmt.Sprintf("/ring/%s/pre/reencrypt/%s/", string(r.ID), resp.SecretId))
-	if !found {
-		return fmt.Errorf("reader public key not found in message id: %s", msg.Id)
-	}
-
-	rawRdrPk, err := hex.DecodeString(strRdrPrk)
-	if err != nil {
-		return fmt.Errorf("decode reader public key: %s", err)
-	}
-
-	var protoRdrPk pb.PublicKey
-	err = proto.Unmarshal(rawRdrPk, &protoRdrPk)
-	if err != nil {
-		return fmt.Errorf("unmarshal reader public key: %s", err)
-	}
-
-	rdrPk, err := crypto.PublicKeyFromProto(&protoRdrPk)
+	rdrPk, err := crypto.PublicKeyFromProto(resp.RdrPk)
 	if err != nil {
 		return fmt.Errorf("public key from proto: %s", err)
 	}
@@ -284,7 +261,7 @@ func (r *Ring) handleReencryptedShare(msg *transport.Message) error {
 		return fmt.Errorf("verify reencrypt reply: %s", err)
 	}
 
-	reencryptMsgID := preReencryptMsgID(string(r.ID), resp.SecretId, rawRdrPk)
+	reencryptMsgID := msg.Id
 
 	r.xncSki[reencryptMsgID] = append(r.xncSki[reencryptMsgID], &reply.Share)
 	xncSki := r.xncSki[reencryptMsgID]
@@ -366,5 +343,5 @@ func preStoreMsgID(rid string, sid string) string {
 }
 
 func preReencryptMsgID(rid string, sid string, rawRdrPk []byte) string {
-	return fmt.Sprintf("/ring/%s/pre/reencrypt/%s/%08x", rid, sid, rawRdrPk)
+	return fmt.Sprintf("/ring/%s/pre/reencrypt/%s/%x", rid, sid, rawRdrPk)
 }

@@ -60,7 +60,7 @@ type Ring struct {
 	encScrts map[string][]byte            // preStoreMsgID
 	encCmts  map[string][]byte            // preStoreMsgID
 	xncCmts  map[string]chan kyber.Point  // preEncryptMsgID
-	xncSki   map[string][]*share.PubShare // FIXME: should be a map of preEncryptMsgID
+	xncSki   map[string][]*share.PubShare // preEncryptMsgID
 }
 type State map[string]string
 
