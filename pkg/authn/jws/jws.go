@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-jose/go-jose/v3"
 	"github.com/go-jose/go-jose/v3/jwt"
+	logging "github.com/ipfs/go-log"
 	"golang.org/x/crypto/ed25519"
 
 	"github.com/sourcenetwork/orbis-go/pkg/authn"
@@ -15,13 +17,17 @@ import (
 )
 
 const (
+	tokenPrefix = "Bearer "
+
 	OrbisJWSAudience = "orbis"
-	tokenMetadataKey = "authorization"
+	TokenMetadataKey = "authorization"
 )
 
 var (
 	verifyLeewayTime = 10 * time.Second
 )
+
+var log = logging.Logger("orbis/authn/jws")
 
 var _ authn.CredentialService = (*credentialSrv)(nil)
 
@@ -50,11 +56,15 @@ func (c credentialSrv) GetAndVerifyRequestMetadata(ctx context.Context) (authn.S
 		return authn.SubjectInfo{}, fmt.Errorf("missing request metadata")
 	}
 
-	vals := md.Get(tokenMetadataKey)
+	vals := md.Get(TokenMetadataKey)
 	if len(vals) == 0 {
 		return authn.SubjectInfo{}, fmt.Errorf("missing authorization token")
 	}
-	token := vals[0]
+	token, found := strings.CutPrefix(vals[0], tokenPrefix)
+	if !found {
+		return authn.SubjectInfo{}, fmt.Errorf("missing token prefix %q", tokenPrefix)
+	}
+
 	jws, err := jose.ParseSigned(token)
 	if err != nil {
 		return authn.SubjectInfo{}, fmt.Errorf("parsing jws token: %w", err)

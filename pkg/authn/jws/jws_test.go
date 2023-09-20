@@ -83,7 +83,7 @@ func TestJWSCredentialService(t *testing.T) {
 	// mock the request metadata and inject the test JWT into it
 	// Get("authorization") => []string{signedJWT}}
 	mockMD := mocks.NewMetadata(t)
-	mockMD.EXPECT().Get(tokenMetadataKey).Return([]string{signedJWT})
+	mockMD.EXPECT().Get(TokenMetadataKey).Return([]string{tokenPrefix + signedJWT})
 
 	// mock the request parser and inject the above mocked metadata
 	// Parse(ctx) => Metadata{"authorization": []string{signedJWT}}
@@ -144,7 +144,7 @@ func TestDIDKeyJWSCredentialService(t *testing.T) {
 	// mock the request metadata and inject the test JWT into it
 	// Get("authorization") => []string{signedJWT}}
 	mockMD := mocks.NewMetadata(t)
-	mockMD.EXPECT().Get(tokenMetadataKey).Return([]string{signedJWT})
+	mockMD.EXPECT().Get(TokenMetadataKey).Return([]string{tokenPrefix + signedJWT})
 
 	// mock the request parser and inject the above mocked metadata
 	// Parse(ctx) => Metadata{"authorization": []string{signedJWT}}
