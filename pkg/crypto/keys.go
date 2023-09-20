@@ -6,6 +6,7 @@ import (
 	"crypto/ed25519"
 	"crypto/sha512"
 	"fmt"
+	"io"
 	"strings"
 
 	ic "github.com/libp2p/go-libp2p/core/crypto"
@@ -154,12 +155,12 @@ type privKey struct {
 	suite suites.Suite
 }
 
-func GenerateKeyPair(ste suites.Suite) (PrivateKey, PublicKey, error) {
+func GenerateKeyPair(ste suites.Suite, src io.Reader) (PrivateKey, PublicKey, error) {
 	keyType, err := KeyTypeFromString(ste.String())
 	if err != nil {
 		return nil, nil, err
 	}
-	sk, pk, err := ic.GenerateKeyPair(int(keyType), 0)
+	sk, pk, err := ic.GenerateKeyPairWithReader(int(keyType), 0, src)
 	if err != nil {
 		return nil, nil, err
 	}

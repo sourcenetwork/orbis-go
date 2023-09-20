@@ -2,6 +2,7 @@ package rabin
 
 import (
 	"context"
+	cryptorand "crypto/rand"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -88,7 +89,7 @@ func randomPort() int {
 func randomNodes(num int, ste suites.Suite) []transport.Node {
 	nodes := make([]transport.Node, num)
 	for i := 0; i < num; i++ {
-		_, pub, err := crypto.GenerateKeyPair(ste)
+		_, pub, err := crypto.GenerateKeyPair(ste, cryptorand.Reader)
 		if err != nil {
 			panic(err)
 		}

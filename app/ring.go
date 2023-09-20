@@ -133,7 +133,6 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 	inj := app.inj.Clone()
 
 	// factories
-	log.Info("pulling factory dependencies for ring")
 	authnFactory, err := do.InvokeNamed[types.Factory[authn.CredentialService]](inj, ring.Authentication)
 	if err != nil {
 		return nil, fmt.Errorf("invoke authn credential service: %w", err)

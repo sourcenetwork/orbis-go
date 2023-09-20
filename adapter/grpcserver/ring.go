@@ -183,12 +183,13 @@ func (s *ringService) ReencryptSecret(ctx context.Context, req *ringv1alpha1.Ree
 	}
 	ok, err := r.Authz.Check(ctx, req.SecretId, authz.READ, authInfo.Subject)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.PermissionDenied, "permission denied")
 	}
 
 	if !ok {
 		return nil, errUnAuthorized
 	}
+
 	var p proof.VerifiableEncryption
 	rdrPk, err := crypto.PublicKeyFromProto(req.RdrPk)
 	if err != nil {
