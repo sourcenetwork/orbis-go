@@ -118,10 +118,11 @@ message Secret {
 message ReencryptedSecretShare {
   string ring_id = 1;
   string secret_id = 2;
-  int32 index = 3;
-  bytes xnc_ski = 4; // reencrypted share
-  bytes chlgi = 5; // challenge
-  bytes proofi = 6; // proof
+  libp2p.crypto.v1.PublicKey rdr_pk = 3;
+  int32 index = 4;
+  bytes xnc_ski = 5; // reencrypted share
+  bytes chlgi = 6; // challenge
+  bytes proofi = 7; // proof
 }
 
 message Ring {
