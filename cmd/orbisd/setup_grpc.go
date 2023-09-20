@@ -5,8 +5,13 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/NathanBaulch/protoc-gen-cobra/client"
+	"github.com/NathanBaulch/protoc-gen-cobra/naming"
 	"github.com/samber/do"
+	"github.com/spf13/pflag"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
 
@@ -16,6 +21,49 @@ import (
 	"github.com/sourcenetwork/orbis-go/pkg/authn"
 	"github.com/sourcenetwork/orbis-go/pkg/util/cleaner"
 )
+
+func init() {
+
+	var key string
+
+	client.RegisterFlagBinder(func(fs *pflag.FlagSet, namer naming.Namer) {
+		fs.StringVar(&key, namer("JWT Key"), key, "JWT key")
+	})
+
+	client.RegisterPreDialer(func(_ context.Context, opts *[]grpc.DialOption) error {
+
+		if key != "" {
+			cred, err := newJWTAccessFromKey(key)
+			if err != nil {
+				return fmt.Errorf("jwt key: %v", err)
+			}
+			*opts = append(*opts, grpc.WithPerRPCCredentials(cred))
+		}
+
+		return nil
+	})
+}
+
+// This is a temporary solution to get the JWT key into the gRPC client.
+// Once we have the TLS setup, we can remove this, and take advantage of the oauth package.
+// "google.golang.org/grpc/credentials/oauth"
+func newJWTAccessFromKey(token string) (credentials.PerRPCCredentials, error) {
+	return jwtAccess{token}, nil
+}
+
+type jwtAccess struct {
+	token string
+}
+
+func (j jwtAccess) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
+	return map[string]string{
+		"authorization": "Bearer " + j.token,
+	}, nil
+}
+
+func (j jwtAccess) RequireTransportSecurity() bool {
+	return false
+}
 
 func setupGRPCServer(cfg config.GRPC, errGrp *errgroup.Group, clnr *cleaner.Cleaner, a *app.App) error {
 
