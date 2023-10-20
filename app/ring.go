@@ -57,7 +57,7 @@ type Ring struct {
 
 	preReqMsg chan *transport.Message
 
-	encScrts map[string][]byte            // preStoreMsgID
+	encScrts map[string][][]byte          // preStoreMsgID
 	encCmts  map[string][]byte            // preStoreMsgID
 	xncCmts  map[string]chan kyber.Point  // preEncryptMsgID
 	xncSki   map[string][]*share.PubShare // preEncryptMsgID
@@ -253,7 +253,7 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 		nodes:     nodes,
 		services:  rs.services, // this is dumb, but im being lazy, sorry.
 		preReqMsg: make(chan *transport.Message, 10),
-		encScrts:  make(map[string][]byte),
+		encScrts:  make(map[string][][]byte),
 		encCmts:   make(map[string][]byte),
 		xncCmts:   make(map[string]chan kyber.Point),
 		xncSki:    make(map[string][]*share.PubShare),

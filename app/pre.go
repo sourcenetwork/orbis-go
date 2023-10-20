@@ -48,7 +48,7 @@ func (r *Ring) StoreSecret(ctx context.Context, rid types.RingID, scrt *types.Se
 	return sid, nil
 }
 
-func (r *Ring) ReencryptSecret(ctx context.Context, rdrPk crypto.PublicKey, sid types.SecretID, p proof.VerifiableEncryption) (xncCmt []byte, encScrt []byte, err error) {
+func (r *Ring) ReencryptSecret(ctx context.Context, rdrPk crypto.PublicKey, sid types.SecretID, p proof.VerifiableEncryption) (xncCmt []byte, encScrt [][]byte, err error) {
 
 	protoRdrPk, err := crypto.PublicKeyToProto(rdrPk)
 	if err != nil {
