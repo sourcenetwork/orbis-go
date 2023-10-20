@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+package orbis.utility.v1alpha1;
+
+import "google/api/annotations.proto";
+
+service UtilityService {
+  rpc CreateDID(CreateDIDRequest) returns (CreateDIDResponse) {
+    option (google.api.http) = {
+      post: "/v1alpha1/utility/did"
+      body: "*"
+    };
+  }
+
+  rpc CreateJWT(CreateJWTRequest) returns (CreateJWTResponse) {
+    option (google.api.http) = {
+      post: "/v1alpha1/utility/jwt"
+      body: "*"
+    };
+  }
+
+  rpc CreateKeypair(CreateKeypairRequest) returns (CreateKeypairResponse) {
+    option (google.api.http) = {
+      post: "/v1alpha1/utility/keypair"
+      body: "*"
+    };
+  }
+
+  rpc EncryptSecret(EncryptSecretRequest) returns (EncryptSecretResponse) {
+    option (google.api.http) = {
+      post: "/v1alpha1/utility/secret:encrypt"
+      body: "*"
+    };
+  }
+
+  rpc DecryptSecret(DecryptSecretRequest) returns (DecryptSecretResponse) {
+    option (google.api.http) = {
+      post: "/v1alpha1/utility/secret:decrypt"
+      body: "*"
+    };
+  }
+}
+
+message CreateDIDRequest {
+  string key_type = 1;
+  bytes public_key = 2;
+}
+
+message CreateDIDResponse {
+  string did = 1;
+  string scheme = 2;
+  string method = 3;
+  string identifier = 4;
+}
+
+message CreateJWTRequest {
+  string kid = 1;
+  string claims = 2;
+  string key_type = 3;
+  bytes private_key = 4;
+}
+
+message CreateJWTResponse {
+  string jwt = 1;
+}
+
+message CreateKeypairRequest {
+  string key_type = 1;
+  string rand_reader = 2;
+}
+
+message CreateKeypairResponse {
+  bytes private_key = 1;
+  bytes public_key = 2;
+}
+
+message EncryptSecretRequest {
+  string key_type = 1;
+  bytes dkg_pk = 2;
+  bytes scrt = 3;
+}
+
+message EncryptSecretResponse {
+  bytes enc_cmt = 1;
+  repeated bytes enc_scrt = 2;
+}
+
+message DecryptSecretRequest {
+  string key_type = 1;
+  repeated bytes enc_scrt = 2;
+  bytes xnc_cmt = 3;
+  bytes rdr_sk = 4;
+  bytes dkg_pk = 5;
+}
+
+message DecryptSecretResponse {
+  bytes scrt = 1;
+}

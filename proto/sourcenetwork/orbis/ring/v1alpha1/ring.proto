@@ -7,18 +7,58 @@ import "google/protobuf/empty.proto";
 import "libp2p/crypto/v1/crypto.proto";
 
 service RingService {
-  rpc ListRings(ListRingsRequest) returns (ListRingsResponse) {}
-  rpc GetRing(GetRingRequest) returns (GetRingResponse) {}
-  rpc CreateRing(CreateRingRequest) returns (CreateRingResponse) {}
-  rpc DeleteRing(DeleteRingRequest) returns (google.protobuf.Empty) {}
-  rpc PublicKey(PublicKeyRequest) returns (PublicKeyResponse) {}
-  rpc Refresh(RefreshRequest) returns (RefreshResponse) {}
-  rpc State(StateRequest) returns (StateResponse) {}
+  rpc ListRings(ListRingsRequest) returns (ListRingsResponse) {
+    option (google.api.http) = {get: "/v1alpha1/rings"};
+  }
 
-  rpc ListSecrets(ListSecretsRequest) returns (ListSecretsResponse) {}
-  rpc StoreSecret(StoreSecretRequest) returns (StoreSecretResponse) {}
-  rpc ReencryptSecret(ReencryptSecretRequest) returns (ReencryptSecretResponse) {}
-  rpc DeleteSecret(DeleteSecretRequest) returns (google.protobuf.Empty) {}
+  rpc GetRing(GetRingRequest) returns (GetRingResponse) {
+    option (google.api.http) = {get: "/v1alpha1/rings/{id}"};
+  }
+
+  rpc CreateRing(CreateRingRequest) returns (CreateRingResponse) {
+    option (google.api.http) = {
+      post: "/v1alpha1/rings"
+      body: "*"
+    };
+  }
+
+  rpc DeleteRing(DeleteRingRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {delete: "/v1alpha1/rings/{id}"};
+  }
+
+  rpc PublicKey(PublicKeyRequest) returns (PublicKeyResponse) {
+    option (google.api.http) = {get: "/v1alpha1/rings/{id}/public_key"};
+  }
+
+  rpc Refresh(RefreshRequest) returns (RefreshResponse) {
+    option (google.api.http) = {post: "/v1alpha1/rings/{id}:refresh"};
+  }
+
+  rpc State(StateRequest) returns (StateResponse) {
+    option (google.api.http) = {get: "/v1alpha1/rings/{id}:state"};
+  }
+
+  rpc ListSecrets(ListSecretsRequest) returns (ListSecretsResponse) {
+    option (google.api.http) = {get: "/v1alpha1/rings/{ring_id}/secrets"};
+  }
+
+  rpc StoreSecret(StoreSecretRequest) returns (StoreSecretResponse) {
+    option (google.api.http) = {
+      post: "/v1alpha1/rings/{ring_id}/secrets"
+      body: "secret"
+    };
+  }
+
+  rpc ReencryptSecret(ReencryptSecretRequest) returns (ReencryptSecretResponse) {
+    option (google.api.http) = {
+      post: "/v1alpha1/rings/{ring_id}/secrets/{secret_id}:reencrypt"
+      body: "*"
+    };
+  }
+
+  rpc DeleteSecret(DeleteSecretRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {delete: "/v1alpha1/rings/{ring_id}/secrets/{secret_id}"};
+  }
 }
 
 message ListRingsRequest {}
@@ -89,7 +129,6 @@ message StoreSecretRequest {
 
 message StoreSecretResponse {
   string secret_id = 1;
-  string ring_id = 2;
 }
 message DeleteSecretRequest {
   string ring_id = 1;
@@ -107,12 +146,12 @@ message ReencryptSecretRequest {
 // Reencryption commitment recovered from verified secret shares, and encrypted secret
 message ReencryptSecretResponse {
   bytes xnc_cmt = 1; // reencryption commitment
-  bytes enc_scrt = 2; // enncrypted secret
+  repeated bytes enc_scrt = 2; // enncrypted secret
 }
 
 message Secret {
   bytes enc_cmt = 1; // encryption commitment
-  bytes enc_scrt = 2; // enncrypted secret
+  repeated bytes enc_scrt = 2; // enncrypted secret
 }
 
 message ReencryptedSecretShare {
