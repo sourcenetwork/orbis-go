@@ -6,7 +6,6 @@ import (
 
 	"github.com/sourcenetwork/orbis-go/app"
 	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/ring/v1alpha1"
-	"github.com/sourcenetwork/orbis-go/pkg/authz"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto/proof"
 	"github.com/sourcenetwork/orbis-go/pkg/types"
@@ -177,18 +176,18 @@ func (s *ringService) ReencryptSecret(ctx context.Context, req *ringv1alpha1.Ree
 		return nil, status.Error(codes.NotFound, "ring not found")
 	}
 
-	authInfo, err := r.Authn.GetAndVerifyRequestMetadata(ctx)
-	if err != nil {
-		return nil, err
-	}
-	ok, err := r.Authz.Check(ctx, req.SecretId, authz.READ, authInfo.Subject)
-	if err != nil {
-		return nil, status.Error(codes.PermissionDenied, "permission denied")
-	}
+	// authInfo, err := r.Authn.GetAndVerifyRequestMetadata(ctx)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	if !ok {
-		return nil, errUnAuthorized
-	}
+	// ok, err := r.Authz.Check(ctx, req.SecretId, authz.READ, authInfo.Subject)
+	// if err != nil {
+	// 	return nil, status.Error(codes.PermissionDenied, "permission denied")
+	// }
+	// if !ok {
+	// 	return nil, errUnAuthorized
+	// }
 
 	var p proof.VerifiableEncryption
 	rdrPk, err := crypto.PublicKeyFromProto(req.RdrPk)
