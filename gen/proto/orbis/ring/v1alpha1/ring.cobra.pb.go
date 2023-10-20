@@ -433,7 +433,7 @@ func _RingServiceStoreSecretCommand(cfg *client.Config) *cobra.Command {
 	_Secret := &Secret{}
 	flag.BytesBase64Var(cmd.PersistentFlags(), &_Secret.EncCmt, cfg.FlagNamer("Secret EncCmt"), "")
 	flag.WithPostSetHook(cmd.PersistentFlags(), cfg.FlagNamer("Secret EncCmt"), func() { req.Secret = _Secret })
-	flag.BytesBase64Var(cmd.PersistentFlags(), &_Secret.EncScrt, cfg.FlagNamer("Secret EncScrt"), "")
+	flag.BytesBase64SliceVar(cmd.PersistentFlags(), &_Secret.EncScrt, cfg.FlagNamer("Secret EncScrt"), "")
 	flag.WithPostSetHook(cmd.PersistentFlags(), cfg.FlagNamer("Secret EncScrt"), func() { req.Secret = _Secret })
 
 	return cmd
