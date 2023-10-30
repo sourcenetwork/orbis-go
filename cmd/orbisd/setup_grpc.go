@@ -27,13 +27,13 @@ func init() {
 	var key string
 
 	client.RegisterFlagBinder(func(fs *pflag.FlagSet, namer naming.Namer) {
-		fs.StringVar(&key, namer("JWT Key"), key, "JWT key")
+		fs.StringVar(&key, namer("JWT"), key, "JWT")
 	})
 
 	client.RegisterPreDialer(func(_ context.Context, opts *[]grpc.DialOption) error {
 
 		if key != "" {
-			cred, err := newJWTAccessFromKey(key)
+			cred, err := newJWTCred(key)
 			if err != nil {
 				return fmt.Errorf("jwt key: %v", err)
 			}
@@ -47,7 +47,7 @@ func init() {
 // This is a temporary solution to get the JWT key into the gRPC client.
 // Once we have the TLS setup, we can remove this, and take advantage of the oauth package.
 // "google.golang.org/grpc/credentials/oauth"
-func newJWTAccessFromKey(token string) (credentials.PerRPCCredentials, error) {
+func newJWTCred(token string) (credentials.PerRPCCredentials, error) {
 	return jwtAccess{token}, nil
 }
 
