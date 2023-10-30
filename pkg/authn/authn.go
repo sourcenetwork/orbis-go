@@ -10,7 +10,8 @@ import (
 // CredentialService parses and verifies the authentication
 // data from the incoming
 type CredentialService interface {
-	GetAndVerifyRequestMetadata(ctx context.Context) (SubjectInfo, error)
+	GetRequestToken(ctx context.Context) ([]byte, error)
+	VerifyRequestSubject(ctx context.Context, token []byte) (SubjectInfo, error)
 }
 
 // Resolves the parsed subject data into fully formed UserInfo.

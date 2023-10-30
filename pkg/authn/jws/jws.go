@@ -43,29 +43,33 @@ func NewSelfSignedCredentialService(resolver authn.KeyResolver, metadataParser a
 	}
 }
 
-func (c credentialSrv) GetAndVerifyRequestMetadata(ctx context.Context) (authn.SubjectInfo, error) {
+func (c credentialSrv) GetRequestToken(ctx context.Context) ([]byte, error) {
+	// parse content from request context
+	md, ok := c.metadataParser.Parse(ctx)
+	if !ok {
+		return nil, fmt.Errorf("missing request metadata")
+	}
+
+	vals := md.Get(TokenMetadataKey)
+	if len(vals) == 0 {
+		return nil, fmt.Errorf("missing authorization token")
+	}
+	token, found := strings.CutPrefix(vals[0], tokenPrefix)
+	if !found {
+		return nil, fmt.Errorf("missing token prefix %q", tokenPrefix)
+	}
+
+	return []byte(token), nil
+}
+
+func (c credentialSrv) VerifyRequestSubject(ctx context.Context, token []byte) (authn.SubjectInfo, error) {
 	// grab the target expiration time at the start of the function
 	// as there may be a non trivial amount of time that has passed
 	// due parsing and resolving state by the time we actually want
 	// to verify the token expiration
 	expTime := time.Now()
 
-	// parse content from request context
-	md, ok := c.metadataParser.Parse(ctx)
-	if !ok {
-		return authn.SubjectInfo{}, fmt.Errorf("missing request metadata")
-	}
-
-	vals := md.Get(TokenMetadataKey)
-	if len(vals) == 0 {
-		return authn.SubjectInfo{}, fmt.Errorf("missing authorization token")
-	}
-	token, found := strings.CutPrefix(vals[0], tokenPrefix)
-	if !found {
-		return authn.SubjectInfo{}, fmt.Errorf("missing token prefix %q", tokenPrefix)
-	}
-
-	jws, err := jose.ParseSigned(token)
+	jws, err := jose.ParseSigned(string(token))
 	if err != nil {
 		return authn.SubjectInfo{}, fmt.Errorf("parsing jws token: %w", err)
 	}

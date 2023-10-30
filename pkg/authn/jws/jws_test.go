@@ -99,8 +99,12 @@ func TestJWSCredentialService(t *testing.T) {
 	}, nil)
 
 	// Actual test block
+	ctx := context.Background()
 	credService := NewSelfSignedCredentialService(mockResolver, mockReqParser)
-	info, err := credService.GetAndVerifyRequestMetadata(context.Background())
+	token, err := credService.GetRequestToken(ctx)
+	require.NoError(t, err)
+	require.NotNil(t, token)
+	info, err := credService.VerifyRequestSubject(ctx, token)
 	require.NoError(t, err)
 	require.NotEmpty(t, info)
 	require.Equal(t, authn.SubjectInfo{
@@ -155,8 +159,12 @@ func TestDIDKeyJWSCredentialService(t *testing.T) {
 	resolver := did.NewResolver(key.Resolver{})
 
 	// Actual test block
+	ctx := context.Background()
 	credService := NewSelfSignedCredentialService(resolver, mockReqParser)
-	info, err := credService.GetAndVerifyRequestMetadata(context.Background())
+	token, err := credService.GetRequestToken(ctx)
+	require.NoError(t, err)
+	require.NotNil(t, token)
+	info, err := credService.VerifyRequestSubject(ctx, token)
 	require.NoError(t, err)
 	require.NotEmpty(t, info)
 	require.Equal(t, authn.SubjectInfo{
