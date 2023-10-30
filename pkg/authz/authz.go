@@ -18,5 +18,5 @@ type Authz interface {
 	// currently makes no assumption about the structure of contents of the
 	// subject and payload byte-arrays. This is left up to the implementation
 	// so a generic byte-array was the most appropriate.
-	Check(ctx context.Context, resource, action, subject string) (bool, error)
+	Check(ctx context.Context, perm []byte, subject string) (bool, error)
 }

@@ -45,7 +45,7 @@ func (staticAuthz) Init(_ context.Context) error {
 	return nil
 }
 
-func (a staticAuthz) Check(_ context.Context, _, _, _ string) (bool, error) {
+func (a staticAuthz) Check(_ context.Context, _ []byte, _ string) (bool, error) {
 	if a.allow == ALLOW_ALL {
 		return true, nil
 	}
