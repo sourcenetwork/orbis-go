@@ -88,6 +88,7 @@ func (s *ringService) PublicKey(ctx context.Context, req *ringv1alpha1.PublicKey
 
 	ring, err := s.app.GetRing(ctx, req.Id)
 	if err != nil {
+		panic(req.Id)
 		return nil, status.Error(codes.NotFound, "ring not found")
 	}
 
@@ -151,7 +152,7 @@ func (s *ringService) StoreSecret(ctx context.Context, req *ringv1alpha1.StoreSe
 	}
 
 	secret := &types.Secret{
-		Secret: ringv1alpha1.Secret{
+		Secret: &ringv1alpha1.Secret{
 			EncCmt:  req.Secret.EncCmt,
 			EncScrt: req.Secret.EncScrt,
 		},
@@ -176,26 +177,33 @@ func (s *ringService) ReencryptSecret(ctx context.Context, req *ringv1alpha1.Ree
 		return nil, status.Error(codes.NotFound, "ring not found")
 	}
 
-	// authInfo, err := r.Authn.GetAndVerifyRequestMetadata(ctx)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// ok, err := r.Authz.Check(ctx, req.SecretId, authz.READ, authInfo.Subject)
-	// if err != nil {
-	// 	return nil, status.Error(codes.PermissionDenied, "permission denied")
-	// }
-	// if !ok {
-	// 	return nil, errUnAuthorized
-	// }
-
-	var p proof.VerifiableEncryption
-	rdrPk, err := crypto.PublicKeyFromProto(req.RdrPk)
+	token, err := r.Authn.GetRequestToken(ctx)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "convert public key: %v", err)
+		return nil, status.Error(codes.Unauthenticated, "missing authentication token")
 	}
 
-	xncCmt, encScrt, err := r.ReencryptSecret(ctx, rdrPk, types.SecretID(req.SecretId), p)
+	authInfo, err := r.Authn.VerifyRequestSubject(ctx, token)
+	if err != nil {
+		log.Error(err)
+		return nil, status.Error(codes.Unknown, "failed to verify token")
+	}
+
+	scrt, err := r.GetSecret(ctx, req.SecretId)
+	if err != nil {
+		return nil, err
+	}
+
+	ok, err := r.Authz.Check(ctx, scrt.AuthzCtx, authInfo.Subject)
+	if err != nil {
+		return nil, status.Error(codes.PermissionDenied, "permission denied")
+	}
+	if !ok {
+		return nil, errUnAuthorized
+	}
+
+	var p proof.VerifiableEncryption
+
+	xncCmt, encScrt, err := r.ReencryptSecret(ctx, authInfo.PubKey, types.SecretID(req.SecretId), p)
 	if err != nil {
 		return nil, fmt.Errorf("reencrypt secret: %w", err)
 	}
