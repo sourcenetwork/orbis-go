@@ -19,7 +19,7 @@ import (
 
 func (r *Ring) StoreSecret(ctx context.Context, rid types.RingID, scrt *types.Secret) (types.SecretID, error) {
 
-	payload, err := proto.Marshal(&scrt.Secret)
+	payload, err := proto.Marshal(scrt)
 	if err != nil {
 		return "", fmt.Errorf("marshal secret: %w", err)
 	}
@@ -37,8 +37,8 @@ func (r *Ring) StoreSecret(ctx context.Context, rid types.RingID, scrt *types.Se
 		return "", fmt.Errorf("create transport message: %w", err)
 	}
 
-	r.encCmts[storeMsgID] = scrt.EncCmt
-	r.encScrts[storeMsgID] = scrt.EncScrt
+	// r.encCmts[storeMsgID] = scrt.EncCmt
+	// r.encScrts[storeMsgID] = scrt.EncScrt
 
 	_, err = r.Bulletin.Post(ctx, storeMsgID, msg)
 	if err != nil {
@@ -103,13 +103,12 @@ func (r *Ring) ReencryptSecret(ctx context.Context, rdrPk crypto.PublicKey, sid 
 		return nil, nil, fmt.Errorf("marshal xncCmt: %w", err)
 	}
 
-	storeMsgID := preStoreMsgID(string(r.ID), string(sid))
-	encScrt, ok := r.encScrts[storeMsgID]
-	if !ok {
-		return nil, nil, fmt.Errorf("encrypted secret for %s not found", storeMsgID)
+	scrt, err := r.GetSecret(ctx, string(sid))
+	if err != nil {
+		return nil, nil, fmt.Errorf("encrypted secret for %s not found", string(sid))
 	}
 
-	return xncCmt, encScrt, nil
+	return xncCmt, scrt.EncScrt, nil
 }
 
 func (r *Ring) preTransportMessageHandler(msg *transport.Message) error {
@@ -243,11 +242,11 @@ func (r *Ring) handleReencryptedShare(msg *transport.Message) error {
 	pubPoly := share.NewPubPoly(ste, nil, distKeyShare.Commits)
 	poly := crypto.PubPoly{PubPoly: pubPoly}
 
-	storeMsgID := preStoreMsgID(resp.RingId, resp.SecretId)
-	rawEncCmt, ok := r.encCmts[storeMsgID]
-	if !ok {
-		log.Errorf("encrypted commitment for %s not found", storeMsgID)
+	scrt, err := r.GetSecret(context.TODO(), string(resp.SecretId))
+	if err != nil {
+		return fmt.Errorf("getting secret: %w", err)
 	}
+	rawEncCmt := scrt.EncCmt
 
 	encCmt := ste.Point().Base()
 	err = encCmt.UnmarshalBinary(rawEncCmt)
@@ -292,17 +291,9 @@ func (r *Ring) doProcessReencrypt(req *ringv1alpha1.ReencryptSecretRequest) (*ri
 		return nil, fmt.Errorf("unmarshal reader public key: %w", err)
 	}
 
-	storeMsgID := preStoreMsgID(string(r.ID), req.SecretId)
-
-	encScrt, err := r.Bulletin.Read(context.TODO(), storeMsgID)
+	scrt, err := r.GetSecret(context.TODO(), req.SecretId)
 	if err != nil {
-		return nil, fmt.Errorf("read %q from bulletin: %w", storeMsgID, err)
-	}
-
-	var scrt types.Secret
-	err = proto.Unmarshal(encScrt.Data.Payload, &scrt)
-	if err != nil {
-		return nil, fmt.Errorf("unmarshal encrypted secret: %w", err)
+		return nil, fmt.Errorf("get secret: %w", err)
 	}
 
 	share := r.DKG.Share()
@@ -336,6 +327,30 @@ func (r *Ring) doProcessReencrypt(req *ringv1alpha1.ReencryptSecretRequest) (*ri
 	}
 
 	return resp, nil
+}
+
+// GetSecret reads the secret identified by sid from the secret store
+func (r *Ring) GetSecret(ctx context.Context, sid string) (types.Secret, error) {
+	storeMsgID := preStoreMsgID(string(r.ID), sid)
+	var scrt types.Secret
+	buf, err := r.Bulletin.Read(context.TODO(), storeMsgID)
+	if err != nil {
+		return scrt, err
+	}
+
+	if buf.Data == nil {
+		return scrt, fmt.Errorf("secret not found")
+	}
+
+	fmt.Println(buf.Data.Payload)
+	s := new(ringv1alpha1.Secret)
+	err = proto.Unmarshal(buf.Data.Payload, s)
+	if err != nil {
+		return scrt, fmt.Errorf("unmarshal encrypted secret: %w", err)
+	}
+	scrt.Secret = s
+
+	return scrt, nil
 }
 
 func preStoreMsgID(rid string, sid string) string {

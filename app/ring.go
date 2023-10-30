@@ -57,10 +57,10 @@ type Ring struct {
 
 	preReqMsg chan *transport.Message
 
-	encScrts map[string][][]byte          // preStoreMsgID
-	encCmts  map[string][]byte            // preStoreMsgID
-	xncCmts  map[string]chan kyber.Point  // preEncryptMsgID
-	xncSki   map[string][]*share.PubShare // preEncryptMsgID
+	// encScrts map[string][][]byte          // preStoreMsgID
+	// encCmts  map[string][]byte            // preStoreMsgID
+	xncCmts map[string]chan kyber.Point  // preEncryptMsgID
+	xncSki  map[string][]*share.PubShare // preEncryptMsgID
 }
 type State map[string]string
 
@@ -253,12 +253,12 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 		nodes:     nodes,
 		services:  rs.services, // this is dumb, but im being lazy, sorry.
 		preReqMsg: make(chan *transport.Message, 10),
-		encScrts:  make(map[string][][]byte),
-		encCmts:   make(map[string][]byte),
-		xncCmts:   make(map[string]chan kyber.Point),
-		xncSki:    make(map[string][]*share.PubShare),
-		Authz:     authz,
-		Authn:     authn,
+		// encScrts:  make(map[string][][]byte),
+		// encCmts:   make(map[string][]byte),
+		xncCmts: make(map[string]chan kyber.Point),
+		xncSki:  make(map[string][]*share.PubShare),
+		Authz:   authz,
+		Authn:   authn,
 	}
 
 	go rs.preReencryptMessageHandler()
@@ -366,6 +366,8 @@ func (r *Ring) Start(ctx context.Context) error {
 
 	return nil
 }
+
+// func (r *Ring)
 
 // LoadRings loads any existing rings into state
 func (app *App) LoadRings(ctx context.Context) error {
