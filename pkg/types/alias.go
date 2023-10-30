@@ -16,7 +16,7 @@ func RingFromManifest(manifest []byte) (*Ring, RingID, error) {
 }
 
 type Secret struct {
-	ringv1alpha1.Secret
+	*ringv1alpha1.Secret
 }
 
 type Node struct {

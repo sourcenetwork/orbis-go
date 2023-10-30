@@ -7,7 +7,6 @@ import (
 
 	"github.com/TBD54566975/ssi-sdk/did"
 	"github.com/TBD54566975/ssi-sdk/did/resolution"
-	"github.com/davecgh/go-spew/spew"
 
 	"github.com/sourcenetwork/orbis-go/pkg/authn"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
@@ -34,8 +33,6 @@ func (r resolver) Resolve(ctx context.Context, id string) (authn.SubjectInfo, er
 	if len(result.VerificationMethod) == 0 {
 		return authn.SubjectInfo{}, fmt.Errorf("resolver result missing verification methods")
 	}
-
-	spew.Dump(result.Document)
 
 	// use the first verifcation method if none is specific via a suffix fragment
 	verKeyID := result.VerificationMethod[0].ID
