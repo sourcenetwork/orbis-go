@@ -152,6 +152,7 @@ message ReencryptSecretResponse {
 message Secret {
   bytes enc_cmt = 1; // encryption commitment
   repeated bytes enc_scrt = 2; // enncrypted secret
+  string authz_ctx = 3; // authorization context
 }
 
 message ReencryptedSecretShare {
