@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/samber/do"
+	"github.com/sourcenetwork/orbis-go/config"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	odb "github.com/sourcenetwork/orbis-go/pkg/db"
 	orbisdkg "github.com/sourcenetwork/orbis-go/pkg/dkg"
@@ -18,7 +19,7 @@ var (
 
 type factory struct{}
 
-func (factory) New(inj *do.Injector, rkeys []odb.RepoKey) (orbisdkg.DKG, error) {
+func (factory) New(inj *do.Injector, rkeys []odb.RepoKey, _ config.Config) (orbisdkg.DKG, error) {
 	db, err := do.Invoke[*odb.DB](inj)
 	if err != nil {
 		return nil, fmt.Errorf("invoke db: %w", err)

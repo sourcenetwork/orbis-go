@@ -20,6 +20,11 @@ type Config struct {
 	Transport Transport
 	Bulletin  Bulletin
 	DB        DB
+	Authz     Authz
+}
+
+type Authz struct {
+	Address string `default:"127.0.0.1:8080" description:"GRPC server address"`
 }
 
 type Logger struct {

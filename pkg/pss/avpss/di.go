@@ -2,6 +2,7 @@ package avpss
 
 import (
 	"github.com/samber/do"
+	"github.com/sourcenetwork/orbis-go/config"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/db"
 	"github.com/sourcenetwork/orbis-go/pkg/dkg"
@@ -17,7 +18,7 @@ var (
 
 type factory struct{}
 
-func (factory) New(inj *do.Injector, rkeys []db.RepoKey) (pss.PSS, error) {
+func (factory) New(inj *do.Injector, rkeys []db.RepoKey, _ config.Config) (pss.PSS, error) {
 	db, err := do.Invoke[*db.DB](inj)
 	if err != nil {
 		return nil, err

@@ -181,14 +181,14 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 
 	// setup and register local services
 	log.Info("Initializating local services for ring")
-	authn, err := authnFactory.New(inj, []db.RepoKey{}) // empty repo keys
+	authn, err := authnFactory.New(inj, []db.RepoKey{}, app.config) // empty repo keys
 	if err != nil {
 		return nil, fmt.Errorf("create authn: %w", err)
 	}
 
 	dkgRepoKeys := app.repoKeysForService(dkgFactory.Name())
 	log.Debugf("dkg repo keys: %v", dkgRepoKeys)
-	dkgSrv, err := dkgFactory.New(inj, dkgRepoKeys)
+	dkgSrv, err := dkgFactory.New(inj, dkgRepoKeys, app.config)
 	if err != nil {
 		return nil, fmt.Errorf("create dkg service: %w", err)
 	}
@@ -210,7 +210,7 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 	}
 
 	preRepoKeys := app.repoKeysForService(preFactory.Name())
-	preSrv, err := preFactory.New(inj, preRepoKeys)
+	preSrv, err := preFactory.New(inj, preRepoKeys, app.config)
 	if err != nil {
 		return nil, fmt.Errorf("create pre service: %w", err)
 	}
@@ -227,7 +227,7 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 	do.ProvideValue(inj, preSrv)
 
 	pssRepoKeys := app.repoKeysForService(pssFactory.Name())
-	pssSrv, err := pssFactory.New(inj, pssRepoKeys)
+	pssSrv, err := pssFactory.New(inj, pssRepoKeys, app.config)
 	if err != nil {
 		return nil, fmt.Errorf("create pss service: %w", err)
 	}

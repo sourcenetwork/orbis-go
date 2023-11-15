@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/samber/do"
+	"github.com/sourcenetwork/orbis-go/config"
 	"github.com/sourcenetwork/orbis-go/pkg/db"
 	"github.com/sourcenetwork/orbis-go/pkg/pre"
 	"github.com/sourcenetwork/orbis-go/pkg/types"
@@ -17,7 +18,7 @@ var (
 
 type factory struct{}
 
-func (factory) New(inj *do.Injector, rkeys []db.RepoKey) (pre.PRE, error) {
+func (factory) New(inj *do.Injector, rkeys []db.RepoKey, _ config.Config) (pre.PRE, error) {
 
 	db, err := do.Invoke[*db.DB](inj)
 	if err != nil {
