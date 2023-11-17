@@ -25,5 +25,5 @@ func (factory) Name() string {
 }
 
 func (factory) Repos() []string {
-	return []string{"dkg"}
+	return []string{}
 }

@@ -15,6 +15,13 @@ x-orbisctl: &orbisctl
   volumes:
     - ../demo:/demo
 
+x-zanzid: &zanzid
+  tty: true
+  stdin_open: true
+  image: zanzi
+  volumes:
+    - ../demo:/demo
+
 services:
   orbisd1:
     <<: *orbisd
@@ -41,6 +48,12 @@ services:
       - "9003:9003"
       - "8083:8083"
       - "8093:8093"
+
+  zanzid:
+    <<: *zanzid
+    command: []
+    ports:
+      - "8080:8080"
 
   delay:
     image: alpine:3.14

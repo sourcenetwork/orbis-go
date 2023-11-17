@@ -29,7 +29,11 @@ type zanziGRPC struct {
 	relationClient api.RelationGraphClient
 }
 
-func NewGRPC(address string) (*zanziGRPC, error) {
+func NewGRPC(address string) (authz.Authz, error) {
+	return newGRPC(address)
+}
+
+func newGRPC(address string) (*zanziGRPC, error) {
 	cred := insecure.NewCredentials()
 	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(cred))
 	if err != nil {
@@ -63,11 +67,13 @@ func (z *zanziGRPC) Check(ctx context.Context, perm string, subject string) (boo
 	}
 	checkReq.AccessRequest.Subject = domain.NewEntity(subjects[0], subjects[1])
 
+	fmt.Println("zanzi check req:", checkReq)
 	resp, err := z.relationClient.Check(ctx, checkReq)
 	if err != nil {
 		return false, fmt.Errorf("check rpc: %w", err)
 	}
 
+	fmt.Println("zanzi check resp:", resp)
 	return resp.Result.Authorized, nil
 }
 

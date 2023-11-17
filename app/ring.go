@@ -173,11 +173,15 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 	}
 	do.ProvideValue(inj, bb)
 
-	authz, err := do.InvokeNamed[authz.Authz](inj, ring.Authorization)
+	authzFactory, err := do.InvokeNamed[types.Factory[authz.Authz]](inj, ring.Authorization)
 	if err != nil {
 		return nil, fmt.Errorf("invoke authz: %w", err)
 	}
-	do.ProvideValue(inj, authz)
+	// do.ProvideValue(inj, authz)
+	authz, err := authzFactory.New(inj, []db.RepoKey{}, app.config)
+	if err != nil {
+		return nil, fmt.Errorf("create authz: %w", err)
+	}
 
 	// setup and register local services
 	log.Info("Initializating local services for ring")

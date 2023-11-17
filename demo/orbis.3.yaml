@@ -22,5 +22,8 @@ bulletin:
 transport:
   rendezvous: "orbis-transport"
 
+authz:
+  address: zanzid:8080
+
 db:
   path: "data3"

@@ -11,6 +11,7 @@ import (
 	"github.com/sourcenetwork/orbis-go/pkg/authn"
 	"github.com/sourcenetwork/orbis-go/pkg/authn/jws"
 	"github.com/sourcenetwork/orbis-go/pkg/authz"
+	"github.com/sourcenetwork/orbis-go/pkg/authz/zanzi"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	p2pbb "github.com/sourcenetwork/orbis-go/pkg/bulletin/p2p"
 	"github.com/sourcenetwork/orbis-go/pkg/did"
@@ -60,9 +61,11 @@ func setupApp(ctx context.Context, cfg config.Config) (*app.App, error) {
 		app.WithService[bulletin.Bulletin](bb),
 
 		// Authentication and Authorization services
-		app.WithService(authz.NewAllow(authz.ALLOW_ALL)),
+		// app.WithService(authz.NewAllow(authz.ALLOW_ALL)),
+		// app.WithService[authz.Authz](zanzi.NewGRPC(cfg.Authz.Address)),
 		app.WithService(did.NewResolver(key.Resolver{})),
 		app.WithFactory[authn.CredentialService](jws.SelfSignedFactory),
+		app.WithFactory[authz.Authz](zanzi.Factory),
 
 		// DKG, PRE, and PSS Factories
 		app.WithFactory[dkg.DKG](rabin.Factory),

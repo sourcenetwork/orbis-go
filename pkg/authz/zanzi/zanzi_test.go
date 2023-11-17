@@ -39,7 +39,7 @@ func TestZanzi(t *testing.T) {
 	err := setupGRPC(address)
 	require.NoError(t, err)
 
-	z, err := NewGRPC(address)
+	z, err := newGRPC(address)
 	require.NoError(t, err)
 
 	assert.Equal(t, "zanzi", z.Name())

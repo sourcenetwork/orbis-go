@@ -153,8 +153,9 @@ func (s *ringService) StoreSecret(ctx context.Context, req *ringv1alpha1.StoreSe
 
 	secret := &types.Secret{
 		Secret: &ringv1alpha1.Secret{
-			EncCmt:  req.Secret.EncCmt,
-			EncScrt: req.Secret.EncScrt,
+			EncCmt:   req.Secret.EncCmt,
+			EncScrt:  req.Secret.EncScrt,
+			AuthzCtx: req.Secret.AuthzCtx,
 		},
 	}
 
@@ -193,9 +194,10 @@ func (s *ringService) ReencryptSecret(ctx context.Context, req *ringv1alpha1.Ree
 		return nil, err
 	}
 
-	ok, err := r.Authz.Check(ctx, scrt.AuthzCtx, authInfo.Subject)
+	fmt.Println("check:", scrt.AuthzCtx, authInfo.Subject)
+	ok, err := r.Authz.Check(ctx, scrt.AuthzCtx, "user:"+authInfo.Subject)
 	if err != nil {
-		return nil, status.Error(codes.PermissionDenied, "permission denied")
+		return nil, status.Error(codes.PermissionDenied, "permission denied: "+err.Error())
 	}
 	if !ok {
 		return nil, errUnAuthorized
