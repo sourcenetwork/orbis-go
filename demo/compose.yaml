@@ -18,7 +18,7 @@ x-orbisctl: &orbisctl
 x-zanzid: &zanzid
   tty: true
   stdin_open: true
-  image: zanzi
+  image: ko.local/zanzid
   volumes:
     - ../demo:/demo
 
