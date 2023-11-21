@@ -368,7 +368,7 @@ func (bb *Bulletin) Events() eventbus.Bus {
 }
 
 func (bb *Bulletin) HandleStream(stream libp2pnetwork.Stream) {
-	log.Infof("Received stream: %s", stream.Conn().RemotePeer().Pretty())
+	log.Infof("Received stream: %s", stream.Conn().RemotePeer().String())
 }
 
 func (bb *Bulletin) topicMessageHandler(from peer.ID, topic string, msg []byte) ([]byte, error) {
