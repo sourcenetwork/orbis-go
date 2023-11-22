@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ipfs/boxo/util"
 	"github.com/ipfs/go-cid"
-	util "github.com/ipfs/go-ipfs-util"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -67,8 +67,6 @@ const (
 
 var _ bulletin.Bulletin = (*Bulletin)(nil)
 
-const ()
-
 type Message = gossipbulletinv1alpha1.Message
 
 type Bulletin struct {
@@ -96,21 +94,28 @@ func New(ctx context.Context, host *host.Host, cfg config.Bulletin) (*Bulletin, 
 	}
 
 	host.SetStreamHandler(ProtocolID, bb.HandleStream)
-	host.Discover(ctx, cfg.Rendezvous)
+
+	err := host.Discover(ctx, cfg.Rendezvous)
+	if err != nil {
+		return nil, fmt.Errorf("discover: %w", err)
+	}
 
 	// parse persistent peers
 	for _, pstr := range strings.Split(cfg.PersistentPeers, ",") {
 		if pstr == "" {
 			continue
 		}
+
 		pma, err := ma.NewMultiaddr(strings.TrimSpace(pstr))
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse persistent peer: %w", err)
+			return nil, fmt.Errorf("parse persistent peer: %w", err)
 		}
+
 		paddr, err := peer.AddrInfoFromP2pAddr(pma)
 		if err != nil {
-			return nil, fmt.Errorf("failed to convert multiaddr to peer addr: %w", err)
+			return nil, fmt.Errorf("convert multiaddr to peer addr: %w", err)
 		}
+
 		bb.persistentPeers[paddr.ID] = *paddr
 	}
 
@@ -132,13 +137,15 @@ func (bb *Bulletin) Register(ctx context.Context, namespace string) error {
 	if _, exists := bb.topics[namespace]; exists {
 		return bulletin.ErrDuplicateTopic
 	}
+
 	topic, err := rpc.NewTopic(ctx, bb.h.PubSub(), bb.h.ID(), namespace, true)
 	if err != nil {
-		return err
+		return fmt.Errorf("create new topic: %w", err)
 	}
 
 	bb.topics[namespace] = topic
 	topic.SetMessageHandler(bb.topicMessageHandler)
+
 	return nil
 }
 
@@ -148,13 +155,14 @@ func (bb *Bulletin) findTopicForMessageID(id string) (string, *rpc.Topic) {
 			return name, topic
 		}
 	}
+
 	return "", nil
 }
 
 func (bb *Bulletin) Post(ctx context.Context, id string, msg *transport.Message) (bulletin.Response, error) {
 	resp, err := bb.mem.Post(ctx, id, msg)
 	if err != nil {
-		return bulletin.Response{}, err
+		return bulletin.Response{}, fmt.Errorf("post to local store: %w", err)
 	}
 
 	// gossip
@@ -162,47 +170,49 @@ func (bb *Bulletin) Post(ctx context.Context, id string, msg *transport.Message)
 	if topic == nil {
 		return bulletin.Response{}, bulletin.ErrTopicNotFound
 	}
-	log.Debug("bulletin post: publising post request on topic:", name)
+	log.Debugf("Publising post on topic: %s", name)
 
-	buf, err := proto.Marshal(msg)
+	payload, err := proto.Marshal(msg)
 	if err != nil {
-		return bulletin.Response{}, err
+		return bulletin.Response{}, fmt.Errorf("marshal post message payload: %w", err)
 	}
 
 	bbMessage := &Message{
 		Type:    postMessageType,
 		Id:      id,
-		Payload: buf,
+		Payload: payload,
 	}
 	msgbuf, err := proto.Marshal(bbMessage)
 	if err != nil {
-		return bulletin.Response{}, err
+		return bulletin.Response{}, fmt.Errorf("marshal post message: %w", err)
 	}
-	if _, err := topic.Publish(ctx, msgbuf, rpc.WithIgnoreResponse(true)); err != nil {
-		return bulletin.Response{}, err
+
+	_, err = topic.Publish(ctx, msgbuf, rpc.WithIgnoreResponse(true))
+	if err != nil {
+		return bulletin.Response{}, fmt.Errorf("publish post on: %w", err)
 	}
+
 	return resp, nil
 }
 
 func (bb *Bulletin) Read(ctx context.Context, id string) (bulletin.Response, error) {
 	// check if the read key is in our local store, otherwise ask the network
-	log.Debug("bulletin read:", id)
 	resp, err := bb.mem.Read(ctx, id)
 	if errors.Is(err, bulletin.ErrMessageNotFound) {
-		log.Debug("bulletin read: not found locally, fetching from pubsub")
+		log.Debugf("not found locally, fetching from pubsub")
 
 		name, topic := bb.findTopicForMessageID(id)
 		if topic == nil {
 			return bulletin.Response{}, bulletin.ErrTopicNotFound
 		}
-		log.Debug("bulletin read: publishing read request on topic:", name)
+		log.Debugf("publishing read request on topic: %s", name)
 
 		buf, err := proto.Marshal(&Message{
 			Type: readMessageType,
 			Id:   id,
 		})
 		if err != nil {
-			return bulletin.Response{}, err
+			return bulletin.Response{}, fmt.Errorf("marshal read message: %w", err)
 		}
 
 		// check or set timeout on context
@@ -214,25 +224,29 @@ func (bb *Bulletin) Read(ctx context.Context, id string) (bulletin.Response, err
 
 		respCh, err := topic.Publish(ctx, buf, rpc.WithIgnoreResponse(false))
 		if err != nil {
-			return bulletin.Response{}, nil
+			return bulletin.Response{}, fmt.Errorf("publish read request: %w", err)
 		}
 
 		select {
 		case r := <-respCh:
 			if r.Err != nil {
-				return bulletin.Response{}, err
+				return bulletin.Response{}, fmt.Errorf("read request response: %w", r.Err)
 			}
 
 			msg := new(Message)
-			if err := proto.Unmarshal(r.Data, msg); err != nil {
-				return bulletin.Response{}, err
+			err := proto.Unmarshal(r.Data, msg)
+			if err != nil {
+				return bulletin.Response{}, fmt.Errorf("unmarshal response: %w", err)
 			}
 			if msg.Type != responseMessageType {
 				return bulletin.Response{}, bulletin.ErrBadResponseType
 			}
 
 			tMsg := new(transport.Message)
-			proto.Unmarshal(msg.Payload, tMsg)
+			err = proto.Unmarshal(msg.Payload, tMsg)
+			if err != nil {
+				return bulletin.Response{}, fmt.Errorf("unmarshal message payload: %w", err)
+			}
 
 			return bulletin.Response{
 				Data: tMsg,
@@ -242,7 +256,7 @@ func (bb *Bulletin) Read(ctx context.Context, id string) (bulletin.Response, err
 		}
 
 	} else if err != nil {
-		return bulletin.Response{}, err
+		return bulletin.Response{}, fmt.Errorf("read from local store: %w", err)
 	}
 
 	return resp, nil
@@ -261,7 +275,7 @@ func (bb *Bulletin) Query(ctx context.Context, query string) (<-chan bulletin.Qu
 	// local query
 	localRespCh, err := bb.mem.Query(ctx, query)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query local store: %w", err)
 	}
 
 	// forward
@@ -276,7 +290,7 @@ func (bb *Bulletin) Query(ctx context.Context, query string) (<-chan bulletin.Qu
 	}
 	msgbuf, err := proto.Marshal(bbMessage)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("marshal bulletin message: %s", err)
 	}
 
 	var wg sync.WaitGroup
@@ -297,23 +311,23 @@ func (bb *Bulletin) Query(ctx context.Context, query string) (<-chan bulletin.Qu
 			defer cancel()
 			p2pRespCh, err := topic.Publish(ctx, msgbuf, rpc.WithMultiResponse(true))
 			if err != nil {
-				log.Error("failed to publish net query request", err)
+				log.Errorf("Failed to publish net query request: %s", err)
 			}
 
 			// consume p2pRespCh, read into local store
 			// if we already have it, ignore
-			fmt.Println("waiting for responses on query topic")
+			log.Infof("Waiting for responses on query topic")
 			for resp := range p2pRespCh {
-				fmt.Println("got response on query topic")
+				log.Infof("Got response on query topic")
 				if resp.Err != nil {
-					log.Error("error on net query request event ", resp.Err)
+					log.Errorf("Net query request event: %s", resp.Err)
 					continue
 				}
 
 				bbMessage := new(Message)
 				err := proto.Unmarshal(resp.Data, bbMessage)
 				if err != nil {
-					log.Error("p2p bulletin net query: proto unmarshal bulletin message:", err)
+					log.Errorf("Unmarshal query message: %s", err)
 					continue
 				}
 
@@ -328,14 +342,14 @@ func (bb *Bulletin) Query(ctx context.Context, query string) (<-chan bulletin.Qu
 				tMsg := new(transport.Message)
 				err = proto.Unmarshal(bbMessage.Payload, tMsg)
 				if err != nil {
-					log.Error("p2p bulletin net query: proto unmarshal transport message:", err)
+					log.Errorf("Unmarshal query message payload: %s", err)
 					continue
 				}
 
 				// copy into our local bulletin
 				localResp, err := bb.mem.PostByString(ctx, bbMessage.Id, tMsg, false)
 				if err != nil {
-					log.Error("p2p bulletin net query: post:", err)
+					log.Errorf("Post query message: %s", err)
 					continue
 				}
 
@@ -368,44 +382,45 @@ func (bb *Bulletin) Events() eventbus.Bus {
 }
 
 func (bb *Bulletin) HandleStream(stream libp2pnetwork.Stream) {
-	log.Infof("Received stream: %s", stream.Conn().RemotePeer().String())
+	log.Infof("Received stream: %s", stream.Conn().RemotePeer())
 }
 
 func (bb *Bulletin) topicMessageHandler(from peer.ID, topic string, msg []byte) ([]byte, error) {
-	log.Debugf("handling topic %s message from %s", topic, from)
+	log.Debugf("Handling topic %s message from %s", topic, from)
 	bbMessage := new(Message)
 	err := proto.Unmarshal(msg, bbMessage)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal topic message: %w", err)
 	}
 
 	var messageResponse []byte
 
 	switch bbMessage.Type {
 	case postMessageType:
-		log.Debug("handling topic message as post request")
+		log.Debugf("Handling topic message as post request")
 		// store posted message, no response necessary
 		tMsg := new(transport.Message)
 		err = proto.Unmarshal(bbMessage.Payload, tMsg)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("unmarshal post message payload: %w", err)
 		}
 
 		_, err = bb.mem.PostByString(bb.ctx, bbMessage.Id, tMsg, true)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("post message to local store: %w", err)
 		}
 
 	case readMessageType:
-		log.Debug("handling topic message as read request")
+		log.Debug("Handling topic message as read request")
+
 		resp, err := bb.mem.ReadByString(bb.ctx, bbMessage.Id)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("read message from local store: %w", err)
 		}
 
 		tBuf, err := proto.Marshal(resp.Data)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("marshal read message response: %w", err)
 		}
 
 		buf, err := proto.Marshal(&Message{
@@ -413,20 +428,21 @@ func (bb *Bulletin) topicMessageHandler(from peer.ID, topic string, msg []byte) 
 			Payload: tBuf,
 		})
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("marshal read message: %w", err)
 		}
+
 		messageResponse = buf
 	case queryMessageType:
 		log.Debug("handling topic message as query request")
 		respCh, err := bb.mem.Query(bb.ctx, string(bbMessage.Payload))
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("query local store: %w", err)
 		}
 
 		t := bb.topics[topic]
 		for resp := range respCh {
 			if resp.Err != nil {
-				return nil, fmt.Errorf("local query response error: %w", resp.Err)
+				return nil, fmt.Errorf("query response: %w", resp.Err)
 			}
 
 			// original message CID for identifiying responses
@@ -434,15 +450,16 @@ func (bb *Bulletin) topicMessageHandler(from peer.ID, topic string, msg []byte) 
 
 			tBuf, err := proto.Marshal(resp.Resp.Data)
 			if err != nil {
-				return nil, fmt.Errorf("local query response: proto unmarshal: %w", err)
+				return nil, fmt.Errorf("unmarshal query response data: %w", err)
 			}
+
 			buf, err := proto.Marshal(&Message{
 				Type:    responseMessageType,
 				Payload: tBuf,
 				Id:      resp.Resp.ID,
 			})
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("marshal query response: %w", err)
 			}
 
 			// manually publish response instead of returning via messageReponse var
@@ -451,7 +468,7 @@ func (bb *Bulletin) topicMessageHandler(from peer.ID, topic string, msg []byte) 
 		}
 
 	default:
-		log.Warn("received unknown message type '%s' on topic %s from %s", bbMessage.Type, topic, from)
+		log.Warnf("Received unknown message type '%s' on topic %s from %s", bbMessage.Type, topic, from)
 		return nil, nil // ignore for now
 	}
 
@@ -461,13 +478,16 @@ func (bb *Bulletin) topicMessageHandler(from peer.ID, topic string, msg []byte) 
 func (b *Bulletin) maintainPeers(ctx context.Context) {
 	go func() {
 		for _, p := range b.persistentPeers {
-			b.h.Connect(ctx, p)
+			err := b.h.Connect(ctx, p)
+			if err != nil {
+				log.Warnf("Error connecting to persistent peer: %s", err)
+			}
 		}
 	}()
 
 	subCh, err := b.h.EventBus().Subscribe(new(event.EvtPeerConnectednessChanged))
 	if err != nil {
-		panic(err)
+		log.Fatalf("Error subscribing to peer connectedness changes: %s", err)
 	}
 	defer subCh.Close()
 
@@ -477,6 +497,7 @@ func (b *Bulletin) maintainPeers(ctx context.Context) {
 			if !ok {
 				return
 			}
+
 			evt := ev.(event.EvtPeerConnectednessChanged)
 			if evt.Connectedness != network.NotConnected {
 				continue
@@ -505,7 +526,7 @@ func (b *Bulletin) reconnectToPeer(ctx context.Context, pid peer.ID) {
 	paddr := b.persistentPeers[pid]
 
 	start := time.Now()
-	log.Info("Reconnecting to peer %s", paddr)
+	log.Infof("Reconnecting to peer %s", paddr)
 	for i := 0; i < reconnectAttempts; i++ {
 		select {
 		case <-ctx.Done():
@@ -519,11 +540,11 @@ func (b *Bulletin) reconnectToPeer(ctx context.Context, pid peer.ID) {
 			return //success
 		}
 
-		log.Info("Error reconnecting to peer. Trying again", "tries", i, "err", err, "addr", paddr)
+		log.Infof("Error reconnecting to peer %s: %s, Retrying %d/%d attemps", paddr, err, i, reconnectAttempts)
 		randomSleep(reconnectInterval)
 	}
 
-	log.Error("Failed to reconnect to peer. Beginning exponential backoff", "addr", paddr, "elapsed", time.Since(start))
+	log.Errorf("Failed to reconnect to peer %s. Beginning exponential backoff. Elapsed %s", paddr, time.Since(start))
 	for i := 0; i < reconnectBackOffAttempts; i++ {
 		select {
 		case <-ctx.Done():
@@ -541,9 +562,9 @@ func (b *Bulletin) reconnectToPeer(ctx context.Context, pid peer.ID) {
 			return //success
 		}
 
-		log.Info("Error reconnecting to peer. Trying again", "tries", i, "err", err, "addr", paddr)
+		log.Infof("Error reconnecting to peer %s: %s, Retrying %d/%d attemps", paddr, err, i, reconnectAttempts)
 	}
-	log.Error("Failed to reconnect to peer. Giving up", "addr", paddr, "elapsed", time.Since(start))
+	log.Errorf("Failed to reconnect to peer %s. Giving up. Elapsed %s", paddr, time.Since(start))
 }
 
 func (bb *Bulletin) Host() *host.Host {
