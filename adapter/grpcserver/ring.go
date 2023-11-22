@@ -171,7 +171,7 @@ func (s *ringService) StoreSecret(ctx context.Context, req *ringv1alpha1.StoreSe
 }
 
 func (s *ringService) ReencryptSecret(ctx context.Context, req *ringv1alpha1.ReencryptSecretRequest) (*ringv1alpha1.ReencryptSecretResponse, error) {
-
+	log.Infof("ReencryptSecret(): request: ringid=%s secretid=%s", req.RingId, req.SecretId)
 	r, err := s.app.GetRing(ctx, req.RingId)
 	if err != nil {
 		return nil, status.Error(codes.NotFound, "ring not found")
@@ -188,12 +188,13 @@ func (s *ringService) ReencryptSecret(ctx context.Context, req *ringv1alpha1.Ree
 		return nil, status.Error(codes.Unknown, "failed to verify token")
 	}
 
+	log.Infof("ReencryptSecret(): get secret: secretid=%s", req.SecretId)
 	scrt, err := r.GetSecret(ctx, req.SecretId)
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Println("check:", scrt.AuthzCtx, authInfo.Subject)
+	log.Infof("ReencryptSecret(): authz.Check(): perm='%s' subject='%s'", scrt.AuthzCtx, authInfo.Subject)
 	ok, err := r.Authz.Check(ctx, scrt.AuthzCtx, "user:"+authInfo.Subject)
 	if err != nil {
 		return nil, status.Error(codes.PermissionDenied, "permission denied: "+err.Error())
@@ -203,12 +204,13 @@ func (s *ringService) ReencryptSecret(ctx context.Context, req *ringv1alpha1.Ree
 	}
 
 	var p proof.VerifiableEncryption
-
+	log.Infof("ReencryptSecret(): running reencryption")
 	xncCmt, encScrt, err := r.ReencryptSecret(ctx, authInfo.PubKey, types.SecretID(req.SecretId), p)
 	if err != nil {
 		return nil, fmt.Errorf("reencrypt secret: %w", err)
 	}
 
+	log.Infof("ReencryptSecret(): completed reencryption succesfully")
 	resp := &ringv1alpha1.ReencryptSecretResponse{
 		XncCmt:  xncCmt,
 		EncScrt: encScrt,

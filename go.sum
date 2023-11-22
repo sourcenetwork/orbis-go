@@ -839,8 +839,6 @@ github.com/russross/blackfriday v1.5.2/go.mod h1:JO/DiYxRf+HjHt06OyowR9PTA263kcR
 github.com/russross/blackfriday/v2 v2.0.1/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/ryanuber/columnize v2.1.0+incompatible/go.mod h1:sm1tb6uqfes/u+d4ooFouqFdy9/2g9QGwK3SQygK0Ts=
-github.com/samber/do v1.4.1 h1:4Yz8hFm1xVCjBK7fQIeEROg9XiYKkuHt8fL6mXdVWPk=
-github.com/samber/do v1.4.1/go.mod h1:xwCO5lXRivdZzNXuCegYgF0IlRioumVq8mnF5JNNKOU=
 github.com/sasha-s/go-deadlock v0.3.1 h1:sqv7fDNShgjcaxkO0JNcOAlr8B9+cV5Ey/OB71efZx0=
 github.com/sasha-s/go-deadlock v0.3.1/go.mod h1:F73l+cr82YSh10GxyRI6qZiCgK64VaZjwesgfQ1/iLM=
 github.com/schollz/closestmatch v2.1.0+incompatible/go.mod h1:RtP1ddjLong6gTkbtmuhtR2uUrrJOpYzYRvbcPAid+g=
@@ -882,6 +880,8 @@ github.com/sourcegraph/annotate v0.0.0-20160123013949-f4cad6c6324d/go.mod h1:Udh
 github.com/sourcegraph/syntaxhighlight v0.0.0-20170531221838-bd320f5d308e/go.mod h1:HuIsMU8RRBOtsCgI77wP899iHVBQpCmg4ErYMZB+2IA=
 github.com/sourcenetwork/bond v0.0.0-20230605094713-887163472771 h1:hCxb47E2bf4eP98cVsOMDwUgPuJyfHlg6lKjQvqRa14=
 github.com/sourcenetwork/bond v0.0.0-20230605094713-887163472771/go.mod h1:cIWt4rJzDTuwhVV2cuRDu7fJraiBiAEAcqNl8wZ57m4=
+github.com/sourcenetwork/do v0.0.0-20231122053858-6de324bc957b h1:R78vbZVe+rY5KZPSlKfLwWPfSupnlYa1fblWue3wGLo=
+github.com/sourcenetwork/do v0.0.0-20231122053858-6de324bc957b/go.mod h1:/m5WO2uL9bxKzLekCFkr/VYAv9urXVUllBzdqpyXJ80=
 github.com/sourcenetwork/eventbus-go v0.0.0-20230729092422-b795b65d3523 h1:kmV4nlhB9wWNQmmA6F9l9PPGGPOJv8gLj3pYSVknTAk=
 github.com/sourcenetwork/eventbus-go v0.0.0-20230729092422-b795b65d3523/go.mod h1:rUPMRb3HndCroSLh0DANaqFXkeqHIc0v8sCNxmdhZ0g=
 github.com/sourcenetwork/go-libp2p-pubsub-rpc v0.0.0-20230729092549-3be5c22247d3 h1:fsMqZ6lxR7yZFofzv0Hf3oPmJSfDaRisox4QsQ4WGSE=

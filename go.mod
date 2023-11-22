@@ -31,8 +31,14 @@ require (
 	go.dedis.ch/fixbuf v1.0.3
 	go.dedis.ch/kyber/v3 v3.1.0
 	go.dedis.ch/protobuf v1.0.11
+<<<<<<< HEAD
 	golang.org/x/crypto v0.15.0
 	golang.org/x/sync v0.5.0
+=======
+	golang.org/x/crypto v0.12.0
+	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
+	golang.org/x/sync v0.3.0
+>>>>>>> Logging
 	google.golang.org/genproto/googleapis/api v0.0.0-20230726155614-23370e0ffb3e
 	google.golang.org/grpc v1.57.0
 	google.golang.org/protobuf v1.31.0
@@ -215,6 +221,7 @@ require (
 	go.uber.org/fx v1.20.1 // indirect
 	go.uber.org/mock v0.3.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
+<<<<<<< HEAD
 	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa // indirect
 	golang.org/x/mod v0.14.0 // indirect
@@ -224,6 +231,15 @@ require (
 	golang.org/x/tools v0.15.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	gonum.org/v1/gonum v0.14.0 // indirect
+=======
+	go.uber.org/zap v1.24.0 // indirect
+	golang.org/x/mod v0.10.0 // indirect
+	golang.org/x/net v0.14.0 // indirect
+	golang.org/x/sys v0.11.0 // indirect
+	golang.org/x/text v0.12.0 // indirect
+	golang.org/x/tools v0.7.0 // indirect
+	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
+>>>>>>> Logging
 	google.golang.org/genproto v0.0.0-20230803162519-f966b187b2e5 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230822172742-b8732ec3820d // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
@@ -240,3 +256,5 @@ replace (
 	github.com/sourcenetwork/go-libp2p-pubsub-rpc => github.com/sourcenetwork/go-libp2p-pubsub-rpc v0.0.0-20230729092549-3be5c22247d3
 	go.dedis.ch/kyber/v3 => github.com/sourcenetwork/kyber/v3 v3.1.1-0.20230726113421-a4ed13f7d481
 )
+
+replace github.com/samber/do => github.com/sourcenetwork/do v0.0.0-20231122053858-6de324bc957b

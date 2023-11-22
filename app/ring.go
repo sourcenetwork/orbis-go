@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -153,16 +154,40 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 	}
 	do.ProvideValue(inj, bb)
 
-	// instanciating services from registered factories.
+	var (
+		authnSrv authn.CredentialService
+		authzSrv authz.Authz
+	)
 
-	authnSrv, err := serviceFromFactory[authn.CredentialService](rs, inj, ring.Authentication)
-	if err != nil {
-		return nil, fmt.Errorf("invoke authn credential service from factory: %w", err)
+	authnSrv, err = do.InvokeNamed[authn.CredentialService](inj, ring.Authentication)
+	if err != nil && !errors.Is(err, do.ErrNotFound) { // ignore not found for now
+		return nil, fmt.Errorf("invoke authn service: %w", err)
+	} else if authnSrv != nil {
+		do.ProvideValue(inj, authnSrv)
 	}
 
-	authzSrv, err := serviceFromFactory[authz.Authz](rs, inj, ring.Authorization)
-	if err != nil {
-		return nil, fmt.Errorf("invoke authz service from factory: %w", err)
+	authzSrv, err = do.InvokeNamed[authz.Authz](inj, ring.Authorization)
+	if err != nil && !errors.Is(err, do.ErrNotFound) { // ignore not found for now
+		return nil, fmt.Errorf("invoke authz service: %w", err)
+	} else if authzSrv != nil {
+		do.ProvideValue(inj, authzSrv)
+	}
+
+	// instanciating services from registered factories.
+
+	// authn/authz can potentially use a global service instead of a factory
+	// so we need to check if its already a configured service
+	if authnSrv == nil {
+		authnSrv, err = serviceFromFactory[authn.CredentialService](rs, inj, ring.Authentication)
+		if err != nil {
+			return nil, fmt.Errorf("invoke authn credential service from factory: %w", err)
+		}
+	}
+	if authzSrv == nil {
+		authzSrv, err = serviceFromFactory[authz.Authz](rs, inj, ring.Authorization)
+		if err != nil {
+			return nil, fmt.Errorf("invoke authz service from factory: %w", err)
+		}
 	}
 
 	dkgSrv, err := serviceFromFactory[dkg.DKG](rs, inj, ring.Dkg)

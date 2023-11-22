@@ -9,7 +9,7 @@
     "bulletin": "p2pbb",
     "transport": "p2p",
     "authentication": "jws-did",
-    "authorization": "zanzi",
+    "authorization": "allow-all",
     "nodes": [
       {
         "id": "12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqu",

@@ -49,7 +49,7 @@ func (r *Ring) StoreSecret(ctx context.Context, rid types.RingID, scrt *types.Se
 }
 
 func (r *Ring) ReencryptSecret(ctx context.Context, rdrPk crypto.PublicKey, sid types.SecretID, p proof.VerifiableEncryption) (xncCmt []byte, encScrt [][]byte, err error) {
-
+	log.Infof("ring.ReencryptSecret(): ringid=%s secretid=%s", r.ID, sid)
 	protoRdrPk, err := crypto.PublicKeyToProto(rdrPk)
 	if err != nil {
 		return nil, nil, fmt.Errorf("public key to proto: %w", err)
@@ -72,6 +72,7 @@ func (r *Ring) ReencryptSecret(ctx context.Context, rdrPk crypto.PublicKey, sid 
 	}
 
 	reencryptMsgID := preReencryptMsgID(string(r.ID), string(sid), rawRdrPk)
+	log.Infof("ring.ReencryptSecret(): reencrypt message request id=%s", reencryptMsgID)
 	for _, n := range r.nodes {
 
 		go func(n types.Node) {
@@ -96,7 +97,9 @@ func (r *Ring) ReencryptSecret(ctx context.Context, rdrPk crypto.PublicKey, sid 
 		r.xncCmts[reencryptMsgID] = make(chan kyber.Point)
 	}
 
+	log.Infof("ring.ReencryptSecret(): waiting for proxy encryption...")
 	rawXncCmt := <-r.xncCmts[reencryptMsgID]
+	log.Infof("ring.ReencryptSecret(): proxy encryption completed")
 
 	xncCmt, err = rawXncCmt.MarshalBinary()
 	if err != nil {
@@ -112,7 +115,7 @@ func (r *Ring) ReencryptSecret(ctx context.Context, rdrPk crypto.PublicKey, sid 
 }
 
 func (r *Ring) preTransportMessageHandler(msg *transport.Message) error {
-
+	log.Infof("ring.PRETransportHandler(): type=%s from=%s to=%s", msg.Type, msg.NodeId, msg.TargetId)
 	switch msg.Type {
 	case elgamal.EncryptedSecretRequest:
 		r.preReqMsg <- msg
@@ -126,8 +129,8 @@ func (r *Ring) preTransportMessageHandler(msg *transport.Message) error {
 }
 
 func (r *Ring) preReencryptMessageHandler() {
-
 	for msg := range r.preReqMsg {
+		log.Infof("ring.PREMessageHandler(): type=%s", msg.Type)
 		var err error
 		switch msg.Type {
 		case elgamal.EncryptedSecretRequest:
@@ -145,18 +148,17 @@ func (r *Ring) preReencryptMessageHandler() {
 }
 
 func (r *Ring) handleReencryptRequest(msg *transport.Message) error {
-
 	var req ringv1alpha1.ReencryptSecretRequest
 	err := proto.Unmarshal(msg.Payload, &req)
 	if err != nil {
 		return fmt.Errorf("unmarshal reencrypt request: %s", err)
 	}
-
+	log.Infof("handling PRE request: secretid=%s", req.SecretId)
 	resp, err := r.doProcessReencrypt(&req)
 	if err != nil {
 		return fmt.Errorf("do process reencrypt: %s", err)
 	}
-
+	log.Info("processed PRE request")
 	resp.RdrPk = req.RdrPk
 
 	payload, err := proto.Marshal(resp)
@@ -167,6 +169,7 @@ func (r *Ring) handleReencryptRequest(msg *transport.Message) error {
 	var origNode types.Node
 	for _, n := range r.nodes {
 		if n.ID() == msg.NodeId {
+
 			origNode = n
 			break
 		}
@@ -181,10 +184,12 @@ func (r *Ring) handleReencryptRequest(msg *transport.Message) error {
 	}
 
 	if origNode.ID() == r.Transport.Host().ID() {
+		log.Info("handling PRE request: sending response to ourselves")
 		r.preReqMsg <- msg
 		return nil
 	}
 
+	log.Info("handling PRE request: sending response to %s", origNode.ID())
 	err = r.Transport.Send(context.TODO(), &origNode, msg)
 	if err != nil {
 		return fmt.Errorf("send reencrypt secret request: %s", err)
@@ -201,6 +206,7 @@ func (r *Ring) handleReencryptedShare(msg *transport.Message) error {
 	if err != nil {
 		return fmt.Errorf("unmarshal reencrypt request: %s", err)
 	}
+	log.Infof("handling PRE response: secretid=%s from=%s", resp.SecretId, msg.NodeId)
 
 	rdrPk, err := crypto.PublicKeyFromProto(resp.RdrPk)
 	if err != nil {
@@ -254,6 +260,7 @@ func (r *Ring) handleReencryptedShare(msg *transport.Message) error {
 		return fmt.Errorf("unmarshal encrypted commitment: %s", err)
 	}
 
+	log.Infof("handling PRE response: verifying reencrypt reply share")
 	err = r.PRE.Verify(rdrPk, poly, encCmt, reply)
 	if err != nil {
 		// TODO: post invalidReply to bulletin
@@ -270,6 +277,7 @@ func (r *Ring) handleReencryptedShare(msg *transport.Message) error {
 		return nil
 	}
 
+	log.Info("handling PRE response: recovering reencrypted commitment")
 	xncCmt, err := r.PRE.Recover(ste, xncSki, r.T, r.N)
 	if err != nil {
 		return fmt.Errorf("recover reencrypt reply: %s", err)
@@ -279,8 +287,9 @@ func (r *Ring) handleReencryptedShare(msg *transport.Message) error {
 	if !ok {
 		return fmt.Errorf("xncCmt channel for %s not found", reencryptMsgID)
 	}
+	log.Info("handling PRE response: returning reencrypted commitment")
 	ch <- xncCmt
-
+	log.Info("handling PRE response: done!")
 	return nil
 }
 
@@ -342,7 +351,6 @@ func (r *Ring) GetSecret(ctx context.Context, sid string) (types.Secret, error) 
 		return scrt, fmt.Errorf("secret not found")
 	}
 
-	fmt.Println(buf.Data.Payload)
 	s := new(ringv1alpha1.Secret)
 	err = proto.Unmarshal(buf.Data.Payload, s)
 	if err != nil {
