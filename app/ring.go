@@ -54,6 +54,7 @@ type Ring struct {
 	T int
 
 	inj *do.Injector
+	app *App
 
 	preReqMsg chan *transport.Message
 
@@ -124,34 +125,13 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 		return nil, fmt.Errorf("already joined ring %s", rid)
 	}
 
-	rs := &Ring{}
+	rs := &Ring{app: app}
 
 	// rings get their own cloned dependency injector handler,
 	// since we actually create and initialize services which
 	// are only scoped to rings, compared to the factories
 	// which are global.
 	inj := app.inj.Clone()
-
-	// factories
-	authnFactory, err := do.InvokeNamed[types.Factory[authn.CredentialService]](inj, ring.Authentication)
-	if err != nil {
-		return nil, fmt.Errorf("invoke authn credential service: %w", err)
-	}
-
-	dkgFactory, err := do.InvokeNamed[types.Factory[dkg.DKG]](inj, ring.Dkg)
-	if err != nil {
-		return nil, fmt.Errorf("invoke dkg factory: %w", err)
-	}
-
-	pssFactory, err := do.InvokeNamed[types.Factory[pss.PSS]](inj, ring.Pss)
-	if err != nil {
-		return nil, fmt.Errorf("invoke pss factory: %w", err)
-	}
-
-	preFactory, err := do.InvokeNamed[types.Factory[pre.PRE]](inj, ring.Pre)
-	if err != nil {
-		return nil, fmt.Errorf("invoke pre factory: %w", err)
-	}
 
 	// get global services
 	d, err := do.Invoke[*db.DB](inj)
@@ -173,29 +153,35 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 	}
 	do.ProvideValue(inj, bb)
 
-	authzFactory, err := do.InvokeNamed[types.Factory[authz.Authz]](inj, ring.Authorization)
+	// instanciating services from registered factories.
+
+	authnSrv, err := serviceFromFactory[authn.CredentialService](rs, inj, ring.Authentication)
 	if err != nil {
-		return nil, fmt.Errorf("invoke authz: %w", err)
+		return nil, fmt.Errorf("invoke authn credential service from factory: %w", err)
 	}
-	// do.ProvideValue(inj, authz)
-	authz, err := authzFactory.New(inj, []db.RepoKey{}, app.config)
+
+	authzSrv, err := serviceFromFactory[authz.Authz](rs, inj, ring.Authorization)
 	if err != nil {
-		return nil, fmt.Errorf("create authz: %w", err)
+		return nil, fmt.Errorf("invoke authz service from factory: %w", err)
+	}
+
+	dkgSrv, err := serviceFromFactory[dkg.DKG](rs, inj, ring.Dkg)
+	if err != nil {
+		return nil, fmt.Errorf("invoke dkg service from factory: %w", err)
+	}
+
+	pssSrv, err := serviceFromFactory[pss.PSS](rs, inj, ring.Pss)
+	if err != nil {
+		return nil, fmt.Errorf("invoke pss service from factory: %w", err)
+	}
+
+	preSrv, err := serviceFromFactory[pre.PRE](rs, inj, ring.Pre)
+	if err != nil {
+		return nil, fmt.Errorf("invoke pss service from factory: %w", err)
 	}
 
 	// setup and register local services
 	log.Info("Initializating local services for ring")
-	authn, err := authnFactory.New(inj, []db.RepoKey{}, app.config) // empty repo keys
-	if err != nil {
-		return nil, fmt.Errorf("create authn: %w", err)
-	}
-
-	dkgRepoKeys := app.repoKeysForService(dkgFactory.Name())
-	log.Debugf("dkg repo keys: %v", dkgRepoKeys)
-	dkgSrv, err := dkgFactory.New(inj, dkgRepoKeys, app.config)
-	if err != nil {
-		return nil, fmt.Errorf("create dkg service: %w", err)
-	}
 
 	tpNodes, err := nodesFromIDs(ring.Nodes)
 	if err != nil {
@@ -206,19 +192,8 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 	if err != nil {
 		return nil, fmt.Errorf("initialize dkg: %w", err)
 	}
-	do.ProvideValue(inj, dkgSrv)
 
-	err = rs.registerService(dkgSrv)
-	if err != nil {
-		return nil, fmt.Errorf("start dkg: %w", err)
-	}
-
-	preRepoKeys := app.repoKeysForService(preFactory.Name())
-	preSrv, err := preFactory.New(inj, preRepoKeys, app.config)
-	if err != nil {
-		return nil, fmt.Errorf("create pre service: %w", err)
-	}
-
+	// todo: Unify these nodes and the tpNodes for the DKG
 	nodes := make([]types.Node, len(tpNodes))
 	for i, n := range tpNodes {
 		nodes[i] = *types.NewNode(i, n.ID(), n.Address(), n.PublicKey())
@@ -227,13 +202,6 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 	err = preSrv.Init(rid, ring.N, ring.T)
 	if err != nil {
 		return nil, fmt.Errorf("initialize pre: %w", err)
-	}
-	do.ProvideValue(inj, preSrv)
-
-	pssRepoKeys := app.repoKeysForService(pssFactory.Name())
-	pssSrv, err := pssFactory.New(inj, pssRepoKeys, app.config)
-	if err != nil {
-		return nil, fmt.Errorf("create pss service: %w", err)
 	}
 
 	err = pssSrv.Init(rid, ring.N, ring.T, nodes)
@@ -261,8 +229,8 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 		// encCmts:   make(map[string][]byte),
 		xncCmts: make(map[string]chan kyber.Point),
 		xncSki:  make(map[string][]*share.PubShare),
-		Authz:   authz,
-		Authn:   authn,
+		Authz:   authzSrv,
+		Authn:   authnSrv,
 	}
 
 	go rs.preReencryptMessageHandler()
@@ -405,4 +373,35 @@ func (r *Ring) registerService(srv service) error {
 	}
 	r.services = append(r.services, srv)
 	return nil
+}
+
+func serviceFromFactory[T any](ring *Ring, inj *do.Injector, name string) (T, error) {
+	var zero T
+	typeName := fmt.Sprintf("%T", zero)
+
+	if name == "" {
+		return zero, fmt.Errorf("missing name for service factory %s", typeName)
+	}
+
+	factory, err := do.InvokeNamed[types.Factory[T]](inj, name)
+	if err != nil {
+		return zero, fmt.Errorf("invoke %s(%s) factory: %w", typeName, name, err)
+	}
+
+	repoKeys := ring.app.repoKeysForService(factory.Name())
+	srv, err := factory.New(inj, repoKeys, ring.app.config)
+	if err != nil {
+		return zero, fmt.Errorf("create %s(%s) service: %w", typeName, name, err)
+	}
+
+	do.ProvideValue(inj, srv)
+
+	if s, ok := any(srv).(service); ok {
+		err = ring.registerService(s)
+		if err != nil {
+			return zero, fmt.Errorf("register %s(%s) service: %w", typeName, name, err)
+		}
+	}
+
+	return srv, nil
 }

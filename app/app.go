@@ -99,7 +99,7 @@ func New(ctx context.Context, host *host.Host, opts ...Option) (*App, error) {
 		}
 	}
 
-	a.ringRepo, err = db.GetRepo[*ringv1alpha1.Ring](a.db, db.NewRepoKey("ring"), ringPkFunc)
+	a.ringRepo, err = db.GetRepo(a.db, db.NewRepoKey("ring"), ringPkFunc)
 	if err != nil {
 		return nil, fmt.Errorf("get ring repo: %w", err)
 	}

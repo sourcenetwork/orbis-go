@@ -88,7 +88,6 @@ func (s *ringService) PublicKey(ctx context.Context, req *ringv1alpha1.PublicKey
 
 	ring, err := s.app.GetRing(ctx, req.Id)
 	if err != nil {
-		panic(req.Id)
 		return nil, status.Error(codes.NotFound, "ring not found")
 	}
 
