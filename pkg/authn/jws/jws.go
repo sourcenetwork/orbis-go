@@ -63,12 +63,6 @@ func (c credentialSrv) GetRequestToken(ctx context.Context) ([]byte, error) {
 }
 
 func (c credentialSrv) VerifyRequestSubject(ctx context.Context, token []byte) (authn.SubjectInfo, error) {
-	// grab the target expiration time at the start of the function
-	// as there may be a non trivial amount of time that has passed
-	// due parsing and resolving state by the time we actually want
-	// to verify the token expiration
-	expTime := time.Now()
-
 	jws, err := jose.ParseSigned(string(token))
 	if err != nil {
 		return authn.SubjectInfo{}, fmt.Errorf("parsing jws token: %w", err)
@@ -113,7 +107,7 @@ func (c credentialSrv) VerifyRequestSubject(ctx context.Context, token []byte) (
 		Audience: jwt.Audience{OrbisJWSAudience},
 		Issuer:   userInfo.Subject,
 		Subject:  userInfo.Subject,
-		Time:     expTime,
+		Time:     claims.Expiry.Time().Add(verifyLeewayTime),
 	}
 
 	err = claims.ValidateWithLeeway(expected, verifyLeewayTime)
