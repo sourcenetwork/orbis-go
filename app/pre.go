@@ -130,20 +130,22 @@ func (r *Ring) preTransportMessageHandler(msg *transport.Message) error {
 
 func (r *Ring) preReencryptMessageHandler() {
 	for msg := range r.preReqMsg {
-		log.Infof("ring.PREMessageHandler(): type=%s", msg.Type)
-		var err error
-		switch msg.Type {
-		case elgamal.EncryptedSecretRequest:
-			err = r.handleReencryptRequest(msg)
-		case elgamal.EncryptedSecretReply:
-			err = r.handleReencryptedShare(msg)
-		default:
-			// Can't happen.
-			log.Fatalf("unknown message type: %s, id: %s", msg.Type, msg.Id)
-		}
-		if err != nil {
-			log.Errorf("handle pre message: %s", err)
-		}
+		go func(msg *transport.Message) {
+			log.Infof("ring.PREMessageHandler(): type=%s", msg.Type)
+			var err error
+			switch msg.Type {
+			case elgamal.EncryptedSecretRequest:
+				err = r.handleReencryptRequest(msg)
+			case elgamal.EncryptedSecretReply:
+				err = r.handleReencryptedShare(msg)
+			default:
+				// Can't happen.
+				log.Fatalf("unknown message type: %s, id: %s", msg.Type, msg.Id)
+			}
+			if err != nil {
+				log.Errorf("handle pre message: %s", err)
+			}
+		}(msg)
 	}
 }
 
