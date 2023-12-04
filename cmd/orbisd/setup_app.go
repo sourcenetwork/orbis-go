@@ -14,6 +14,7 @@ import (
 	"github.com/sourcenetwork/orbis-go/pkg/authz/zanzi"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	p2pbb "github.com/sourcenetwork/orbis-go/pkg/bulletin/p2p"
+	"github.com/sourcenetwork/orbis-go/pkg/bulletin/sourcehub"
 	"github.com/sourcenetwork/orbis-go/pkg/did"
 	"github.com/sourcenetwork/orbis-go/pkg/dkg"
 	"github.com/sourcenetwork/orbis-go/pkg/dkg/rabin"
@@ -40,7 +41,12 @@ func setupApp(ctx context.Context, cfg config.Config) (*app.App, error) {
 
 	bb, err := p2pbb.New(ctx, host, cfg.Bulletin)
 	if err != nil {
-		return nil, fmt.Errorf("create bulletin: %w", err)
+		return nil, fmt.Errorf("create p2p bulletin: %w", err)
+	}
+
+	hubbb, err := sourcehub.New(ctx, host, cfg.Bulletin)
+	if err != nil {
+		return nil, fmt.Errorf("create sourcehub bulletin: %w", err)
 	}
 
 	// Services & Factory Options
@@ -59,6 +65,7 @@ func setupApp(ctx context.Context, cfg config.Config) (*app.App, error) {
 		app.WithService[transport.Transport](tp),
 
 		app.WithService[bulletin.Bulletin](bb),
+		app.WithService[bulletin.Bulletin](hubbb),
 
 		// Authentication and Authorization services
 		app.WithService(authz.NewAllow(authz.ALLOW_ALL)),
@@ -87,25 +94,3 @@ func setupApp(ctx context.Context, cfg config.Config) (*app.App, error) {
 
 	return app, nil
 }
-
-// 	rid := types.RingID("40b086ef") // cid/multihash of the ring config
-// 	err = node.JoinRing(rid, config.Ring, ringPeers)
-
-// 	ring := node.GetRing(rid)
-
-// 	select {
-// 	case <-time.NewTimer(time.Minute):
-// 		// timeout
-// 	case <-ring.WaitForState(ptypes.STATE_INITIALIZED):
-// 		// ready
-// 	}
-
-// 	sid = types.SecretID("mySecretIdentifier")
-// 	secretVal := []byte("My Super Secret Value or Private Key or Symmetric Key or w.e")
-// 	ring.Store(ctx, sid, secretVal)
-
-// 	secret, err := ring.Get(ctx, auth.NilToken, sid)
-// 	share, err := ring.GetLocalShare(ctx, auth.NilToken, sid)
-// 	shares, err := ring.GetShares(ctx, auth.NilToken, sid)
-
-// 	recovered := orbis.RecoverFromShares(shares)

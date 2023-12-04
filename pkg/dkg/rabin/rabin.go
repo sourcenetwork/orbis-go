@@ -17,7 +17,6 @@ import (
 
 	rabinv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/rabin/v1alpha1"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
-	"github.com/sourcenetwork/orbis-go/pkg/bulletin/p2p"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	"github.com/sourcenetwork/orbis-go/pkg/db"
 	orbisdkg "github.com/sourcenetwork/orbis-go/pkg/dkg"
@@ -70,7 +69,7 @@ type dkg struct {
 	// dependency services
 	db        *db.DB
 	transport transport.Transport
-	bulletin  *p2p.Bulletin
+	bulletin  bulletin.Bulletin
 
 	bbnamespace string
 
@@ -98,11 +97,6 @@ func New(repo *db.DB, rkeys []db.RepoKey, t transport.Transport, b bulletin.Bull
 		return nil, errors.Join(ErrCouldntGetRepo, err)
 	}
 
-	p2pbb, ok := b.(*p2p.Bulletin)
-	if !ok {
-		return nil, fmt.Errorf("need p2p bulleting atm")
-	}
-
 	return &dkg{
 		db:    repo,
 		rkeys: rkeys,
@@ -111,7 +105,7 @@ func New(repo *db.DB, rkeys []db.RepoKey, t transport.Transport, b bulletin.Bull
 		// secretCommitsRepo: secretCommitsRepo,
 		dkgRepo:   dkgRepo,
 		transport: t,
-		bulletin:  p2pbb,
+		bulletin:  b,
 		index:     -1,
 	}, nil
 }
@@ -262,7 +256,7 @@ func (d *dkg) initCommon(ctx context.Context) error {
 	err := d.bulletin.Register(ctx, d.bbnamespace)
 	// TODO: remove this sleep
 	time.Sleep(2 * time.Second)
-	log.Infof("registered to topic %s with peers %v", d.bbnamespace, d.bulletin.Host().PubSub().ListPeers(d.bbnamespace))
+	log.Infof("registered to namespace %s", d.bbnamespace)
 	return err
 }
 

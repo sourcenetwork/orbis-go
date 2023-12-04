@@ -17,7 +17,6 @@ import (
 	"github.com/sourcenetwork/orbis-go/pkg/authn"
 	"github.com/sourcenetwork/orbis-go/pkg/authz"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
-	"github.com/sourcenetwork/orbis-go/pkg/bulletin/p2p"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	"github.com/sourcenetwork/orbis-go/pkg/db"
 	"github.com/sourcenetwork/orbis-go/pkg/dkg"
@@ -271,7 +270,7 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 
 	// TODO: this is a hack to wait for the bulletin to be registered
 	time.Sleep(1 * time.Second)
-	log.Infof("registered to topic %s with peers %v", bbnamespace, bb.(*p2p.Bulletin).Host().PubSub().ListPeers(bbnamespace))
+	log.Infof("registered to namespace %s", bbnamespace)
 
 	return rs, nil
 }
