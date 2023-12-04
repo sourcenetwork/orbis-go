@@ -6,6 +6,7 @@ x-orbisd: &orbisd
   image: ko.local/orbisd
   volumes:
     - ../demo:/demo
+    - $HOME/.sourcehub:/root/.sourcehub
 
 x-orbisctl: &orbisctl
   depends_on:
@@ -69,7 +70,7 @@ services:
         "ring-service",
         "create-ring",
         "-f",
-        "/demo/create-ring.json",
+        "${ORBIS_RING_CONFIG}",
       ]
 
   orbisctl2:
@@ -81,7 +82,7 @@ services:
         "ring-service",
         "create-ring",
         "-f",
-        "/demo/create-ring.json",
+        "${ORBIS_RING_CONFIG}",
       ]
 
   orbisctl3:
@@ -93,5 +94,5 @@ services:
         "ring-service",
         "create-ring",
         "-f",
-        "/demo/create-ring.json",
+        "${ORBIS_RING_CONFIG}",
       ]
