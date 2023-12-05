@@ -83,7 +83,7 @@ func TestMultipleBulletinNetworkConnections(t *testing.T) {
 	cfg1, err := config.Default[config.Bulletin]()
 	require.NoError(t, err)
 	addr := h0.Addrs()[0]
-	cfg1.PersistentPeers = fmt.Sprintf("%s/p2p/%s", addr, h0.ID())
+	cfg1.P2P.PersistentPeers = fmt.Sprintf("%s/p2p/%s", addr, h0.ID())
 
 	bb1, err := New(ctx, h1, cfg1)
 	require.NoError(t, err)
@@ -91,7 +91,7 @@ func TestMultipleBulletinNetworkConnections(t *testing.T) {
 
 	cfg2, err := config.Default[config.Bulletin]()
 	require.NoError(t, err)
-	cfg2.PersistentPeers = cfg1.PersistentPeers
+	cfg2.P2P.PersistentPeers = cfg1.P2P.PersistentPeers
 
 	bb2, err := New(ctx, h2, cfg2)
 	require.NoError(t, err)
@@ -142,7 +142,7 @@ func setupTestBulletins(t *testing.T, ctx context.Context) (*Bulletin, *Bulletin
 	cfg1, err := config.Default[config.Bulletin]()
 	require.NoError(t, err)
 	addr := h0.Addrs()[0]
-	cfg1.PersistentPeers = fmt.Sprintf("%s/p2p/%s", addr, h0.ID())
+	cfg1.P2P.PersistentPeers = fmt.Sprintf("%s/p2p/%s", addr, h0.ID())
 
 	bb1, err := New(ctx, h1, cfg1)
 	require.NoError(t, err)
@@ -150,7 +150,7 @@ func setupTestBulletins(t *testing.T, ctx context.Context) (*Bulletin, *Bulletin
 
 	cfg2, err := config.Default[config.Bulletin]()
 	require.NoError(t, err)
-	cfg2.PersistentPeers = cfg1.PersistentPeers
+	cfg2.P2P.PersistentPeers = cfg1.P2P.PersistentPeers
 
 	bb2, err := New(ctx, h2, cfg2)
 	require.NoError(t, err)

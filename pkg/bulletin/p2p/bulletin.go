@@ -95,13 +95,13 @@ func New(ctx context.Context, host *host.Host, cfg config.Bulletin) (*Bulletin, 
 
 	host.SetStreamHandler(ProtocolID, bb.HandleStream)
 
-	err := host.Discover(ctx, cfg.Rendezvous)
+	err := host.Discover(ctx, cfg.P2P.Rendezvous)
 	if err != nil {
 		return nil, fmt.Errorf("discover: %w", err)
 	}
 
 	// parse persistent peers
-	for _, pstr := range strings.Split(cfg.PersistentPeers, ",") {
+	for _, pstr := range strings.Split(cfg.P2P.PersistentPeers, ",") {
 		if pstr == "" {
 			continue
 		}

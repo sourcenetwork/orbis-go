@@ -58,8 +58,16 @@ type Transport struct {
 }
 
 type Bulletin struct {
-	PersistentPeers string `default:"" description:"comma seperated list of persistent peer multiaddrs"`
-	Rendezvous      string `default:"orbis-bulletin" description:"Rendezvous string"`
+	P2P struct {
+		PersistentPeers string `default:"" description:"comma seperated list of persistent peer multiaddrs"`
+		Rendezvous      string `default:"orbis-bulletin" description:"Rendezvous string"`
+	}
+	SourceHub struct {
+		AccountName   string `default:"alice" description:"Account name"`
+		AddressPrefix string `default:"cosmos" description:"Address prefix"`
+		NodeAddress   string `default:"http://host.docker.internal:26657" description:"Node address"`
+		RPCAddress    string `default:"tcp://host.docker.internal:26657" description:"RPC address"`
+	}
 }
 
 type Host struct {

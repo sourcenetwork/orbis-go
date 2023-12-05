@@ -25,18 +25,13 @@ import (
 	rpctypes "github.com/cometbft/cometbft/rpc/core/types"
 	rpcclient "github.com/cometbft/cometbft/rpc/jsonrpc/client"
 
+	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
 	"github.com/ignite/cli/ignite/pkg/cosmosclient"
 )
 
 var log = logging.Logger("orbis/bulletin/sourcehub")
 
-const (
-	name          = "sourcehub"
-	addressPrefix = "cosmos"
-	accountName   = "alice"
-	nodeAddress   = "http://host.docker.internal:26657"
-	rpcAddress    = "tcp://host.docker.internal:26657"
-)
+const name = "sourcehub"
 
 var _ bulletin.Bulletin = (*Bulletin)(nil)
 
@@ -46,19 +41,34 @@ type Bulletin struct {
 	ctx context.Context
 
 	client    cosmosclient.Client
+	txAccount cosmosaccount.Account
+	txAddress string
 	rpcClient *rpcclient.WSClient
 	bus       eventbus.Bus
 }
 
 func New(ctx context.Context, host *host.Host, cfg config.Bulletin) (*Bulletin, error) {
 
-	opts := cosmosclient.WithNodeAddress(nodeAddress)
-	client, err := cosmosclient.New(ctx, cosmosclient.WithAddressPrefix(addressPrefix), opts)
+	opts := []cosmosclient.Option{
+		cosmosclient.WithNodeAddress(cfg.SourceHub.NodeAddress),
+		cosmosclient.WithAddressPrefix(cfg.SourceHub.AddressPrefix),
+	}
+	client, err := cosmosclient.New(ctx, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("new cosmos client: %w", err)
 	}
 
-	rpcClient, err := rpcclient.NewWS(rpcAddress, "/websocket")
+	account, err := client.Account(cfg.SourceHub.AccountName)
+	if err != nil {
+		return nil, fmt.Errorf("get account by name: %w", err)
+	}
+
+	address, err := account.Address(cfg.SourceHub.AddressPrefix)
+	if err != nil {
+		return nil, fmt.Errorf("get account address: %w", err)
+	}
+
+	rpcClient, err := rpcclient.NewWS(cfg.SourceHub.RPCAddress, "/websocket")
 	if err != nil {
 		return nil, fmt.Errorf("new rpc client: %w", err)
 	}
@@ -78,6 +88,8 @@ func New(ctx context.Context, host *host.Host, cfg config.Bulletin) (*Bulletin, 
 	bb := &Bulletin{
 		ctx:       ctx,
 		client:    client,
+		txAccount: account,
+		txAddress: address,
 		rpcClient: rpcClient,
 		bus:       bus,
 	}
@@ -102,23 +114,13 @@ func (bb *Bulletin) Register(ctx context.Context, namespace string) error {
 func (bb *Bulletin) Post(ctx context.Context, id string, msg *transport.Message) (bulletin.Response, error) {
 	var resp bulletin.Response
 
-	account, err := bb.client.Account(accountName)
-	if err != nil {
-		return resp, fmt.Errorf("get account by name: %w", err)
-	}
-
-	addr, err := account.Address(addressPrefix)
-	if err != nil {
-		return resp, fmt.Errorf("get account address: %w", err)
-	}
-
 	payload, err := proto.Marshal(msg)
 	if err != nil {
 		return bulletin.Response{}, fmt.Errorf("marshal post message payload: %w", err)
 	}
 
 	hubMsg := &types.MsgCreatePost{
-		Creator:   addr,
+		Creator:   bb.txAddress,
 		Namespace: id,
 		Payload:   payload,
 		Proof:     nil,
@@ -129,7 +131,7 @@ func (bb *Bulletin) Post(ctx context.Context, id string, msg *transport.Message)
 
 	for retries := 20; retries > 0; retries-- {
 
-		_, err = bb.client.BroadcastTx(ctx, account, hubMsg)
+		_, err = bb.client.BroadcastTx(ctx, bb.txAccount, hubMsg)
 		if err == nil {
 			log.Infof("Posted to bulletin, namespace: %s", id)
 			return resp, nil
