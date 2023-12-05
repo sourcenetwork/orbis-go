@@ -1,7 +1,7 @@
 version: "3.9"
 
 x-orbisd: &orbisd
-  depends_on: [zanzid]
+  depends_on: [zanzid, sourcehubd]
   tty: true
   stdin_open: true
   image: ko.local/orbisd
@@ -21,7 +21,7 @@ x-orbisctl: &orbisctl
 
 services:
   sourcehubd:
-    profiles: [donotstart]
+    # profiles: [donotstart]
     tty: true
     stdin_open: true
     image: ko.local/sourcehubd
@@ -46,6 +46,9 @@ services:
       - "8090:8090"
 
   orbisd1:
+    depends_on:
+      wait-for-sourcehubd:
+        condition: service_completed_successfully
     <<: *orbisd
     command: ["start", "--config", "/demo/orbis.1.yaml"]
     ports:
