@@ -20,7 +20,7 @@ import (
 	"github.com/sourcenetwork/orbis-go/pkg/host"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
 
-	"sourcehub/x/bulletin/types"
+	"github.com/sourcenetwork/sourcehub/x/bulletin/types"
 
 	rpctypes "github.com/cometbft/cometbft/rpc/core/types"
 	rpcclient "github.com/cometbft/cometbft/rpc/jsonrpc/client"

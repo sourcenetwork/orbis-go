@@ -38,7 +38,6 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20230822172742-b8732ec3820d
 	google.golang.org/grpc v1.58.0
 	google.golang.org/protobuf v1.31.0
-	sourcehub v0.0.0-00010101000000-000000000000
 )
 
 require (
@@ -226,6 +225,7 @@ require (
 	github.com/sasha-s/go-deadlock v0.3.1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/sourcenetwork/raccoondb v0.1.2 // indirect
+	github.com/sourcenetwork/sourcehub v0.0.0-20231204080946-9043b004583e // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/afero v1.9.5 // indirect
 	github.com/spf13/cast v1.5.1 // indirect
@@ -279,5 +279,4 @@ replace (
 	github.com/samber/do => github.com/sourcenetwork/do v0.0.0-20231122053858-6de324bc957b
 	github.com/sourcenetwork/go-libp2p-pubsub-rpc => github.com/sourcenetwork/go-libp2p-pubsub-rpc v0.0.0-20230729092549-3be5c22247d3
 	go.dedis.ch/kyber/v3 => github.com/sourcenetwork/kyber/v3 v3.1.1-0.20230726113421-a4ed13f7d481
-	sourcehub => ../sourcehub
 )

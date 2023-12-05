@@ -923,6 +923,8 @@ github.com/sourcenetwork/kyber/v3 v3.1.1-0.20230726113421-a4ed13f7d481 h1:9Rb6z0
 github.com/sourcenetwork/kyber/v3 v3.1.1-0.20230726113421-a4ed13f7d481/go.mod h1:kXy7p3STAurkADD+/aZcsznZGKVHEqbtmdIzvPfrs1U=
 github.com/sourcenetwork/raccoondb v0.1.2 h1:Vj+C0VFE3/3vqw5O8du+vV/+1ULtoE0ITmXBOGcb0tk=
 github.com/sourcenetwork/raccoondb v0.1.2/go.mod h1:JHWj/YFfP6eRT4CQqoR/9u7apqolBfgcY8z4vcL/Rxg=
+github.com/sourcenetwork/sourcehub v0.0.0-20231204080946-9043b004583e h1:XK5osZGtmLHd59HDZQVPDvXAW9QFqh+xeH6mjh6odGg=
+github.com/sourcenetwork/sourcehub v0.0.0-20231204080946-9043b004583e/go.mod h1:iyXPIvWbmIc2X0LH0qhHQ9xz+Gpr2AjSNlS7bvrMxO4=
 github.com/sourcenetwork/zanzi v0.2.1 h1:G0nv0Wq4ohkp2cKs9YAvah3WfhOU61BweAlcyKqfahM=
 github.com/sourcenetwork/zanzi v0.2.1/go.mod h1:qbnviR4096fLkuQs2Qmbux530Yuq5GMfWDnDIyzsQ+8=
 github.com/spaolacci/murmur3 v0.0.0-20180118202830-f09979ecbc72/go.mod h1:JwIasOWyU6f++ZhiEuf87xNszmSA2myDM2Kzu9HwQUA=
