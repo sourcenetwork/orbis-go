@@ -55,6 +55,10 @@ func (b *Bulletin) Name() string {
 	return "memtest"
 }
 
+func (bb *Bulletin) Init(ctx context.Context) error {
+	return nil
+}
+
 func (b *Bulletin) Register(ctx context.Context, namespace string) error {
 	return nil // noop
 }

@@ -128,6 +128,10 @@ func (bb *Bulletin) Name() string {
 	return name
 }
 
+func (bb *Bulletin) Init(ctx context.Context) error {
+	return nil
+}
+
 // Register a namespace for this bulletin
 func (bb *Bulletin) Register(ctx context.Context, namespace string) error {
 	if namespace == "" {

@@ -39,68 +39,77 @@ type Message = gossipbulletinv1alpha1.Message
 
 type Bulletin struct {
 	ctx context.Context
+	cfg config.Bulletin
 
 	client    cosmosclient.Client
-	txAccount cosmosaccount.Account
-	txAddress string
+	account   cosmosaccount.Account
+	address   string
 	rpcClient *rpcclient.WSClient
 	bus       eventbus.Bus
 }
 
 func New(ctx context.Context, host *host.Host, cfg config.Bulletin) (*Bulletin, error) {
 
-	opts := []cosmosclient.Option{
-		cosmosclient.WithNodeAddress(cfg.SourceHub.NodeAddress),
-		cosmosclient.WithAddressPrefix(cfg.SourceHub.AddressPrefix),
-	}
-	client, err := cosmosclient.New(ctx, opts...)
-	if err != nil {
-		return nil, fmt.Errorf("new cosmos client: %w", err)
-	}
-
-	account, err := client.Account(cfg.SourceHub.AccountName)
-	if err != nil {
-		return nil, fmt.Errorf("get account by name: %w", err)
-	}
-
-	address, err := account.Address(cfg.SourceHub.AddressPrefix)
-	if err != nil {
-		return nil, fmt.Errorf("get account address: %w", err)
-	}
-
-	rpcClient, err := rpcclient.NewWS(cfg.SourceHub.RPCAddress, "/websocket")
-	if err != nil {
-		return nil, fmt.Errorf("new rpc client: %w", err)
-	}
-
-	err = rpcClient.Start()
-	if err != nil {
-		return nil, fmt.Errorf("rpc client start: %w", err)
-	}
-
-	err = rpcClient.Subscribe(ctx, "tm.event='Tx' AND NewPost.payload EXISTS")
-	if err != nil {
-		return nil, fmt.Errorf("subscribe to namespace: %w", err)
-	}
-
-	bus := eventbus.NewBus()
-
 	bb := &Bulletin{
-		ctx:       ctx,
-		client:    client,
-		txAccount: account,
-		txAddress: address,
-		rpcClient: rpcClient,
-		bus:       bus,
+		ctx: ctx,
+		cfg: cfg,
 	}
-
-	go bb.HandleEvents()
 
 	return bb, nil
 }
 
 func (bb *Bulletin) Name() string {
 	return name
+}
+
+func (bb *Bulletin) Init(ctx context.Context) error {
+
+	opts := []cosmosclient.Option{
+		cosmosclient.WithNodeAddress(bb.cfg.SourceHub.NodeAddress),
+		cosmosclient.WithAddressPrefix(bb.cfg.SourceHub.AddressPrefix),
+	}
+	client, err := cosmosclient.New(ctx, opts...)
+	if err != nil {
+		return fmt.Errorf("new cosmos client: %w", err)
+	}
+
+	account, err := client.Account(bb.cfg.SourceHub.AccountName)
+	if err != nil {
+		return fmt.Errorf("get account by name: %w", err)
+	}
+
+	address, err := account.Address(bb.cfg.SourceHub.AddressPrefix)
+	if err != nil {
+		return fmt.Errorf("get account address: %w", err)
+	}
+
+	rpcClient, err := rpcclient.NewWS(bb.cfg.SourceHub.RPCAddress, "/websocket")
+	if err != nil {
+		return fmt.Errorf("new rpc client: %w", err)
+	}
+
+	err = rpcClient.Start()
+	if err != nil {
+		return fmt.Errorf("rpc client start: %w", err)
+	}
+
+	err = rpcClient.Subscribe(ctx, "tm.event='Tx' AND NewPost.payload EXISTS")
+	if err != nil {
+		return fmt.Errorf("subscribe to namespace: %w", err)
+	}
+
+	bus := eventbus.NewBus()
+
+	bb.ctx = ctx
+	bb.client = client
+	bb.account = account
+	bb.address = address
+	bb.rpcClient = rpcClient
+	bb.bus = bus
+
+	go bb.HandleEvents()
+
+	return nil
 }
 
 func (bb *Bulletin) Register(ctx context.Context, namespace string) error {
@@ -120,7 +129,7 @@ func (bb *Bulletin) Post(ctx context.Context, id string, msg *transport.Message)
 	}
 
 	hubMsg := &types.MsgCreatePost{
-		Creator:   bb.txAddress,
+		Creator:   bb.address,
 		Namespace: id,
 		Payload:   payload,
 		Proof:     nil,
@@ -131,7 +140,7 @@ func (bb *Bulletin) Post(ctx context.Context, id string, msg *transport.Message)
 
 	for retries := 20; retries > 0; retries-- {
 
-		_, err = bb.client.BroadcastTx(ctx, bb.txAccount, hubMsg)
+		_, err = bb.client.BroadcastTx(ctx, bb.account, hubMsg)
 		if err == nil {
 			log.Infof("Posted to bulletin, namespace: %s", id)
 			return resp, nil

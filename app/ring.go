@@ -151,6 +151,10 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 	if err != nil {
 		return nil, fmt.Errorf("invoke bulletin: %w", err)
 	}
+	err = bb.Init(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("init bulletin: %w", err)
+	}
 	do.ProvideValue(inj, bb)
 
 	var (

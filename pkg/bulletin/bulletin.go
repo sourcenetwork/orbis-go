@@ -51,6 +51,7 @@ type Query struct{}
 
 type Bulletin interface {
 	Name() string
+	Init(context.Context) error
 	Register(ctx context.Context, namespace string) error
 	// message format := /<namespace>/
 	// /ring/<ringID>/pss/<epochNum>/<action>/<nodeIndex>
