@@ -11,17 +11,8 @@ x-orbisd: &orbisd
   extra_hosts:
     - "host.docker.internal:host-gateway"
 
-x-orbisctl: &orbisctl
-  depends_on:
-    wait-for-orbisd:
-      condition: service_completed_successfully
-  image: ko.local/orbisd
-  volumes:
-    - ../demo:/demo
-
 services:
   sourcehubd:
-    # profiles: [donotstart]
     tty: true
     stdin_open: true
     image: ko.local/sourcehubd
@@ -77,43 +68,3 @@ services:
   wait-for-sourcehubd:
     image: alpine:3.14
     command: ["sleep", "2"]
-
-  wait-for-orbisd:
-    image: alpine:3.14
-    command: ["sleep", "5"]
-
-  orbisctl1:
-    <<: *orbisctl
-    command:
-      [
-        "-s",
-        "orbisd1:8081",
-        "ring-service",
-        "create-ring",
-        "-f",
-        "${ORBIS_RING_CONFIG}",
-      ]
-
-  orbisctl2:
-    <<: *orbisctl
-    command:
-      [
-        "-s",
-        "orbisd2:8082",
-        "ring-service",
-        "create-ring",
-        "-f",
-        "${ORBIS_RING_CONFIG}",
-      ]
-
-  orbisctl3:
-    <<: *orbisctl
-    command:
-      [
-        "-s",
-        "orbisd3:8083",
-        "ring-service",
-        "create-ring",
-        "-f",
-        "${ORBIS_RING_CONFIG}",
-      ]
