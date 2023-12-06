@@ -1,0 +1,43 @@
+version: "3.9"
+
+volumes:
+  sourcehub-data:
+
+services:
+  sourcehubd-init:
+    image: ko.local/sourcehubd
+    volumes:
+      - demo-data:/demo
+      - sourcehub-data:/root/.sourcehub
+    entrypoint: /demo/sourcehub-init.sh
+
+  sourcehubd:
+    depends_on:
+      sourcehubd-init:
+        condition: service_completed_successfully
+    tty: true
+    stdin_open: true
+    image: ko.local/sourcehubd
+    volumes:
+      - demo-data:/demo
+      - sourcehub-data:/root/.sourcehub
+    command:
+      - start
+      - --rpc.laddr
+      - tcp://0.0.0.0:26657
+      - --log_level
+      - warn
+    ports:
+      - "26657:26657"
+      - "1317:1317"
+      - "4500:4500"
+
+  orbisd1:
+    volumes:
+      - sourcehub-data:/root/.sourcehub
+  orbisd2:
+    volumes:
+      - sourcehub-data:/root/.sourcehub
+  orbisd3:
+    volumes:
+      - sourcehub-data:/root/.sourcehub

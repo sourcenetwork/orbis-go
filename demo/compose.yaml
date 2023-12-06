@@ -1,13 +1,27 @@
 version: "3.9"
 
+volumes:
+  demo-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ../demo
+      o: bind
+  sourcehub-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: $HOME/.sourcehub
+      o: bind
+
 x-orbisd: &orbisd
-  depends_on: [zanzid]
   tty: true
   stdin_open: true
   image: ko.local/orbisd
   volumes:
-    - ../demo:/demo
-    - $HOME/.sourcehub:/root/.sourcehub
+    - demo-data:/demo
+    - sourcehub-data:/root/.sourcehub
+  # For Linux platforms to access the host machine using the host.docker.internal DNS name.
   extra_hosts:
     - "host.docker.internal:host-gateway"
 
@@ -17,7 +31,7 @@ services:
     stdin_open: true
     image: ko.local/zanzid
     volumes:
-      - ../demo:/demo
+      - demo-data:/demo
     command: []
     ports:
       - "8080:8080"
@@ -33,7 +47,6 @@ services:
 
   orbisd2:
     <<: *orbisd
-    depends_on: [orbisd1]
     command: ["start", "--config", "/demo/orbis.2.yaml"]
     ports:
       - "9002:9002"
@@ -42,7 +55,6 @@ services:
 
   orbisd3:
     <<: *orbisd
-    depends_on: [orbisd2]
     command: ["start", "--config", "/demo/orbis.3.yaml"]
     ports:
       - "9003:9003"
