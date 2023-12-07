@@ -27,6 +27,8 @@ services:
       - tcp://0.0.0.0:26657
       - --log_level
       - warn
+      - --minimum-gas-prices
+      - 0.0001stake
     ports:
       - "26657:26657"
       - "1317:1317"
