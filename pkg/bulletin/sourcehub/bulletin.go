@@ -5,8 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"math/rand"
-	"time"
 
 	logging "github.com/ipfs/go-log"
 	"google.golang.org/protobuf/proto"
@@ -67,6 +65,7 @@ func (bb *Bulletin) Init(ctx context.Context) error {
 	opts := []cosmosclient.Option{
 		cosmosclient.WithNodeAddress(bb.cfg.SourceHub.NodeAddress),
 		cosmosclient.WithAddressPrefix(bb.cfg.SourceHub.AddressPrefix),
+		cosmosclient.WithFees(bb.cfg.SourceHub.Fees),
 	}
 	client, err := cosmosclient.New(ctx, opts...)
 	if err != nil {
@@ -138,21 +137,13 @@ func (bb *Bulletin) Post(ctx context.Context, id string, msg *transport.Message)
 	resp.Data = msg
 	resp.ID = id
 
-	for retries := 20; retries > 0; retries-- {
-
-		_, err = bb.client.BroadcastTx(ctx, bb.account, hubMsg)
-		if err == nil {
-			log.Infof("Posted to bulletin, namespace: %s", id)
-			return resp, nil
-		}
-
-		du := time.Duration(200+rand.Intn(1000)) * time.Millisecond
-		log.Warnf("Broadcast tx: %s, retries(%d) in %s", err, retries, du)
-		time.Sleep(du)
+	_, err = bb.client.BroadcastTx(ctx, bb.account, hubMsg)
+	if err != nil {
+		return resp, fmt.Errorf("broadcast tx: %w", err)
 	}
-	log.Errorf("Broadcast tx: %s", err)
+	log.Infof("Posted to bulletin, namespace: %s", id)
 
-	return resp, fmt.Errorf("broadcast tx: %w", err)
+	return resp, nil
 }
 
 func (bb *Bulletin) Read(ctx context.Context, id string) (bulletin.Response, error) {

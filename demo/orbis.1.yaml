@@ -18,8 +18,9 @@ bulletin:
   p2p:
     rendezvous: "orbis-bulletin"
   sourcehub:
-    accountName: "validator"
+    accountName: "validator1"
     addressPrefix: "cosmos"
+    fees: "30stake"
     nodeAddress: "http://host.docker.internal:26657"
     rpcAddress: "tcp://host.docker.internal:26657"
 

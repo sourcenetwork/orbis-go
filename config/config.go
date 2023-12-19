@@ -65,6 +65,7 @@ type Bulletin struct {
 	SourceHub struct {
 		AccountName   string `default:"alice" description:"Account name"`
 		AddressPrefix string `default:"cosmos" description:"Address prefix"`
+		Fees          string `default:"30stake" description:"Fees"`
 		NodeAddress   string `default:"http://host.docker.internal:26657" description:"Node address"`
 		RPCAddress    string `default:"tcp://host.docker.internal:26657" description:"RPC address"`
 	}
