@@ -405,11 +405,3 @@ func hashPoints(points ...kyber.Point) ([]byte, error) {
 	}
 	return hash.Sum(nil), nil
 }
-
-// TODO: remove after Go 1.21
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
