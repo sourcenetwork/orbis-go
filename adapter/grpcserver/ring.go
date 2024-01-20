@@ -37,7 +37,10 @@ func (s *ringService) ListRings(ctx context.Context, req *ringv1alpha1.ListRings
 
 	ringResp := make([]*ringv1alpha1.Ring, len(rings))
 	for i, r := range rings {
-		ringResp[i] = r.Manifest()
+		ringResp[i] = &ringv1alpha1.Ring{
+			Id:       string(r.ID),
+			Manifest: r.Manifest(),
+		}
 	}
 
 	return &ringv1alpha1.ListRingsResponse{
@@ -48,7 +51,7 @@ func (s *ringService) ListRings(ctx context.Context, req *ringv1alpha1.ListRings
 func (s *ringService) CreateRing(ctx context.Context, req *ringv1alpha1.CreateRingRequest) (*ringv1alpha1.CreateRingResponse, error) {
 
 	bgctx := context.Background()
-	r, err := s.app.JoinRing(bgctx, req.Ring)
+	r, err := s.app.JoinRing(bgctx, req.Manifest)
 	if err != nil {
 		return nil, fmt.Errorf("create ring: %w", err)
 	}
@@ -73,7 +76,10 @@ func (s *ringService) GetRing(ctx context.Context, req *ringv1alpha1.GetRingRequ
 	}
 
 	resp := &ringv1alpha1.GetRingResponse{
-		Ring: ring.Manifest(),
+		Ring: &ringv1alpha1.Ring{
+			Id:       string(ring.ID),
+			Manifest: ring.Manifest(),
+		},
 	}
 
 	return resp, nil

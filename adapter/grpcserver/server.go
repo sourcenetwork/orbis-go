@@ -7,26 +7,18 @@ import (
 
 	"github.com/sourcenetwork/orbis-go/app"
 	"github.com/sourcenetwork/orbis-go/config"
-	hostv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/host/v1alpha1"
 	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/ring/v1alpha1"
 	transportv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/transport/v1alpha1"
 	utilityv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/utility/v1alpha1"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/status"
 
 	logging "github.com/ipfs/go-log"
 )
 
 var log = logging.Logger("orbis/grpc/server")
-
-var (
-	errUnimplemented = status.Error(codes.Unimplemented, "not implemented yet")
-	errUnAuthorized  = status.Error(codes.PermissionDenied, "not authorized")
-)
 
 func NewGRPCServer(cfg config.GRPC, a *app.App) *grpc.Server {
 
@@ -39,7 +31,6 @@ func NewGRPCServer(cfg config.GRPC, a *app.App) *grpc.Server {
 
 	// Setup orbis service handlers to the server.
 	utilityv1alpha1.RegisterUtilityServiceServer(s, newUtilService(a))
-	hostv1alpha1.RegisterHostServiceServer(s, newHostService(a.Host()))
 	transportv1alpha1.RegisterTransportServiceServer(s, newTransportService(a))
 	ringv1alpha1.RegisterRingServiceServer(s, newRingService(a))
 
@@ -71,6 +62,11 @@ func NewGRPCGatewayServer(cfg config.GRPC) (*http.Server, error) {
 		return nil, fmt.Errorf("register ring service handler, %w", err)
 	}
 
+	err = transportv1alpha1.RegisterTransportServiceHandler(ctx, mux, conn)
+	if err != nil {
+		return nil, fmt.Errorf("register transport service handler, %w", err)
+	}
+
 	err = utilityv1alpha1.RegisterUtilityServiceHandler(ctx, mux, conn)
 	if err != nil {
 		return nil, fmt.Errorf("register utility service handler, %w", err)
@@ -80,6 +76,11 @@ func NewGRPCGatewayServer(cfg config.GRPC) (*http.Server, error) {
 	err = ringv1alpha1.RegisterRingServiceHandlerFromEndpoint(ctx, mux, cfg.GRPCURL, opts)
 	if err != nil {
 		return nil, fmt.Errorf("register ring service handler from endpoint, %w", err)
+	}
+
+	err = transportv1alpha1.RegisterTransportServiceHandlerFromEndpoint(ctx, mux, cfg.GRPCURL, opts)
+	if err != nil {
+		return nil, fmt.Errorf("register transport service handler from endpoint, %w", err)
 	}
 
 	err = utilityv1alpha1.RegisterUtilityServiceHandlerFromEndpoint(ctx, mux, cfg.GRPCURL, opts)

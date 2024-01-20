@@ -5,7 +5,6 @@ import (
 
 	"github.com/sourcenetwork/orbis-go/adapter/cobracli"
 
-	hostv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/host/v1alpha1"
 	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/ring/v1alpha1"
 	transportv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/transport/v1alpha1"
 	utilityv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/utility/v1alpha1"
@@ -59,7 +58,6 @@ func main() {
 
 	rootCmd.AddCommand(
 		utilityv1alpha1.UtilityServiceClientCommand(opts...),
-		hostv1alpha1.HostServiceClientCommand(opts...),
 		ringv1alpha1.RingServiceClientCommand(opts...),
 		transportv1alpha1.TransportServiceClientCommand(opts...),
 	)

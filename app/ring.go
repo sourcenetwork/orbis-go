@@ -30,7 +30,7 @@ import (
 
 type Ring struct {
 	ID       types.RingID
-	manifest *ringv1alpha1.Ring
+	manifest *ringv1alpha1.Manifest
 
 	DKG dkg.DKG
 	PSS pss.PSS
@@ -58,11 +58,10 @@ type Ring struct {
 
 	preReqMsg chan *transport.Message
 
-	// encScrts map[string][][]byte          // preStoreMsgID
-	// encCmts  map[string][]byte            // preStoreMsgID
 	xncCmts map[string]chan kyber.Point  // preEncryptMsgID
 	xncSki  map[string][]*share.PubShare // preEncryptMsgID
 }
+
 type State map[string]string
 
 type service interface {
@@ -100,15 +99,19 @@ func (app *App) listRing(ctx context.Context) ([]*Ring, error) {
 	return rings, nil
 }
 
-func (app *App) JoinRing(ctx context.Context, ring *ringv1alpha1.Ring) (*Ring, error) {
+func (app *App) JoinRing(ctx context.Context, manifest *ringv1alpha1.Manifest) (*Ring, error) {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
-	r, err := app.joinRing(ctx, ring, false /* fromState */)
+	r, err := app.joinRing(ctx, manifest, false /* fromState */)
 	if err != nil {
 		return nil, fmt.Errorf("join ring: %w", err)
 	}
 
+	ring := &ringv1alpha1.Ring{
+		Id:       string(r.ID),
+		Manifest: r.manifest,
+	}
 	err = app.ringRepo.Create(ctx, ring)
 	if err != nil {
 		return nil, fmt.Errorf("create ring: %w", err)
@@ -118,8 +121,10 @@ func (app *App) JoinRing(ctx context.Context, ring *ringv1alpha1.Ring) (*Ring, e
 	return r, nil
 }
 
-func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState bool) (*Ring, error) {
-	rid := types.RingID(ring.Id)
+func (app *App) joinRing(ctx context.Context, manifest *ringv1alpha1.Manifest, fromState bool) (*Ring, error) {
+
+	rid := ringID(manifest)
+	log.Infof("Joining ring %s, nodes: %v", rid, manifest.Nodes)
 
 	if _, exists := app.rings[rid]; exists {
 		return nil, fmt.Errorf("already joined ring %s", rid)
@@ -140,14 +145,14 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 	}
 
 	// register configured generic transport locally
-	tp, err := do.InvokeNamed[transport.Transport](inj, ring.Transport)
+	tp, err := do.InvokeNamed[transport.Transport](inj, manifest.Transport)
 	if err != nil {
 		return nil, fmt.Errorf("invoke transport: %w", err)
 	}
 	do.ProvideValue(inj, tp)
 
 	// register configured generic bulletin locally
-	bb, err := do.InvokeNamed[bulletin.Bulletin](inj, ring.Bulletin)
+	bb, err := do.InvokeNamed[bulletin.Bulletin](inj, manifest.Bulletin)
 	if err != nil {
 		return nil, fmt.Errorf("invoke bulletin: %w", err)
 	}
@@ -162,14 +167,14 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 		authzSrv authz.Authz
 	)
 
-	authnSrv, err = do.InvokeNamed[authn.CredentialService](inj, ring.Authentication)
+	authnSrv, err = do.InvokeNamed[authn.CredentialService](inj, manifest.Authentication)
 	if err != nil && !errors.Is(err, do.ErrNotFound) { // ignore not found for now
 		return nil, fmt.Errorf("invoke authn service: %w", err)
 	} else if authnSrv != nil {
 		do.ProvideValue(inj, authnSrv)
 	}
 
-	authzSrv, err = do.InvokeNamed[authz.Authz](inj, ring.Authorization)
+	authzSrv, err = do.InvokeNamed[authz.Authz](inj, manifest.Authorization)
 	if err != nil && !errors.Is(err, do.ErrNotFound) { // ignore not found for now
 		return nil, fmt.Errorf("invoke authz service: %w", err)
 	} else if authzSrv != nil {
@@ -181,29 +186,29 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 	// authn/authz can potentially use a global service instead of a factory
 	// so we need to check if its already a configured service
 	if authnSrv == nil {
-		authnSrv, err = serviceFromFactory[authn.CredentialService](rs, inj, ring.Authentication)
+		authnSrv, err = serviceFromFactory[authn.CredentialService](rs, inj, manifest.Authentication)
 		if err != nil {
 			return nil, fmt.Errorf("invoke authn credential service from factory: %w", err)
 		}
 	}
 	if authzSrv == nil {
-		authzSrv, err = serviceFromFactory[authz.Authz](rs, inj, ring.Authorization)
+		authzSrv, err = serviceFromFactory[authz.Authz](rs, inj, manifest.Authorization)
 		if err != nil {
 			return nil, fmt.Errorf("invoke authz service from factory: %w", err)
 		}
 	}
 
-	dkgSrv, err := serviceFromFactory[dkg.DKG](rs, inj, ring.Dkg)
+	dkgSrv, err := serviceFromFactory[dkg.DKG](rs, inj, manifest.Dkg)
 	if err != nil {
 		return nil, fmt.Errorf("invoke dkg service from factory: %w", err)
 	}
 
-	pssSrv, err := serviceFromFactory[pss.PSS](rs, inj, ring.Pss)
+	pssSrv, err := serviceFromFactory[pss.PSS](rs, inj, manifest.Pss)
 	if err != nil {
 		return nil, fmt.Errorf("invoke pss service from factory: %w", err)
 	}
 
-	preSrv, err := serviceFromFactory[pre.PRE](rs, inj, ring.Pre)
+	preSrv, err := serviceFromFactory[pre.PRE](rs, inj, manifest.Pre)
 	if err != nil {
 		return nil, fmt.Errorf("invoke pss service from factory: %w", err)
 	}
@@ -211,12 +216,12 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 	// setup and register local services
 	log.Info("Initializating local services for ring")
 
-	tpNodes, err := nodesFromIDs(ring.Nodes)
+	tpNodes, err := nodesFromIDs(manifest.Nodes)
 	if err != nil {
 		return nil, fmt.Errorf("convert nodes from ring ids")
 	}
 
-	err = dkgSrv.Init(ctx, app.privateKey, rid, tpNodes, ring.N, ring.T, fromState)
+	err = dkgSrv.Init(ctx, app.privateKey, rid, tpNodes, manifest.N, manifest.T, fromState)
 	if err != nil {
 		return nil, fmt.Errorf("initialize dkg: %w", err)
 	}
@@ -227,19 +232,19 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 		nodes[i] = *types.NewNode(i, n.ID(), n.Address(), n.PublicKey())
 	}
 
-	err = preSrv.Init(rid, ring.N, ring.T)
+	err = preSrv.Init(rid, manifest.N, manifest.T)
 	if err != nil {
 		return nil, fmt.Errorf("initialize pre: %w", err)
 	}
 
-	err = pssSrv.Init(rid, ring.N, ring.T, nodes)
+	err = pssSrv.Init(rid, manifest.N, manifest.T, nodes)
 	if err != nil {
 		return nil, fmt.Errorf("create pss service: %w", err)
 	}
 
 	rs = &Ring{
 		ID:        rid,
-		manifest:  ring,
+		manifest:  manifest,
 		DKG:       dkgSrv,
 		PSS:       pssSrv,
 		PRE:       preSrv,
@@ -247,18 +252,16 @@ func (app *App) joinRing(ctx context.Context, ring *ringv1alpha1.Ring, fromState
 		Bulletin:  bb,
 		DB:        d,
 		inj:       inj,
-		N:         int(ring.N),
-		T:         int(ring.T),
+		N:         int(manifest.N),
+		T:         int(manifest.T),
 
 		nodes:     nodes,
 		services:  rs.services, // this is dumb, but im being lazy, sorry.
 		preReqMsg: make(chan *transport.Message, 10),
-		// encScrts:  make(map[string][][]byte),
-		// encCmts:   make(map[string][]byte),
-		xncCmts: make(map[string]chan kyber.Point),
-		xncSki:  make(map[string][]*share.PubShare),
-		Authz:   authzSrv,
-		Authn:   authnSrv,
+		xncCmts:   make(map[string]chan kyber.Point),
+		xncSki:    make(map[string][]*share.PubShare),
+		Authz:     authzSrv,
+		Authn:     authnSrv,
 	}
 
 	go rs.preReencryptMessageHandler()
@@ -351,7 +354,7 @@ func (r *Ring) State() State {
 	return state
 }
 
-func (r *Ring) Manifest() *ringv1alpha1.Ring {
+func (r *Ring) Manifest() *ringv1alpha1.Manifest {
 	return r.manifest
 }
 
@@ -367,8 +370,6 @@ func (r *Ring) Start(ctx context.Context) error {
 	return nil
 }
 
-// func (r *Ring)
-
 // LoadRings loads any existing rings into state
 func (app *App) LoadRings(ctx context.Context) error {
 	app.mu.Lock()
@@ -382,11 +383,11 @@ func (app *App) LoadRings(ctx context.Context) error {
 
 	log.Infof("Found %d rings, rejoining", len(rings))
 	for _, r := range rings {
-		ring, err := app.joinRing(ctx, r, true /* fromState */)
+		ring, err := app.joinRing(ctx, r.Manifest, true /* fromState */)
 		if err != nil {
 			return fmt.Errorf("join ring: %w", err)
 		}
-		ring.manifest = r
+		ring.manifest = r.Manifest
 
 		app.rings[ring.ID] = ring
 	}
