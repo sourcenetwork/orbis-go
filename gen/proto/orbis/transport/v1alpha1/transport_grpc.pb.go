@@ -19,11 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	TransportService_GetHost_FullMethodName    = "/orbis.transport.v1alpha1.TransportService/GetHost"
-	TransportService_Connect_FullMethodName    = "/orbis.transport.v1alpha1.TransportService/Connect"
-	TransportService_Send_FullMethodName       = "/orbis.transport.v1alpha1.TransportService/Send"
-	TransportService_Gossip_FullMethodName     = "/orbis.transport.v1alpha1.TransportService/Gossip"
-	TransportService_NewMessage_FullMethodName = "/orbis.transport.v1alpha1.TransportService/NewMessage"
+	TransportService_GetHost_FullMethodName = "/orbis.transport.v1alpha1.TransportService/GetHost"
 )
 
 // TransportServiceClient is the client API for TransportService service.
@@ -32,14 +28,6 @@ const (
 type TransportServiceClient interface {
 	// GetHost returns the information about the host node.
 	GetHost(ctx context.Context, in *GetHostRequest, opts ...grpc.CallOption) (*GetHostResponse, error)
-	// Connect connects to a peer node.
-	Connect(ctx context.Context, in *ConnectRequest, opts ...grpc.CallOption) (*ConnectResponse, error)
-	// Send sends a message to a peer node.
-	Send(ctx context.Context, in *SendRequest, opts ...grpc.CallOption) (*SendResponse, error)
-	// Gossip broadcasts a message to a topic.
-	Gossip(ctx context.Context, in *GossipRequest, opts ...grpc.CallOption) (*GossipResponse, error)
-	// NewMessage returns a formated messages.
-	NewMessage(ctx context.Context, in *NewMessageRequest, opts ...grpc.CallOption) (*NewMessageResponse, error)
 }
 
 type transportServiceClient struct {
@@ -59,56 +47,12 @@ func (c *transportServiceClient) GetHost(ctx context.Context, in *GetHostRequest
 	return out, nil
 }
 
-func (c *transportServiceClient) Connect(ctx context.Context, in *ConnectRequest, opts ...grpc.CallOption) (*ConnectResponse, error) {
-	out := new(ConnectResponse)
-	err := c.cc.Invoke(ctx, TransportService_Connect_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *transportServiceClient) Send(ctx context.Context, in *SendRequest, opts ...grpc.CallOption) (*SendResponse, error) {
-	out := new(SendResponse)
-	err := c.cc.Invoke(ctx, TransportService_Send_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *transportServiceClient) Gossip(ctx context.Context, in *GossipRequest, opts ...grpc.CallOption) (*GossipResponse, error) {
-	out := new(GossipResponse)
-	err := c.cc.Invoke(ctx, TransportService_Gossip_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *transportServiceClient) NewMessage(ctx context.Context, in *NewMessageRequest, opts ...grpc.CallOption) (*NewMessageResponse, error) {
-	out := new(NewMessageResponse)
-	err := c.cc.Invoke(ctx, TransportService_NewMessage_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // TransportServiceServer is the server API for TransportService service.
 // All implementations must embed UnimplementedTransportServiceServer
 // for forward compatibility
 type TransportServiceServer interface {
 	// GetHost returns the information about the host node.
 	GetHost(context.Context, *GetHostRequest) (*GetHostResponse, error)
-	// Connect connects to a peer node.
-	Connect(context.Context, *ConnectRequest) (*ConnectResponse, error)
-	// Send sends a message to a peer node.
-	Send(context.Context, *SendRequest) (*SendResponse, error)
-	// Gossip broadcasts a message to a topic.
-	Gossip(context.Context, *GossipRequest) (*GossipResponse, error)
-	// NewMessage returns a formated messages.
-	NewMessage(context.Context, *NewMessageRequest) (*NewMessageResponse, error)
 	mustEmbedUnimplementedTransportServiceServer()
 }
 
@@ -118,18 +62,6 @@ type UnimplementedTransportServiceServer struct {
 
 func (UnimplementedTransportServiceServer) GetHost(context.Context, *GetHostRequest) (*GetHostResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetHost not implemented")
-}
-func (UnimplementedTransportServiceServer) Connect(context.Context, *ConnectRequest) (*ConnectResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Connect not implemented")
-}
-func (UnimplementedTransportServiceServer) Send(context.Context, *SendRequest) (*SendResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Send not implemented")
-}
-func (UnimplementedTransportServiceServer) Gossip(context.Context, *GossipRequest) (*GossipResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Gossip not implemented")
-}
-func (UnimplementedTransportServiceServer) NewMessage(context.Context, *NewMessageRequest) (*NewMessageResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method NewMessage not implemented")
 }
 func (UnimplementedTransportServiceServer) mustEmbedUnimplementedTransportServiceServer() {}
 
@@ -162,78 +94,6 @@ func _TransportService_GetHost_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
-func _TransportService_Connect_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ConnectRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(TransportServiceServer).Connect(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: TransportService_Connect_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TransportServiceServer).Connect(ctx, req.(*ConnectRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _TransportService_Send_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SendRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(TransportServiceServer).Send(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: TransportService_Send_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TransportServiceServer).Send(ctx, req.(*SendRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _TransportService_Gossip_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GossipRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(TransportServiceServer).Gossip(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: TransportService_Gossip_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TransportServiceServer).Gossip(ctx, req.(*GossipRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _TransportService_NewMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(NewMessageRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(TransportServiceServer).NewMessage(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: TransportService_NewMessage_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TransportServiceServer).NewMessage(ctx, req.(*NewMessageRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // TransportService_ServiceDesc is the grpc.ServiceDesc for TransportService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -244,22 +104,6 @@ var TransportService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetHost",
 			Handler:    _TransportService_GetHost_Handler,
-		},
-		{
-			MethodName: "Connect",
-			Handler:    _TransportService_Connect_Handler,
-		},
-		{
-			MethodName: "Send",
-			Handler:    _TransportService_Send_Handler,
-		},
-		{
-			MethodName: "Gossip",
-			Handler:    _TransportService_Gossip_Handler,
-		},
-		{
-			MethodName: "NewMessage",
-			Handler:    _TransportService_NewMessage_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
