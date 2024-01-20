@@ -3,24 +3,13 @@ syntax = "proto3";
 package orbis.transport.v1alpha1;
 
 import "google/api/annotations.proto";
-import "google/protobuf/empty.proto";
 import "libp2p/crypto/v1/crypto.proto";
 
 service TransportService {
   // GetHost returns the information about the host node.
-  rpc GetHost(GetHostRequest) returns (GetHostResponse) {}
-
-  // Connect connects to a peer node.
-  rpc Connect(ConnectRequest) returns (ConnectResponse) {}
-
-  // Send sends a message to a peer node.
-  rpc Send(SendRequest) returns (SendResponse) {}
-
-  // Gossip broadcasts a message to a topic.
-  rpc Gossip(GossipRequest) returns (GossipResponse) {}
-
-  // NewMessage returns a formated messages.
-  rpc NewMessage(NewMessageRequest) returns (NewMessageResponse) {}
+  rpc GetHost(GetHostRequest) returns (GetHostResponse) {
+    option (google.api.http) = {get: "/v1alpha1/transport/host/{transport}"};
+  }
 }
 
 message GetHostRequest {
@@ -29,42 +18,6 @@ message GetHostRequest {
 
 message GetHostResponse {
   Node node = 1;
-}
-
-message SendRequest {
-  Node node = 1;
-  Message message = 2;
-}
-
-message SendResponse {}
-
-message ConnectRequest {
-  string transport = 1;
-  string id = 2;
-  string address = 3; // multiaddress
-}
-
-message ConnectResponse {}
-
-message GossipRequest {
-  string transport = 1;
-  string topic = 2;
-  Message message = 3;
-}
-
-message GossipResponse {}
-
-message NewMessageRequest {
-  string transport = 1;
-  string id = 2;
-  bool gossip = 3;
-  bytes payload = 4;
-  string type = 5;
-  string ring_id = 6;
-}
-
-message NewMessageResponse {
-  Message message = 1;
 }
 
 message Node {

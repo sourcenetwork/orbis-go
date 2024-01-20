@@ -68,7 +68,7 @@ message ListRingsResponse {
 }
 
 message CreateRingRequest {
-  Ring ring = 1;
+  Manifest manifest = 1;
 }
 
 message CreateRingResponse {
@@ -167,16 +167,20 @@ message ReencryptedSecretShare {
 
 message Ring {
   string id = 1;
-  int32 n = 2;
-  int32 t = 3;
-  string dkg = 5;
-  string pss = 6;
-  string pre = 7;
-  string bulletin = 8;
-  string transport = 9;
-  repeated Node nodes = 10;
-  string authorization = 11;
-  string authentication = 12;
+  Manifest manifest = 2;
+}
+
+message Manifest {
+  int32 n = 1;
+  int32 t = 2;
+  string dkg = 3;
+  string pss = 4;
+  string pre = 5;
+  string bulletin = 6;
+  string transport = 7;
+  repeated Node nodes = 8;
+  string authorization = 9;
+  string authentication = 10;
 }
 
 message Node {
