@@ -153,6 +153,7 @@ func (d *dkg) processSecretCommits(sc *rabindkg.SecretCommits) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
+	log.Warnf("Node %d processing secret commits", d.index)
 	_, err := d.rdkg.ProcessSecretCommits(sc)
 	if err != nil {
 		return fmt.Errorf("process rabin dkg secret commits: %w", err)

@@ -21,7 +21,7 @@ func main() {
 	logging.SetAllLoggers(logging.LevelDPanic)
 	logging.SetLogLevelRegex("orbis.*", "info")
 
-	// logging.SetLogLevelRegex("orbis/bulletin.*", "debug")
+	// logging.SetLogLevelRegex("orbis/dkg.*", "debug")
 	// logging.SetLogLevelRegex("orbis/host.*", "debug")
 	// loggingv2.SetLogLevel("pubsub", "debug")
 	// logging.SetLogLevelRegex("eventbus.*", "debug")

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
@@ -276,7 +275,7 @@ func (app *App) joinRing(ctx context.Context, manifest *ringv1alpha1.Manifest, f
 	}
 
 	// TODO: this is a hack to wait for the bulletin to be registered
-	time.Sleep(1 * time.Second)
+	// time.Sleep(3 * time.Second)
 	log.Infof("registered to namespace %s", bbnamespace)
 
 	return rs, nil

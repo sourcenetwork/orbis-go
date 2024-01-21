@@ -255,7 +255,7 @@ func (d *dkg) initCommon(ctx context.Context) error {
 	d.bbnamespace = fmt.Sprintf("/ring/%s/dkg/rabin", string(d.ringID))
 	err := d.bulletin.Register(ctx, d.bbnamespace)
 	// TODO: remove this sleep
-	time.Sleep(2 * time.Second)
+	// time.Sleep(3 * time.Second)
 	log.Infof("registered to namespace %s", d.bbnamespace)
 	return err
 }
@@ -284,12 +284,7 @@ func (d *dkg) Start(ctx context.Context) error {
 	log.Debug("Starting rabin DKG")
 
 	// connecting to peers (if possible)
-	for _, p := range d.participants {
-		ctx, cancel := context.WithTimeout(ctx, peerConnectTimeout)
-		// we dont really care if we can connect, just optimisticly try
-		_ = d.transport.Connect(ctx, p)
-		cancel() // clear
-	}
+	d.connectToPeers(ctx)
 
 	log.Debug("Generating and persisting deals")
 
@@ -333,6 +328,36 @@ func (d *dkg) Start(ctx context.Context) error {
 	go d.dispatch()
 
 	return nil
+}
+
+func (d *dkg) connectToPeers(ctx context.Context) {
+	wg := sync.WaitGroup{}
+
+	for _, p := range d.participants {
+		if p.ID() == d.NodeID() {
+			continue
+		}
+		wg.Add(1)
+		go func(p transport.Node) {
+			defer wg.Done()
+
+			for {
+				ctx, cancel := context.WithTimeout(ctx, peerConnectTimeout)
+				defer cancel()
+
+				err := d.transport.Connect(ctx, p)
+				if err != nil {
+					log.Debugf("Can't connect %s, retry in 2 sec", err)
+					time.Sleep(2 * time.Second)
+					continue
+				}
+				log.Infof("Connected to %s", p.ID())
+				break
+			}
+		}(p)
+	}
+
+	wg.Wait()
 }
 
 func (d *dkg) post(ctx context.Context, msgType string, msgID string, buf []byte, node transport.Node) error {
