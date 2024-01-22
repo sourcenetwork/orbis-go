@@ -12,7 +12,7 @@ import (
 	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/ring/v1alpha1"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	"github.com/sourcenetwork/orbis-go/pkg/db"
-	"github.com/sourcenetwork/orbis-go/pkg/host"
+	"github.com/sourcenetwork/orbis-go/pkg/transport"
 	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
 
@@ -26,7 +26,7 @@ var (
 
 // App implements App all services.
 type App struct {
-	host *host.Host
+	host transport.Transport
 	db   *db.DB
 
 	inj *do.Injector
@@ -60,7 +60,7 @@ type repoParam struct {
 	typ db.Record
 }
 
-func (a *App) Host() *host.Host {
+func (a *App) Host() transport.Transport {
 	return a.host
 }
 
@@ -68,14 +68,12 @@ func (a *App) Injector() *do.Injector {
 	return a.inj
 }
 
-func New(ctx context.Context, host *host.Host, opts ...Option) (*App, error) {
+func New(ctx context.Context, host transport.Transport, opts ...Option) (*App, error) {
 	if host == nil {
 		return nil, fmt.Errorf("host is nil")
 	}
 
-	// get the privkey for host
-	hpk := host.Peerstore().PrivKey(host.ID())
-	cpk, err := crypto.PrivateKeyFromLibP2P(hpk)
+	cpk, err := host.PrivateKey()
 	if err != nil {
 		return nil, fmt.Errorf("convert libp2p private key: %w", err)
 	}

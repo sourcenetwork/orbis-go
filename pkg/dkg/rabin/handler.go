@@ -25,8 +25,8 @@ func (d *dkg) setupHandlers() error {
 
 	go func() {
 		for evt := range d.eventsCh {
-			log.Debugf("recieved eventbus on %s from %s for %s (%s)", d.transport.Host().ID(), evt.Message.NodeId, evt.Message.TargetId, evt.Message.GetType())
-			if evt.Message.TargetId != d.transport.Host().ID() {
+			log.Debugf("recieved eventbus on %s from %s for %s (%s)", d.transport.ID(), evt.Message.NodeId, evt.Message.TargetId, evt.Message.GetType())
+			if evt.Message.TargetId != d.transport.ID().String() {
 				log.Debugf("ignoring bulletin event not for us")
 				continue
 			}
@@ -69,7 +69,7 @@ func (d *dkg) processDeal(deal *rabindkg.Deal) error {
 		}
 		// TODO: can we skip the sender of the deal as well?
 
-		log.Debugf("sending response on %s for %s", d.transport.Host().ID(), node.ID())
+		log.Debugf("sending response on %s for %s", d.transport.ID(), node.ID())
 		// /ring/<ringID>/dkg/rabin/<action>/<fromID>/<toID>
 
 		// each node generates deals [d0, d1, d2]
@@ -189,5 +189,5 @@ func (d *dkg) processSecretCommits(sc *rabindkg.SecretCommits) error {
 }
 
 func (d *dkg) isMe(node transport.Node) bool {
-	return d.transport.Host().ID() == node.ID()
+	return d.transport.ID() == node.ID()
 }

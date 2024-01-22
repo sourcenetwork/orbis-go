@@ -1,6 +1,7 @@
 package types
 
 import (
+	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 
@@ -20,27 +21,21 @@ type Secret struct {
 }
 
 type Node struct {
-	index     int // -1 means invalid index
-	id        string
+	id        peer.ID
 	address   ma.Multiaddr
 	publicKey crypto.PublicKey
 }
 
-func NewNode(idx int, id string, addr ma.Multiaddr, pk crypto.PublicKey) *Node {
+func NewNode(id peer.ID, addr ma.Multiaddr, pk crypto.PublicKey) *Node {
 	return &Node{
-		index:     idx,
 		id:        id,
 		address:   addr,
 		publicKey: pk,
 	}
 }
 
-func (n *Node) ID() string {
+func (n *Node) ID() peer.ID {
 	return n.id
-}
-
-func (n *Node) Index() int {
-	return n.index
 }
 
 func (n *Node) Address() ma.Multiaddr {

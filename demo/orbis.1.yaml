@@ -16,7 +16,6 @@ host:
 
 bulletin:
   p2p:
-    rendezvous: "orbis-bulletin"
   sourcehub:
     accountName: "validator1"
     addressPrefix: "cosmos"
@@ -25,7 +24,6 @@ bulletin:
     rpcAddress: "tcp://host.docker.internal:26657"
 
 transport:
-  rendezvous: "orbis-transport"
 
 authz:
   address: zanzid:8080

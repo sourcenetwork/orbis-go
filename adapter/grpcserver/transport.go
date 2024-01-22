@@ -30,15 +30,15 @@ func (s *transportService) GetHost(ctx context.Context, req *transportv1alpha1.G
 		return nil, fmt.Errorf("not found")
 	}
 
-	raw, err := tp.Host().PublicKey().Raw()
+	raw, err := tp.PublicKey().Raw()
 	if err != nil {
 		return nil, err
 	}
 
 	resp := &transportv1alpha1.GetHostResponse{
 		Node: &transportv1alpha1.Node{
-			Id:      tp.Host().ID(),
-			Address: tp.Host().Address().String(),
+			Id:      tp.ID().String(),
+			Address: tp.Address().String(),
 			PublicKey: &libp2pcrypto.PublicKey{
 				Type: libp2pcrypto.KeyType_Ed25519.Enum(),
 				Data: raw,

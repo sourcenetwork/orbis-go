@@ -4,20 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
-	"math/rand"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/ipfs/boxo/util"
 	"github.com/ipfs/go-cid"
+	util "github.com/ipfs/go-ipfs-util"
 	logging "github.com/ipfs/go-log"
-	"github.com/libp2p/go-libp2p/core/event"
-	"github.com/libp2p/go-libp2p/core/network"
-	libp2pnetwork "github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
-	ma "github.com/multiformats/go-multiaddr"
 	"google.golang.org/protobuf/proto"
 
 	eventbus "github.com/sourcenetwork/eventbus-go"
@@ -27,7 +21,6 @@ import (
 	gossipbulletinv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/gossipbulletin/v1alpha1"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin/memmap"
-	"github.com/sourcenetwork/orbis-go/pkg/host"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
 	"github.com/sourcenetwork/orbis-go/pkg/util/glob"
 )
@@ -42,27 +35,9 @@ const (
 	postMessageType     = "post"
 	responseMessageType = "response"
 	queryMessageType    = "query"
-)
-
-const (
-	// wait a random amount of time from this interval
-	// before dialing peers or reconnecting to help prevent DoS
-	dialRandomizerIntervalMilliseconds = 3000
-
-	// repeatedly try to reconnect for a few minutes
-	// ie. 5 * 20 = 100s
-	reconnectAttempts = 20
-	reconnectInterval = 5 * time.Second
-
-	// then move into exponential backoff mode for ~1day
-	// ie. 3**10 = 16hrs
-	reconnectBackOffAttempts    = 10
-	reconnectBackOffBaseSeconds = 3
-
-	readTimeout     = 10 * time.Second
-	netQueryTimeout = 10 * time.Second
-
 	queryResponseBuffer = 100
+	readTimeout         = 10 * time.Second
+	netQueryTimeout     = 10 * time.Second
 )
 
 var _ bulletin.Bulletin = (*Bulletin)(nil)
@@ -70,56 +45,24 @@ var _ bulletin.Bulletin = (*Bulletin)(nil)
 type Message = gossipbulletinv1alpha1.Message
 
 type Bulletin struct {
-	h   *host.Host
+	h   transport.Transport
 	mem *memmap.Bulletin
 	ctx context.Context
 
 	bus eventbus.Bus
 
 	topics map[string]*rpc.Topic
-
-	reonnecting     sync.Map
-	persistentPeers map[peer.ID]peer.AddrInfo
 }
 
-func New(ctx context.Context, host *host.Host, cfg config.Bulletin) (*Bulletin, error) {
+func New(ctx context.Context, host transport.Transport, cfg config.Bulletin) (*Bulletin, error) {
 	bus := eventbus.NewBus()
 	bb := &Bulletin{
-		h:               host,
-		ctx:             ctx,
-		topics:          make(map[string]*rpc.Topic),
-		bus:             bus,
-		mem:             memmap.New(memmap.WithBus(bus)),
-		persistentPeers: make(map[peer.ID]peer.AddrInfo),
+		h:      host,
+		ctx:    ctx,
+		topics: make(map[string]*rpc.Topic),
+		bus:    bus,
+		mem:    memmap.New(memmap.WithBus(bus)),
 	}
-
-	host.SetStreamHandler(ProtocolID, bb.HandleStream)
-
-	err := host.Discover(ctx, cfg.P2P.Rendezvous)
-	if err != nil {
-		return nil, fmt.Errorf("discover: %w", err)
-	}
-
-	// parse persistent peers
-	for _, pstr := range strings.Split(cfg.P2P.PersistentPeers, ",") {
-		if pstr == "" {
-			continue
-		}
-
-		pma, err := ma.NewMultiaddr(strings.TrimSpace(pstr))
-		if err != nil {
-			return nil, fmt.Errorf("parse persistent peer: %w", err)
-		}
-
-		paddr, err := peer.AddrInfoFromP2pAddr(pma)
-		if err != nil {
-			return nil, fmt.Errorf("convert multiaddr to peer addr: %w", err)
-		}
-
-		bb.persistentPeers[paddr.ID] = *paddr
-	}
-
-	go bb.maintainPeers(ctx)
 
 	return bb, nil
 }
@@ -197,10 +140,6 @@ func (bb *Bulletin) Post(ctx context.Context, id string, msg *transport.Message)
 	}
 
 	return resp, nil
-}
-
-func (bb *Bulletin) Peers(topic string) []peer.ID {
-	return bb.h.PubSub().ListPeers(topic)
 }
 
 func (bb *Bulletin) Read(ctx context.Context, id string) (bulletin.Response, error) {
@@ -404,10 +343,6 @@ func (bb *Bulletin) Events() eventbus.Bus {
 	return bb.mem.Events()
 }
 
-func (bb *Bulletin) HandleStream(stream libp2pnetwork.Stream) {
-	log.Infof("Received stream: %s", stream.Conn().RemotePeer())
-}
-
 func (bb *Bulletin) topicMessageHandler(from peer.ID, topic string, msg []byte) ([]byte, error) {
 	log.Debugf("Handling topic %s message from %s", topic, from)
 	bbMessage := new(Message)
@@ -496,105 +431,4 @@ func (bb *Bulletin) topicMessageHandler(from peer.ID, topic string, msg []byte) 
 	}
 
 	return messageResponse, nil
-}
-
-func (b *Bulletin) maintainPeers(ctx context.Context) {
-	go func() {
-		for _, p := range b.persistentPeers {
-			go b.reconnectToPeer(ctx, p)
-		}
-	}()
-
-	subCh, err := b.h.EventBus().Subscribe(new(event.EvtPeerConnectednessChanged))
-	if err != nil {
-		log.Fatalf("Error subscribing to peer connectedness changes: %s", err)
-	}
-	defer subCh.Close()
-
-	for {
-		select {
-		case ev, ok := <-subCh.Out():
-			if !ok {
-				return
-			}
-
-			evt := ev.(event.EvtPeerConnectednessChanged)
-			if evt.Connectedness != network.NotConnected {
-				continue
-			}
-
-			if _, ok := b.persistentPeers[evt.Peer]; !ok {
-				continue
-			}
-
-			paddr := b.persistentPeers[evt.Peer]
-			go b.reconnectToPeer(ctx, paddr)
-
-		case <-ctx.Done():
-			return
-		}
-	}
-}
-
-func (b *Bulletin) reconnectToPeer(ctx context.Context, paddr peer.AddrInfo) {
-	if _, ok := b.reonnecting.Load(paddr.ID.String()); ok {
-		log.Debug("duplicate peer maintainence goroutine", paddr.ID)
-		return
-	}
-
-	b.reonnecting.Store(paddr.ID.String(), struct{}{})
-	defer b.reonnecting.Delete(paddr.ID.String())
-
-	start := time.Now()
-	log.Infof("Reconnecting to peer %s", paddr)
-	for i := 0; i < reconnectAttempts; i++ {
-		select {
-		case <-ctx.Done():
-			log.Debug("peer maintainence goroutine context finished", paddr.ID)
-			return
-		default:
-			// noop fallthrough
-		}
-
-		err := b.h.Connect(ctx, paddr)
-		if err == nil {
-			log.Infof("reconnected to peer %s during regular backoff", paddr.ID)
-			return //success
-		}
-
-		log.Infof("Error reconnecting to peer %s: %s, Retrying %d/%d attemps", paddr, err, i, reconnectAttempts)
-		randomSleep(reconnectInterval)
-	}
-
-	log.Errorf("Failed to reconnect to peer %s. Beginning exponential backoff. Elapsed %s", paddr, time.Since(start))
-	for i := 0; i < reconnectBackOffAttempts; i++ {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			// noop fallthrough
-		}
-
-		// sleep an exponentially increasing amount
-		sleepIntervalSeconds := math.Pow(reconnectBackOffBaseSeconds, float64(i))
-		randomSleep(time.Duration(sleepIntervalSeconds) * time.Second)
-
-		err := b.h.Connect(ctx, paddr)
-		if err == nil {
-			log.Infof("reconnected to peer %s during exponential backoff", paddr.ID)
-			return //success
-		}
-
-		log.Infof("Error reconnecting to peer %s: %s, Retrying %d/%d attemps", paddr, err, i, reconnectAttempts)
-	}
-	log.Errorf("Failed to reconnect to peer %s. Giving up. Elapsed %s", paddr, time.Since(start))
-}
-
-func (bb *Bulletin) Host() *host.Host {
-	return bb.h
-}
-
-func randomSleep(interval time.Duration) {
-	r := time.Duration(rand.Int63n(dialRandomizerIntervalMilliseconds)) * time.Millisecond
-	time.Sleep(r + interval)
 }

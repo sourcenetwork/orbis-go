@@ -82,7 +82,7 @@ func (r *Ring) ReencryptSecret(ctx context.Context, rdrPk crypto.PublicKey, sid 
 				log.Errorf("new transport message for reencrypt request: %w", err)
 			}
 
-			if n.ID() == r.Transport.Host().ID() {
+			if n.ID() == r.Transport.ID() {
 				r.preReqMsg <- msg
 				return
 			}
@@ -171,7 +171,7 @@ func (r *Ring) handleReencryptRequest(msg *transport.Message) error {
 
 	var origNode types.Node
 	for _, n := range r.nodes {
-		if n.ID() == msg.NodeId {
+		if n.ID().String() == msg.NodeId {
 
 			origNode = n
 			break
@@ -186,7 +186,7 @@ func (r *Ring) handleReencryptRequest(msg *transport.Message) error {
 		return fmt.Errorf("new transport message for reencrypt request: %w", err)
 	}
 
-	if origNode.ID() == r.Transport.Host().ID() {
+	if origNode.ID() == r.Transport.ID() {
 		log.Info("handling PRE request: sending response to ourselves")
 		r.preReqMsg <- msg
 		return nil

@@ -21,9 +21,7 @@ import (
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin/memmap"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	"github.com/sourcenetwork/orbis-go/pkg/db"
-	"github.com/sourcenetwork/orbis-go/pkg/host"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
-	p2ptransport "github.com/sourcenetwork/orbis-go/pkg/transport/p2p"
 	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
 
@@ -107,16 +105,16 @@ func randomNodeFromPublicKey(pubkey crypto.PublicKey) transport.Node {
 	if err != nil {
 		panic(err)
 	}
-	return p2ptransport.NewNode(pid.String(), pubkey, addr)
+	return types.NewNode(pid, addr, pubkey)
 }
 
-func newP2PHost(ctx context.Context) *host.Host {
+func newP2PHost(ctx context.Context) transport.Transport {
 	defaultHost, err := config.Default[config.Host]()
 	if err != nil {
 		panic(err)
 	}
 	defaultHost.Crypto.Seed = 1
-	h, err := host.New(ctx, defaultHost)
+	h, err := transport.NewHost(ctx, defaultHost)
 	if err != nil {
 		panic(err)
 	}
@@ -126,7 +124,7 @@ func newP2PHost(ctx context.Context) *host.Host {
 func newBasicDKG(t *testing.T, ctx context.Context) (*dkg, crypto.PrivateKey) {
 	d := newTestDB(t)
 	h := newP2PHost(ctx)
-	tp, err := p2ptransport.New(ctx, h, config.Transport{})
+	tp, err := transport.NewHost(ctx, config.Host{})
 	if err != nil {
 		panic(err)
 	}
@@ -141,10 +139,7 @@ func newBasicDKG(t *testing.T, ctx context.Context) (*dkg, crypto.PrivateKey) {
 	dkg, err := New(d, rkeys, tp, b)
 	require.NoError(t, err)
 
-	lpriv := h.Peerstore().PrivKey(h.ID())
-	require.NotNil(t, lpriv)
-
-	cpriv, err := crypto.PrivateKeyFromLibP2P(lpriv)
+	cpriv, err := h.PrivateKey()
 	require.NoError(t, err)
 	pub := cpriv.GetPublic()
 

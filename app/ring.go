@@ -24,7 +24,6 @@ import (
 	"github.com/sourcenetwork/orbis-go/pkg/pre/elgamal"
 	"github.com/sourcenetwork/orbis-go/pkg/pss"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
-	p2ptransport "github.com/sourcenetwork/orbis-go/pkg/transport/p2p"
 	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
 
@@ -229,7 +228,7 @@ func (app *App) joinRing(ctx context.Context, manifest *ringv1alpha1.Manifest, f
 	// todo: Unify these nodes and the tpNodes for the DKG
 	nodes := make([]types.Node, len(tpNodes))
 	for i, n := range tpNodes {
-		nodes[i] = *types.NewNode(i, n.ID(), n.Address(), n.PublicKey())
+		nodes[i] = *types.NewNode(n.ID(), n.Address(), n.PublicKey())
 	}
 
 	err = preSrv.Init(rid, manifest.N, manifest.T)
@@ -319,7 +318,7 @@ func nodesFromIDs(nodes []*ringv1alpha1.Node) ([]transport.Node, error) {
 			return nil, fmt.Errorf("invalid address: %w", err)
 		}
 
-		node := p2ptransport.NewNode(n.Id, key, addr)
+		node := types.NewNode(id, addr, key)
 		tNodes = append(tNodes, node)
 	}
 

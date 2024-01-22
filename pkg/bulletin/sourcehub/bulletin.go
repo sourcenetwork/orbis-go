@@ -15,7 +15,6 @@ import (
 	gossipbulletinv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/gossipbulletin/v1alpha1"
 	transportv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/transport/v1alpha1"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
-	"github.com/sourcenetwork/orbis-go/pkg/host"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
 
 	"github.com/sourcenetwork/sourcehub/x/bulletin/types"
@@ -46,7 +45,7 @@ type Bulletin struct {
 	bus       eventbus.Bus
 }
 
-func New(ctx context.Context, host *host.Host, cfg config.Bulletin) (*Bulletin, error) {
+func New(ctx context.Context, host transport.Transport, cfg config.Bulletin) (*Bulletin, error) {
 
 	bb := &Bulletin{
 		ctx: ctx,

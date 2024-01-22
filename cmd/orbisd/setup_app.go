@@ -18,33 +18,26 @@ import (
 	"github.com/sourcenetwork/orbis-go/pkg/did"
 	"github.com/sourcenetwork/orbis-go/pkg/dkg"
 	"github.com/sourcenetwork/orbis-go/pkg/dkg/rabin"
-	"github.com/sourcenetwork/orbis-go/pkg/host"
 	"github.com/sourcenetwork/orbis-go/pkg/pre"
 	"github.com/sourcenetwork/orbis-go/pkg/pre/elgamal"
 	"github.com/sourcenetwork/orbis-go/pkg/pss"
 	"github.com/sourcenetwork/orbis-go/pkg/pss/avpss"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
-	p2ptp "github.com/sourcenetwork/orbis-go/pkg/transport/p2p"
 )
 
 func setupApp(ctx context.Context, cfg config.Config) (*app.App, error) {
 
-	host, err := host.New(ctx, cfg.Host)
-	if err != nil {
-		return nil, fmt.Errorf("create host: %w", err)
-	}
-
-	tp, err := p2ptp.New(ctx, host, cfg.Transport)
+	tp, err := transport.NewHost(ctx, cfg.Host)
 	if err != nil {
 		return nil, fmt.Errorf("create transport: %w", err)
 	}
 
-	bb, err := p2pbb.New(ctx, host, cfg.Bulletin)
+	bb, err := p2pbb.New(ctx, tp, cfg.Bulletin)
 	if err != nil {
 		return nil, fmt.Errorf("create p2p bulletin: %w", err)
 	}
 
-	hubbb, err := sourcehub.New(ctx, host, cfg.Bulletin)
+	hubbb, err := sourcehub.New(ctx, tp, cfg.Bulletin)
 	if err != nil {
 		return nil, fmt.Errorf("create sourcehub bulletin: %w", err)
 	}
@@ -87,7 +80,7 @@ func setupApp(ctx context.Context, cfg config.Config) (*app.App, error) {
 		app.WithDBData(cfg.DB.Path),
 	}
 
-	app, err := app.New(ctx, host, opts...)
+	app, err := app.New(ctx, tp, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("create app: %w", err)
 	}

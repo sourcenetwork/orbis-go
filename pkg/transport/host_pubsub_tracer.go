@@ -1,4 +1,4 @@
-package host
+package transport
 
 import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -11,7 +11,6 @@ var _ pubsub.EventTracer = (*pubsubTracer)(nil)
 type pubsubTracer struct{}
 
 func (p *pubsubTracer) Trace(evt *pb.TraceEvent) {
-	// log.Debugf("PUBSUB EVENT TRACE: %s", evt.Type)
 	switch evt.Type.String() {
 	case pb.TraceEvent_DELIVER_MESSAGE.String():
 		pid := peer.ID(string(evt.DeliverMessage.ReceivedFrom))

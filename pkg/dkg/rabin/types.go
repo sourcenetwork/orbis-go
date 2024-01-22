@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	ic "github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	ma "github.com/multiformats/go-multiaddr"
 	"go.dedis.ch/kyber/v3"
@@ -18,7 +19,6 @@ import (
 	"github.com/sourcenetwork/orbis-go/pkg/crypto/suites/secp256k1"
 	"github.com/sourcenetwork/orbis-go/pkg/db"
 	orbisdkg "github.com/sourcenetwork/orbis-go/pkg/dkg"
-	p2ptransport "github.com/sourcenetwork/orbis-go/pkg/transport/p2p"
 	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
 
@@ -252,7 +252,7 @@ func dkgToProto(d *dkg) (*rabinv1alpha1.DKG, error) {
 				return nil, fmt.Errorf("couldnt convert public key to proto: %w", err)
 			}
 			nodes[i] = &rabinv1alpha1.Node{
-				Id:        p.ID(),
+				Id:        p.ID().String(),
 				Address:   p.Address().String(),
 				PublicKey: pk,
 			}
@@ -378,15 +378,20 @@ func dkgFromProto(d *rabinv1alpha1.DKG) (dkg, error) {
 
 	participants := make([]orbisdkg.Node, len(d.Nodes))
 	for i, n := range d.Nodes {
-		pk, err := ic.PublicKeyFromProto(n.PublicKey)
+		pk, err := crypto.PublicKeyFromProto(n.PublicKey)
 		if err != nil {
 			return dkg{}, fmt.Errorf("couldnt convert proto to public key: %w", err)
 		}
+
 		addr, err := ma.NewMultiaddr(n.Address)
 		if err != nil {
 			return dkg{}, fmt.Errorf("invalid address: %w", err)
 		}
-		participants[i] = p2ptransport.NewNode(n.Id, pk, addr)
+		id, err := peer.Decode(n.Id)
+		if err != nil {
+			return dkg{}, fmt.Errorf("invalid peer id: %w", err)
+		}
+		participants[i] = types.NewNode(id, addr, pk)
 	}
 
 	// pubkey

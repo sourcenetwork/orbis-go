@@ -15,8 +15,6 @@ type Config struct {
 	Host      Host
 	DKG       DKG
 	Logger    Logger
-	Ring      Ring
-	Secret    Secret
 	Transport Transport
 	Bulletin  Bulletin
 	DB        DB
@@ -47,20 +45,11 @@ type DKG struct {
 	Bulletin  string `default:"p2pbb" description:"DKG Bulletin"`
 }
 
-type Ring struct {
-}
-
-type Secret struct {
-}
-
 type Transport struct {
-	Rendezvous string `default:"orbis-transport" description:"Rendezvous string"`
 }
 
 type Bulletin struct {
 	P2P struct {
-		PersistentPeers string `default:"" description:"comma seperated list of persistent peer multiaddrs"`
-		Rendezvous      string `default:"orbis-bulletin" description:"Rendezvous string"`
 	}
 	SourceHub struct {
 		AccountName   string `default:"alice" description:"Account name"`
@@ -78,8 +67,7 @@ type Host struct {
 		Seed int    `default:"0" description:"crypto seed"`
 	}
 	ListenAddresses []string `default:"/ip4/0.0.0.0/tcp/9000" description:"Host listen address string"`
-	BootstrapPeers  []string `mapstructure:"bootstrap_peers" default:"" description:"Comma separated multiaddr strings of bootstrap peers. If empty, the node will run in bootstrap mode"`
-	// Rendezvous      string   `default:"orbis" description:"Rendezvous string"`
+	PersistentPeers []string `default:"" description:"Comma separated multiaddr strings of bootstrap peers."`
 }
 
 type DB struct {
@@ -87,7 +75,7 @@ type DB struct {
 }
 
 type configTypes interface {
-	Host | DB | Bulletin | Transport | Secret | Ring | DKG | GRPC | Logger
+	Host | DB | Bulletin | Transport | DKG | GRPC | Logger
 }
 
 func Default[T configTypes]() (T, error) {
@@ -135,33 +123,27 @@ func traverseAndBuildDefault(v reflect.Value) error {
 				return fmt.Errorf("parseBool: %q, %w", val, err)
 			}
 		case reflect.String:
-			// cmd.Flags().String(snake, val, desc)
 			defaultValue = val
 		case reflect.Int:
 			defaultValue, err = strconv.Atoi(val)
 			if err != nil {
 				return fmt.Errorf("parseBool: %q, %w", val, err)
 			}
-			// cmd.Flags().Int(snake, parsed, desc)
 		case reflect.Uint:
 			defaultValue, err = strconv.ParseUint(val, 10, 64)
 			if err != nil {
 				return fmt.Errorf("parseBool: %q, %w", val, err)
 			}
-			// cmd.Flags().Uint(snake, uint(parsed), desc)
 		case reflect.Float64:
 			defaultValue, err = strconv.ParseFloat(val, 64)
 			if err != nil {
 				return fmt.Errorf("parseBool: %q, %w", val, err)
 			}
-			// cmd.Flags().Float64(snake, parsed, desc)
 		case reflect.Slice:
-			// TODO: support other slice types.
 			elmType := f.Type().Elem().Kind()
 			if elmType != reflect.String {
 				return fmt.Errorf("unsupported slice type: %q, for entry: %q", elmType, name)
 			}
-			// cmd.Flags().StringSlice(snake, strings.Split(val, ","), desc)
 			defaultValue = strings.Split(val, ",")
 		default:
 			return fmt.Errorf("unsupported type: %q, for entry: %q", kind, name)

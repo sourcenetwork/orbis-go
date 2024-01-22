@@ -15,7 +15,6 @@ import (
 	"github.com/sourcenetwork/eventbus-go"
 	"github.com/sourcenetwork/orbis-go/config"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
-	"github.com/sourcenetwork/orbis-go/pkg/host"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
 	"github.com/sourcenetwork/orbis-go/pkg/types"
 )
@@ -30,27 +29,27 @@ func newMessage(bb *Bulletin, rid string, typ string, buf []byte) (*transport.Me
 		return nil, fmt.Errorf("cid from bytes: %w", err)
 	}
 
-	msg, err := bb.h.NewMessage(types.RingID(rid), cid.String(), false, buf, typ)
+	msg, err := bb.h.NewMessage(types.RingID(rid), cid.String(), false, buf, typ, nil)
 	return msg, err
 }
 
-func newDefaultP2PHost(t *testing.T, ctx context.Context) *host.Host {
+func newDefaultP2PHost(t *testing.T, ctx context.Context) transport.Transport {
 	defaultHost, err := config.Default[config.Host]()
 	require.NoError(t, err)
 
 	defaultHost.Crypto.Seed = 1
-	h, err := host.New(ctx, defaultHost)
+	h, err := transport.NewHost(ctx, defaultHost)
 	require.NoError(t, err)
 	return h
 }
 
-func newRandomP2PHost(t *testing.T, ctx context.Context) *host.Host {
+func newRandomP2PHost(t *testing.T, ctx context.Context) transport.Transport {
 	defaultHost, err := config.Default[config.Host]()
 	require.NoError(t, err)
 	// 0 port will result in random
 	defaultHost.ListenAddresses = []string{"/ip4/0.0.0.0/tcp/0"}
 
-	h, err := host.New(ctx, defaultHost)
+	h, err := transport.NewHost(ctx, defaultHost)
 	require.NoError(t, err)
 	return h
 }
@@ -82,7 +81,7 @@ func TestMultipleBulletinNetworkConnections(t *testing.T) {
 
 	cfg1, err := config.Default[config.Bulletin]()
 	require.NoError(t, err)
-	addr := h0.Addrs()[0]
+	addr := h0.Address()
 	cfg1.P2P.PersistentPeers = fmt.Sprintf("%s/p2p/%s", addr, h0.ID())
 
 	bb1, err := New(ctx, h1, cfg1)
@@ -141,7 +140,7 @@ func setupTestBulletins(t *testing.T, ctx context.Context) (*Bulletin, *Bulletin
 
 	cfg1, err := config.Default[config.Bulletin]()
 	require.NoError(t, err)
-	addr := h0.Addrs()[0]
+	addr := h0.Address()
 	cfg1.P2P.PersistentPeers = fmt.Sprintf("%s/p2p/%s", addr, h0.ID())
 
 	bb1, err := New(ctx, h1, cfg1)

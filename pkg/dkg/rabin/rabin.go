@@ -324,9 +324,6 @@ func (d *dkg) Start(ctx context.Context) error {
 	defer d.mu.Unlock()
 
 	log.Debug("Starting rabin DKG")
-
-	d.connectToPeers(ctx)
-
 	log.Debug("Generating and persisting deals")
 
 	deals, err := d.rdkg.Deals()
@@ -369,37 +366,6 @@ func (d *dkg) Start(ctx context.Context) error {
 	go d.dispatch()
 
 	return nil
-}
-
-func (d *dkg) connectToPeers(ctx context.Context) {
-	wg := sync.WaitGroup{}
-
-	for _, p := range d.participants {
-		if p.ID() == d.NodeID() {
-			continue
-		}
-		wg.Add(1)
-		go func(p transport.Node) {
-			defer wg.Done()
-
-			for {
-				ctx, cancel := context.WithTimeout(ctx, peerConnectTimeout)
-				defer cancel()
-
-				log.Debugf("trying to connect to: %v %v", p.ID(), p.Address())
-				err := d.transport.Connect(ctx, p)
-				if err != nil {
-					log.Debugf("Can't connect %s, retry in 2 sec", err)
-					time.Sleep(2 * time.Second)
-					continue
-				}
-				log.Infof("Connected to %s", p.ID())
-				break
-			}
-		}(p)
-	}
-
-	wg.Wait()
 }
 
 func (d *dkg) post(ctx context.Context, msgType string, msgID string, buf []byte, node transport.Node) error {
@@ -690,5 +656,5 @@ func (d *dkg) loadUnsafe(ctx context.Context) error {
 }
 
 func (d *dkg) NodeID() string {
-	return d.transport.Host().ID()
+	return d.transport.ID().String()
 }
