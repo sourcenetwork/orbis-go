@@ -77,3 +77,4 @@ Proxy Re-Encryption is a very powerful cryptographic primitive that allows one t
 
 ## Authors
 - John-Alan Simmons ([@jsimnz](https://github.com/jsimnz))
+- Roy Lee ([@roylee17](https://github.com/roylee17))
