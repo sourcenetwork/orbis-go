@@ -15,6 +15,7 @@ import (
 	"go.dedis.ch/kyber/v3/suites"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/sourcenetwork/eventbus-go"
 	rabinv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/rabin/v1alpha1"
 	"github.com/sourcenetwork/orbis-go/pkg/bulletin"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
@@ -28,7 +29,10 @@ var log = logging.Logger("orbis/dkg/rabin")
 
 const name = "rabin"
 
-const peerConnectTimeout = time.Second * 5
+const (
+	peerConnectTimeout     = time.Second * 5
+	bulletinBacklogTimeout = time.Second * 5
+)
 
 type dkg struct {
 	mu sync.Mutex
@@ -72,6 +76,7 @@ type dkg struct {
 	bulletin  bulletin.Bulletin
 
 	bbnamespace string
+	eventsCh    eventbus.Subscription[bulletin.Event]
 
 	state orbisdkg.State
 }
@@ -254,10 +259,47 @@ func (d *dkg) initCommon(ctx context.Context) error {
 
 	d.bbnamespace = fmt.Sprintf("/ring/%s/dkg/rabin", string(d.ringID))
 	err := d.bulletin.Register(ctx, d.bbnamespace)
+	if err != nil {
+		return err
+	}
 	// TODO: remove this sleep
 	// time.Sleep(3 * time.Second)
 	log.Infof("registered to namespace %s", d.bbnamespace)
-	return err
+
+	return d.queryBulletinBacklog(ctx)
+}
+
+// queryBulletinBacklog will run a query on the backlog on the
+// ring dkg bulletin namespace for any missed messages that were
+// posted before we joined. This happens because nodes will
+// post all their deals straight away and wait until they recieve
+// all their peer deals. But if a node joins late, they will have
+// missed these deal messages.
+//
+// Note: The bulletin internal cache has automatic deduplication
+// so theres no need to worry about duplicate messages
+func (d *dkg) queryBulletinBacklog(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, bulletinBacklogTimeout)
+	defer cancel()
+
+	log.Info("Querying for missed bulletin messages")
+	// TODO: Add time cutoff for a query as an optional parameter
+	resps, err := d.bulletin.Query(ctx, d.bbnamespace+"*")
+	for resp := range resps {
+		if resp.Err != nil {
+			return fmt.Errorf("bulletin query response: %w", err)
+		}
+
+		evt := bulletin.Event{
+			Message: resp.Resp.Data,
+			ID:      resp.Resp.ID,
+		}
+
+		log.Debugf("bulletin query event from %s for %s", evt.Message.NodeId, evt.Message.TargetId)
+		d.eventsCh <- evt
+	}
+	log.Info("Finished bulletin query backlog")
+	return nil
 }
 
 func (d *dkg) Name() string {
@@ -283,7 +325,12 @@ func (d *dkg) Start(ctx context.Context) error {
 
 	log.Debug("Starting rabin DKG")
 
-	// connecting to peers (if possible)
+	// connecting to peers (if possible)\
+	// for _, p := range d.participants {
+	// 	ctx, cancel := context.WithTimeout(ctx, peerConnectTimeout)
+	// 	_ = d.transport.Connect(ctx, p)
+	// 	cancel()
+	// }
 	d.connectToPeers(ctx)
 
 	log.Debug("Generating and persisting deals")
@@ -345,6 +392,7 @@ func (d *dkg) connectToPeers(ctx context.Context) {
 				ctx, cancel := context.WithTimeout(ctx, peerConnectTimeout)
 				defer cancel()
 
+				log.Debugf("trying to connect to: %v %v", p.ID(), p.Address())
 				err := d.transport.Connect(ctx, p)
 				if err != nil {
 					log.Debugf("Can't connect %s, retry in 2 sec", err)
@@ -402,6 +450,7 @@ func (d *dkg) ProcessMessage(msg *transport.Message) error {
 		if err != nil {
 			return fmt.Errorf("dispatch deal message: %w", err)
 		}
+		log.Debug("successfully dispatched deal from: %s", protoDeal.NodeId)
 
 	case ResponseNamespace:
 		log.Debugf("dkg.ProcessMessage() ProtocolResponse: id: %s - started", msg.Id)
@@ -460,6 +509,7 @@ func (d *dkg) dispatch() {
 	if err != nil {
 		log.Fatalf("failed to save DKG state: %w", err)
 	}
+	log.Debug("Processed all deals, moving to responses")
 
 	// processResponses
 	for i := 0; i < d.numExpectedResponses() && d.state < PROCESSED_RESPONSES; i++ {
@@ -473,6 +523,7 @@ func (d *dkg) dispatch() {
 	if err != nil {
 		log.Fatalf("failed to save DKG state: %w", err)
 	}
+	log.Debug("Processed all responses, moving to secrets")
 
 	// processSecrets
 	for i := 0; i < d.numExpectedCommits(); i++ {

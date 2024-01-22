@@ -199,6 +199,10 @@ func (bb *Bulletin) Post(ctx context.Context, id string, msg *transport.Message)
 	return resp, nil
 }
 
+func (bb *Bulletin) Peers(topic string) []peer.ID {
+	return bb.h.PubSub().ListPeers(topic)
+}
+
 func (bb *Bulletin) Read(ctx context.Context, id string) (bulletin.Response, error) {
 	// check if the read key is in our local store, otherwise ask the network
 	resp, err := bb.mem.Read(ctx, id)
@@ -266,9 +270,24 @@ func (bb *Bulletin) Read(ctx context.Context, id string) (bulletin.Response, err
 	return resp, nil
 }
 
+type queryConfig struct {
+	timeout time.Time
+}
+
+type QueryOption func(*queryConfig) error
+
+func WithTimeFilter(t time.Time) QueryOption {
+	return func(q *queryConfig) error {
+		q.timeout = t
+		return nil
+	}
+}
+
 // Query
 // TODO? Options for enable/disable net query?
 func (bb *Bulletin) Query(ctx context.Context, query string) (<-chan bulletin.QueryResponse, error) {
+	// q := &queryConfig{}
+
 	if query == "" {
 		return nil, fmt.Errorf("query can't be empty")
 	}
@@ -482,10 +501,7 @@ func (bb *Bulletin) topicMessageHandler(from peer.ID, topic string, msg []byte) 
 func (b *Bulletin) maintainPeers(ctx context.Context) {
 	go func() {
 		for _, p := range b.persistentPeers {
-			err := b.h.Connect(ctx, p)
-			if err != nil {
-				log.Warnf("Error connecting to persistent peer: %s", err)
-			}
+			go b.reconnectToPeer(ctx, p)
 		}
 	}()
 
@@ -511,7 +527,8 @@ func (b *Bulletin) maintainPeers(ctx context.Context) {
 				continue
 			}
 
-			go b.reconnectToPeer(ctx, evt.Peer)
+			paddr := b.persistentPeers[evt.Peer]
+			go b.reconnectToPeer(ctx, paddr)
 
 		case <-ctx.Done():
 			return
@@ -519,21 +536,21 @@ func (b *Bulletin) maintainPeers(ctx context.Context) {
 	}
 }
 
-func (b *Bulletin) reconnectToPeer(ctx context.Context, pid peer.ID) {
-	if _, ok := b.reonnecting.Load(pid.String()); ok {
+func (b *Bulletin) reconnectToPeer(ctx context.Context, paddr peer.AddrInfo) {
+	if _, ok := b.reonnecting.Load(paddr.ID.String()); ok {
+		log.Debug("duplicate peer maintainence goroutine", paddr.ID)
 		return
 	}
 
-	b.reonnecting.Store(pid.String(), struct{}{})
-	defer b.reonnecting.Delete(pid.String())
-
-	paddr := b.persistentPeers[pid]
+	b.reonnecting.Store(paddr.ID.String(), struct{}{})
+	defer b.reonnecting.Delete(paddr.ID.String())
 
 	start := time.Now()
 	log.Infof("Reconnecting to peer %s", paddr)
 	for i := 0; i < reconnectAttempts; i++ {
 		select {
 		case <-ctx.Done():
+			log.Debug("peer maintainence goroutine context finished", paddr.ID)
 			return
 		default:
 			// noop fallthrough
@@ -541,6 +558,7 @@ func (b *Bulletin) reconnectToPeer(ctx context.Context, pid peer.ID) {
 
 		err := b.h.Connect(ctx, paddr)
 		if err == nil {
+			log.Infof("reconnected to peer %s during regular backoff", paddr.ID)
 			return //success
 		}
 
@@ -563,6 +581,7 @@ func (b *Bulletin) reconnectToPeer(ctx context.Context, pid peer.ID) {
 
 		err := b.h.Connect(ctx, paddr)
 		if err == nil {
+			log.Infof("reconnected to peer %s during exponential backoff", paddr.ID)
 			return //success
 		}
 
