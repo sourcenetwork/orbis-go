@@ -17,13 +17,14 @@ import (
 
 func (d *dkg) setupHandlers() error {
 	bus := d.bulletin.Events()
-	subCh, err := eventbus.Subscribe[bulletin.Event](bus)
+	var err error
+	d.eventsCh, err = eventbus.Subscribe[bulletin.Event](bus)
 	if err != nil {
 		return err
 	}
 
 	go func() {
-		for evt := range subCh {
+		for evt := range d.eventsCh {
 			log.Debugf("recieved eventbus on %s from %s for %s (%s)", d.transport.Host().ID(), evt.Message.NodeId, evt.Message.TargetId, evt.Message.GetType())
 			if evt.Message.TargetId != d.transport.Host().ID() {
 				log.Debugf("ignoring bulletin event not for us")
@@ -39,6 +40,7 @@ func (d *dkg) setupHandlers() error {
 			}(evt)
 		}
 	}()
+
 	return nil
 }
 
@@ -153,6 +155,7 @@ func (d *dkg) processSecretCommits(sc *rabindkg.SecretCommits) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
+	log.Debugf("Node %d processing secret commits", d.index)
 	_, err := d.rdkg.ProcessSecretCommits(sc)
 	if err != nil {
 		return fmt.Errorf("process rabin dkg secret commits: %w", err)
@@ -182,7 +185,6 @@ func (d *dkg) processSecretCommits(sc *rabindkg.SecretCommits) error {
 	d.state = orbisdkg.CERTIFIED
 
 	log.Infof("Node %d finished setup with shared publick Key: %s", d.index, d.pubKey)
-
 	return d.save(context.TODO())
 }
 
