@@ -11,6 +11,7 @@ import (
 	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/ring/v1alpha1"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto/proof"
+	"github.com/sourcenetwork/orbis-go/pkg/dkg"
 	"github.com/sourcenetwork/orbis-go/pkg/pre"
 	"github.com/sourcenetwork/orbis-go/pkg/pre/elgamal"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
@@ -305,6 +306,10 @@ func (r *Ring) doProcessReencrypt(req *ringv1alpha1.ReencryptSecretRequest) (*ri
 	scrt, err := r.GetSecret(context.TODO(), req.SecretId)
 	if err != nil {
 		return nil, fmt.Errorf("get secret: %w", err)
+	}
+
+	if r.DKG.State() != dkg.CERTIFIED.String() {
+		return nil, fmt.Errorf("dkg not certified yet: %s", r.DKG.State())
 	}
 
 	share := r.DKG.Share()

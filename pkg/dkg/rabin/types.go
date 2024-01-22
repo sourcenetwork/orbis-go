@@ -36,10 +36,10 @@ var (
 	ErrMissingRepoKeys = fmt.Errorf("missing repo keys")
 
 	stateToString = map[orbisdkg.State]string{
-		orbisdkg.UNSPECIFIED: "Unspecified",
-		orbisdkg.STARTED:     "Started",
-		orbisdkg.INITIALIZED: "Initialized",
-		orbisdkg.CERTIFIED:   "Certified",
+		orbisdkg.UNSPECIFIED: orbisdkg.UNSPECIFIED.String(),
+		orbisdkg.STARTED:     orbisdkg.STARTED.String(),
+		orbisdkg.INITIALIZED: orbisdkg.INITIALIZED.String(),
+		orbisdkg.CERTIFIED:   orbisdkg.CERTIFIED.String(),
 		RECIEVING:            "Receiving Deals",
 		PROCESSED_DEALS:      "Processed Deals",
 		PROCESSED_RESPONSES:  "Processed Reponses",
