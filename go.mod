@@ -17,8 +17,8 @@ require (
 	github.com/golang/protobuf v1.5.3
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.1
 	github.com/ignite/cli/v28 v28.1.0
-	github.com/ipfs/boxo v0.15.0
 	github.com/ipfs/go-cid v0.4.1
+	github.com/ipfs/go-ipfs-util v0.0.3
 	github.com/ipfs/go-log v1.0.5
 	github.com/libp2p/go-libp2p v0.32.1
 	github.com/libp2p/go-libp2p-kad-dht v0.25.1
@@ -110,7 +110,6 @@ require (
 	github.com/flynn/noise v1.0.0 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
-	github.com/fxamacker/cbor/v2 v2.4.0 // indirect
 	github.com/getsentry/sentry-go v0.25.0 // indirect
 	github.com/go-kit/kit v0.12.0 // indirect
 	github.com/go-kit/log v0.2.1 // indirect
@@ -161,9 +160,9 @@ require (
 	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/improbable-eng/grpc-web v0.15.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/ipfs/boxo v0.15.0 // indirect
 	github.com/ipfs/go-block-format v0.2.0 // indirect
 	github.com/ipfs/go-datastore v0.6.0 // indirect
-	github.com/ipfs/go-ipfs-util v0.0.3 // indirect
 	github.com/ipfs/go-ipld-cbor v0.1.0 // indirect
 	github.com/ipfs/go-ipld-format v0.6.0 // indirect
 	github.com/ipfs/go-log/v2 v2.5.1 // indirect
@@ -305,5 +304,4 @@ replace (
 	github.com/sourcenetwork/go-libp2p-pubsub-rpc => github.com/sourcenetwork/go-libp2p-pubsub-rpc v0.0.0-20230729092549-3be5c22247d3
 	github.com/sourcenetwork/sourcehub v0.1.0 => github.com/sourcenetwork/sourcehub v0.1.1-0.20240117195201-e28eb4200bb2
 	go.dedis.ch/kyber/v3 => github.com/sourcenetwork/kyber/v3 v3.1.1-0.20230726113421-a4ed13f7d481
-	github.com/sourcenetwork/zanzi => ../zanzi
 )

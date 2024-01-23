@@ -57,7 +57,9 @@ func setup(ctx context.Context, z *zanziGRPC) error {
 	// Create Policy
 	createResponse, err := z.policyClient.CreatePolicy(ctx, &api.CreatePolicyRequest{
 		PolicyDefinition: &api.PolicyDefinition{
-			PolicyYaml: policyYaml,
+			Definition: &api.PolicyDefinition_PolicyYaml{
+				PolicyYaml: policyYaml,
+			},
 		},
 	})
 	if err != nil {
