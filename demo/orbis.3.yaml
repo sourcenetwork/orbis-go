@@ -22,7 +22,7 @@ bulletin:
     persistentPeers: "/dns4/orbisd1/tcp/9001/p2p/12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqu"
   sourcehub:
     accountName: "validator3"
-    addressPrefix: "cosmos"
+    addressPrefix: "source"
     fees: "30stake"
     nodeAddress: "http://host.docker.internal:26657"
     rpcAddress: "tcp://host.docker.internal:26657"
