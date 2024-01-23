@@ -284,7 +284,15 @@ func (d *dkg) queryBulletinBacklog(ctx context.Context) error {
 
 	log.Info("Querying for missed bulletin messages")
 	// TODO: Add time cutoff for a query as an optional parameter
-	resps, err := d.bulletin.Query(ctx, d.bbnamespace+"*")
+	resps, err := d.bulletin.Query(ctx, d.bbnamespace, "*")
+	if err != nil {
+		return err
+	}
+	if resps == nil {
+		log.Info("No results from bulletin query")
+		return nil
+	}
+
 	for resp := range resps {
 		if resp.Err != nil {
 			return fmt.Errorf("bulletin query response: %w", err)
@@ -361,8 +369,8 @@ func (d *dkg) Start(ctx context.Context) error {
 			return fmt.Errorf("marshal deal: %w", err)
 		}
 
-		msgID := fmt.Sprintf("%s/%s/%s/%s", d.bbnamespace, DealNamespace, d.NodeID(), d.participants[i].ID())
-		err = d.post(ctx, DealNamespace, msgID, buf, d.participants[i])
+		msgID := fmt.Sprintf("/%s/%s/%s", DealNamespace, d.NodeID(), d.participants[i].ID())
+		err = d.post(ctx, DealNamespace, d.bbnamespace, msgID, buf, d.participants[i])
 		if err != nil {
 			return fmt.Errorf("send deal: %w", err)
 		}
@@ -408,7 +416,7 @@ func (d *dkg) connectToPeers(ctx context.Context) {
 	wg.Wait()
 }
 
-func (d *dkg) post(ctx context.Context, msgType string, msgID string, buf []byte, node transport.Node) error {
+func (d *dkg) post(ctx context.Context, msgType, namespace, msgID string, buf []byte, node transport.Node) error {
 	cid, err := types.CidFromBytes(buf)
 	if err != nil {
 		return fmt.Errorf("cid from bytes: %w", err)
@@ -420,7 +428,7 @@ func (d *dkg) post(ctx context.Context, msgType string, msgID string, buf []byte
 	}
 	log.Debugf("dkg.send() node id: %s, addr: %s", node.ID(), node.Address())
 
-	_, err = d.bulletin.Post(ctx, msgID, msg)
+	_, err = d.bulletin.Post(ctx, namespace, msgID, msg)
 	if err != nil {
 		return fmt.Errorf("dkg bulletin post: %w", err)
 	}

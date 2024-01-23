@@ -80,8 +80,8 @@ func (d *dkg) processDeal(deal *rabindkg.Deal) error {
 		forNodeID1 := d.participants[response.Index].ID()
 		// forNodeID2 := d.participants[response.Target].ID()
 		log.Debugf("creating identifier from %s to %s for %s", d.NodeID(), node.ID(), forNodeID1)
-		msgID := fmt.Sprintf("%s/%s/%s/%s/%s", d.bbnamespace, ResponseNamespace, d.NodeID(), node.ID(), forNodeID1)
-		if err := d.post(ctx, ResponseNamespace, msgID, buf, node); err != nil {
+		msgID := fmt.Sprintf("/%s/%s/%s/%s", ResponseNamespace, d.NodeID(), node.ID(), forNodeID1)
+		if err := d.post(ctx, ResponseNamespace, d.bbnamespace, msgID, buf, node); err != nil {
 			return fmt.Errorf("send response: %w", err)
 		}
 	}
@@ -141,8 +141,8 @@ func (d *dkg) processResponse(resp *rabindkg.Response) error {
 		forNodeID1 := d.participants[sc.Index].ID()
 		// forNodeID2 := d.participants[response.Target].ID()
 		log.Debugf("Node %d sending secret commits to pariticipant %d", d.index, i)
-		msgID := fmt.Sprintf("%s/%s/%s/%s/%s", d.bbnamespace, SecretCommitsNamespace, d.NodeID(), d.participants[i].ID(), forNodeID1)
-		err := d.post(context.TODO(), SecretCommitsNamespace, msgID, buf, node)
+		msgID := fmt.Sprintf("/%s/%s/%s/%s", SecretCommitsNamespace, d.NodeID(), d.participants[i].ID(), forNodeID1)
+		err := d.post(context.TODO(), SecretCommitsNamespace, d.bbnamespace, msgID, buf, node)
 		if err != nil {
 			return fmt.Errorf("send secret commits: %w", err)
 		}

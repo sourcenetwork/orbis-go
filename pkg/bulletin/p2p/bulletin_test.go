@@ -67,10 +67,17 @@ func TestNewBulletin(t *testing.T) {
 }
 
 func TestMultipleBulletinNetworkConnections(t *testing.T) {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	// ctx := context.Background()
 	h0 := newDefaultP2PHost(t, ctx)
 	h1 := newRandomP2PHost(t, ctx)
 	h2 := newRandomP2PHost(t, ctx)
+	defer func() {
+		h0.Close()
+		h1.Close()
+		h2.Close()
+		cancel()
+	}()
 
 	// bulletin setup
 	cfg0, err := config.Default[config.Bulletin]()
@@ -116,17 +123,33 @@ func TestMultipleBulletinNetworkConnections(t *testing.T) {
 	require.Len(t, bb1.h.PubSub().GetTopics(), 2)
 	require.Len(t, bb1.h.PubSub().GetTopics(), 2)
 
-	peers := []peer.ID{h2.ID(), h1.ID()}
+	peers := []string{h2.ID().String(), h1.ID().String()}
 	sort.Slice(peers, func(i, j int) bool {
-		return strings.Compare(peers[i].String(), peers[j].String()) < 0
+		return strings.Compare(peers[i], peers[j]) < 0
 	})
 
-	require.Equal(t, bb0.h.PubSub().ListPeers(ringTopic), peers)
-	require.Equal(t, bb1.h.PubSub().ListPeers(ringTopic), []peer.ID{h0.ID()})
-	require.Equal(t, bb2.h.PubSub().ListPeers(ringTopic), []peer.ID{h0.ID()})
+	fmt.Println("sorted peers:", peers)
+	fmt.Println("bb0 peers:", bb0.h.PubSub().ListPeers(ringTopic))
+	actualPeers := peerIDsToStringSlice(bb0.h.PubSub().ListPeers(ringTopic))
+	sort.Slice(actualPeers, func(i, j int) bool {
+		return strings.Compare(actualPeers[i], actualPeers[j]) < 0
+	})
+	require.Equal(t, actualPeers, peers)
+	require.Equal(t, peerIDsToStringSlice(bb1.h.PubSub().ListPeers(ringTopic)), []string{h0.ID().String()})
+	require.Equal(t, peerIDsToStringSlice(bb2.h.PubSub().ListPeers(ringTopic)), []string{h0.ID().String()})
 }
 
-func setupTestBulletins(t *testing.T, ctx context.Context) (*Bulletin, *Bulletin, *Bulletin) {
+func peerIDsToStringSlice(pids []peer.ID) []string {
+	pidsStr := make([]string, len(pids))
+	for i, pid := range pids {
+		fmt.Println("pid to string:", pid.String())
+		pidsStr[i] = pid.String()
+	}
+	return pidsStr
+}
+
+func setupTestBulletins(t *testing.T, ctx context.Context) (*Bulletin, *Bulletin, *Bulletin, func()) {
+	ctx, ctxCancel := context.WithCancel(ctx)
 	h0 := newDefaultP2PHost(t, ctx)
 	h1 := newRandomP2PHost(t, ctx)
 	h2 := newRandomP2PHost(t, ctx)
@@ -159,12 +182,20 @@ func setupTestBulletins(t *testing.T, ctx context.Context) (*Bulletin, *Bulletin
 	// wait for the net connections
 	time.Sleep(2 * time.Second)
 
-	return bb0, bb1, bb2
+	cancel := func() {
+		h0.Close()
+		h1.Close()
+		h2.Close()
+		ctxCancel()
+	}
+
+	return bb0, bb1, bb2, cancel
 }
 
 func TestBulletinPostBroadcastLocalRead(t *testing.T) {
 	ctx := context.Background()
-	bb0, bb1, bb2 := setupTestBulletins(t, ctx)
+	bb0, bb1, bb2, cancel := setupTestBulletins(t, ctx)
+	defer cancel()
 
 	// test peer connections
 	require.Len(t, bb0.h.Network().Conns(), 2)
@@ -179,14 +210,14 @@ func TestBulletinPostBroadcastLocalRead(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	msgType := ringTopic + "/dkg/rabin"
+	msgType := "/dkg/rabin"
 	msgID := msgType + "/1"
 	msgBuf := []byte("helloworld")
 
 	msg, err := newMessage(bb0, ringID, msgType, msgBuf)
 	require.NoError(t, err)
 
-	resp, err := bb0.Post(ctx, msgID, msg)
+	resp, err := bb0.Post(ctx, ringTopic, msgID, msg)
 	require.NoError(t, err)
 	require.NotEmpty(t, resp)
 	require.Equal(t, ringID, resp.Data.RingId)
@@ -201,7 +232,7 @@ func TestBulletinPostBroadcastLocalRead(t *testing.T) {
 	// which will avoid the pubsub read request, and
 	// rely soley on the post request populating our
 	// local in-memory bulletin state
-	resp, err = bb1.mem.Read(ctx, msgID)
+	resp, err = bb1.mem.Read(ctx, ringTopic, msgID)
 	require.NoError(t, err)
 	require.NotEmpty(t, resp)
 	require.Equal(t, ringID, resp.Data.RingId)
@@ -212,7 +243,8 @@ func TestBulletinPostBroadcastLocalRead(t *testing.T) {
 
 func TestBulletinPostBroadcastPubSubRead(t *testing.T) {
 	ctx := context.Background()
-	bb0, bb1, bb2 := setupTestBulletins(t, ctx)
+	bb0, bb1, bb2, cancel := setupTestBulletins(t, ctx)
+	defer cancel()
 
 	ringID := "123"
 	ringTopic := "/ring/" + ringID
@@ -222,14 +254,14 @@ func TestBulletinPostBroadcastPubSubRead(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	msgType := ringTopic + "/dkg/rabin"
+	msgType := "/dkg/rabin"
 	msgID := msgType + "/1"
 	msgBuf := []byte("helloworld")
 
 	msg, err := newMessage(bb0, ringID, msgType, msgBuf)
 	require.NoError(t, err)
 
-	resp, err := bb0.Post(ctx, msgID, msg)
+	resp, err := bb0.Post(ctx, ringTopic, msgID, msg)
 	require.NoError(t, err)
 	require.NotEmpty(t, resp)
 	require.Equal(t, ringID, resp.Data.RingId)
@@ -243,7 +275,7 @@ func TestBulletinPostBroadcastPubSubRead(t *testing.T) {
 	// query the main store
 	// todo: probably need a better way to gurantee
 	// network read request
-	resp, err = bb1.Read(ctx, msgID)
+	resp, err = bb1.Read(ctx, ringTopic, msgID)
 	require.NoError(t, err)
 	require.NotEmpty(t, resp)
 	require.Equal(t, ringID, resp.Data.RingId)
@@ -254,7 +286,8 @@ func TestBulletinPostBroadcastPubSubRead(t *testing.T) {
 
 func TestBulletinPostBroadcastIndirectGossipRead(t *testing.T) {
 	ctx := context.Background()
-	bb0, bb1, bb2 := setupTestBulletins(t, ctx)
+	bb0, bb1, bb2, cancel := setupTestBulletins(t, ctx)
+	defer cancel()
 
 	ringID := "123"
 	ringTopic := "/ring/" + ringID
@@ -264,20 +297,20 @@ func TestBulletinPostBroadcastIndirectGossipRead(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	msgType := ringTopic + "/dkg/rabin"
+	msgType := "/dkg/rabin"
 	msgID := msgType + "/1"
 	msgBuf := []byte("helloworld")
 
-	msg, err := newMessage(bb1, ringID, msgType, msgBuf)
+	msg, err := newMessage(bb0, ringID, msgType, msgBuf)
 	require.NoError(t, err)
 
-	resp, err := bb1.Post(ctx, msgID, msg)
+	resp, err := bb0.Post(ctx, ringTopic, msgID, msg)
 	require.NoError(t, err)
 	require.NotEmpty(t, resp)
 	require.Equal(t, ringID, resp.Data.RingId)
 	require.Equal(t, msgBuf, resp.Data.Payload)
 	require.Equal(t, msgType, resp.Data.Type)
-	require.Equal(t, bb1.h.ID().String(), resp.Data.NodeId)
+	require.Equal(t, bb0.h.ID().String(), resp.Data.NodeId)
 
 	// WE ARE NOT WAITING FOR PUBSUB
 	//time.Sleep(2 * time.Second)
@@ -287,18 +320,19 @@ func TestBulletinPostBroadcastIndirectGossipRead(t *testing.T) {
 	// (at least initially), so were testing the gossip pubsub
 	// todo: probably need a better way to gurantee
 	// network read request
-	resp, err = bb2.Read(ctx, msgID)
+	resp, err = bb2.Read(ctx, ringTopic, msgID)
 	require.NoError(t, err)
 	require.NotEmpty(t, resp)
 	require.Equal(t, ringID, resp.Data.RingId)
 	require.Equal(t, msgBuf, resp.Data.Payload)
 	require.Equal(t, msgType, resp.Data.Type)
-	require.Equal(t, bb1.h.ID().String(), resp.Data.NodeId)
+	require.Equal(t, bb0.h.ID().String(), resp.Data.NodeId)
 }
 
 func TestBulletinEvents(t *testing.T) {
 	ctx := context.Background()
-	bb0, bb1, bb2 := setupTestBulletins(t, ctx)
+	bb0, bb1, bb2, cancel := setupTestBulletins(t, ctx)
+	defer cancel()
 
 	ringID := "123"
 	ringTopic := "/ring/" + ringID
@@ -310,13 +344,13 @@ func TestBulletinEvents(t *testing.T) {
 	bus := bb1.Events()
 	require.NotNil(t, bus)
 
-	subCh, err := eventbus.Subscribe[*transport.Message](bus)
+	subCh, err := eventbus.Subscribe[bulletin.Event](bus)
 	require.NoError(t, err)
 	require.NotNil(t, subCh)
 
 	time.Sleep(2 * time.Second)
 
-	msgType := ringTopic + "/dkg/rabin"
+	msgType := "/dkg/rabin"
 	msgID := msgType + "/1"
 	msgBuf := []byte("helloworld")
 
@@ -325,17 +359,17 @@ func TestBulletinEvents(t *testing.T) {
 	go func() {
 		data := <-subCh
 		require.NotEmpty(t, data)
-		require.Equal(t, ringID, data.RingId)
-		require.Equal(t, msgBuf, data.Payload)
-		require.Equal(t, msgType, data.Type)
-		require.Equal(t, bb0.h.ID().String(), data.NodeId)
+		require.Equal(t, ringID, data.Message.RingId)
+		require.Equal(t, msgBuf, data.Message.Payload)
+		require.Equal(t, msgType, data.Message.Type)
+		require.Equal(t, bb0.h.ID().String(), data.Message.NodeId)
 		doneCh <- struct{}{}
 	}()
 
 	msg, err := newMessage(bb0, ringID, msgType, msgBuf)
 	require.NoError(t, err)
 
-	resp, err := bb0.Post(ctx, msgID, msg)
+	resp, err := bb0.Post(ctx, ringTopic, msgID, msg)
 	require.NoError(t, err)
 	require.NotEmpty(t, resp)
 	require.Equal(t, ringID, resp.Data.RingId)
@@ -354,7 +388,8 @@ func TestBulletinEvents(t *testing.T) {
 
 func TestBulletinPostAndLocalQuery(t *testing.T) {
 	ctx := context.Background()
-	bb0, bb1, bb2 := setupTestBulletins(t, ctx)
+	bb0, bb1, bb2, cancel := setupTestBulletins(t, ctx)
+	defer cancel()
 
 	ringID := "123"
 	ringTopic := "/ring/" + ringID
@@ -364,14 +399,14 @@ func TestBulletinPostAndLocalQuery(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	msgType := ringTopic + "/dkg/rabin"
+	msgType := "/dkg/rabin"
 	msgID := msgType + "/1"
 	msgBuf := []byte("helloworld")
 
 	msg, err := newMessage(bb0, ringID, msgType, msgBuf)
 	require.NoError(t, err)
 
-	resp, err := bb0.Post(ctx, msgID, msg)
+	resp, err := bb0.Post(ctx, ringTopic, msgID, msg)
 	require.NoError(t, err)
 	require.NotEmpty(t, resp)
 	require.Equal(t, ringID, resp.Data.RingId)
@@ -385,7 +420,7 @@ func TestBulletinPostAndLocalQuery(t *testing.T) {
 	// query the internal local store
 	// todo: probably need a better way to gurantee
 	// network read request
-	respCh, err := bb1.mem.Query(ctx, "*")
+	respCh, err := bb1.mem.Query(ctx, ringTopic, "*")
 	require.NoError(t, err)
 	require.NotNil(t, respCh)
 
@@ -403,16 +438,16 @@ func TestBulletinPostAndLocalQuery(t *testing.T) {
 	require.Equal(t, 1, count)
 
 	// lets submit some more posts to make sure the query is working
-	_, err = bb0.Post(ctx, msgType+"/2", msg)
+	_, err = bb0.Post(ctx, ringTopic, msgType+"/2", msg)
 	require.NoError(t, err)
-	_, err = bb0.Post(ctx, msgType+"/3", msg)
+	_, err = bb0.Post(ctx, ringTopic, msgType+"/3", msg)
 	require.NoError(t, err)
 
 	// WAITING FOR PUBSUB
 	time.Sleep(2 * time.Second)
 
 	// rerun the query
-	respCh, err = bb1.mem.Query(ctx, "*")
+	respCh, err = bb1.mem.Query(ctx, ringTopic, "*")
 	require.NoError(t, err)
 	require.NotNil(t, respCh)
 
@@ -427,7 +462,8 @@ func TestBulletinPostAndLocalQuery(t *testing.T) {
 
 func TestBulletinRemoteQuery(t *testing.T) {
 	ctx := context.Background()
-	bb0, bb1, bb2 := setupTestBulletins(t, ctx)
+	bb0, bb1, bb2, cancel := setupTestBulletins(t, ctx)
+	defer cancel()
 
 	ringID := "123"
 	ringTopic := "/ring/" + ringID
@@ -437,7 +473,7 @@ func TestBulletinRemoteQuery(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	msgType := ringTopic + "/dkg/rabin"
+	msgType := "/dkg/rabin"
 	msgBuf := []byte("helloworld")
 
 	msg, err := newMessage(bb0, ringID, msgType, msgBuf)
@@ -445,14 +481,14 @@ func TestBulletinRemoteQuery(t *testing.T) {
 
 	// were going to post everything locally and avoid the pubsub
 	// so that we can test the net queries are actually calling out
-	_, err = bb0.mem.Post(ctx, msgType+"/1", msg)
+	_, err = bb0.mem.Post(ctx, ringTopic, msgType+"/1", msg)
 	require.NoError(t, err)
-	_, err = bb0.mem.Post(ctx, msgType+"/2", msg)
+	_, err = bb0.mem.Post(ctx, ringTopic, msgType+"/2", msg)
 	require.NoError(t, err)
-	_, err = bb0.mem.Post(ctx, msgType+"/3", msg)
+	_, err = bb0.mem.Post(ctx, ringTopic, msgType+"/3", msg)
 	require.NoError(t, err)
 
-	respCh, err := bb1.Query(ctx, "*")
+	respCh, err := bb1.Query(ctx, ringTopic, "*")
 	require.NoError(t, err)
 
 	// just count for now, and we can verify the local state afterwards
@@ -467,9 +503,10 @@ func TestBulletinRemoteQuery(t *testing.T) {
 
 func assertEqualBulletinState(t *testing.T, b0 *Bulletin, b1 *Bulletin) {
 	ctx := context.Background()
-	b0respCh, err := b0.mem.Query(ctx, "*")
+	// TODO glob namespace
+	b0respCh, err := b0.mem.Query(ctx, "*", "*")
 	require.NoError(t, err)
-	b1respCh, err := b1.mem.Query(ctx, "*")
+	b1respCh, err := b1.mem.Query(ctx, "*", "*")
 	require.NoError(t, err)
 
 	b0resp := channelToMap(b0respCh)

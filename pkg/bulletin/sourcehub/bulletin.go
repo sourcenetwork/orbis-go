@@ -119,7 +119,7 @@ func (bb *Bulletin) Register(ctx context.Context, namespace string) error {
 	return nil
 }
 
-func (bb *Bulletin) Post(ctx context.Context, id string, msg *transport.Message) (bulletin.Response, error) {
+func (bb *Bulletin) Post(ctx context.Context, namespace, id string, msg *transport.Message) (bulletin.Response, error) {
 	var resp bulletin.Response
 
 	payload, err := proto.Marshal(msg)
@@ -127,6 +127,7 @@ func (bb *Bulletin) Post(ctx context.Context, id string, msg *transport.Message)
 		return bulletin.Response{}, fmt.Errorf("marshal post message payload: %w", err)
 	}
 
+	id = namespace + id
 	hubMsg := &types.MsgCreatePost{
 		Creator:   bb.address,
 		Namespace: id,
@@ -146,10 +147,11 @@ func (bb *Bulletin) Post(ctx context.Context, id string, msg *transport.Message)
 	return resp, nil
 }
 
-func (bb *Bulletin) Read(ctx context.Context, id string) (bulletin.Response, error) {
+func (bb *Bulletin) Read(ctx context.Context, namespace, id string) (bulletin.Response, error) {
 	var resp bulletin.Response
 
 	queryClient := types.NewQueryClient(bb.client.Context())
+	id = namespace + id
 	in := &types.QueryReadPostRequest{
 		Namespace: id,
 	}
@@ -171,7 +173,7 @@ func (bb *Bulletin) Read(ctx context.Context, id string) (bulletin.Response, err
 	return resp, nil
 }
 
-func (bb *Bulletin) Query(ctx context.Context, query string) (<-chan bulletin.QueryResponse, error) {
+func (bb *Bulletin) Query(ctx context.Context, namespace, query string) (<-chan bulletin.QueryResponse, error) {
 	if query == "" {
 		return nil, fmt.Errorf("query can't be empty")
 	}

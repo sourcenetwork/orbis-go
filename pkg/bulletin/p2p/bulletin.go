@@ -163,14 +163,24 @@ func (bb *Bulletin) findTopicForMessageID(id string) (string, *rpc.Topic) {
 	return "", nil
 }
 
-func (bb *Bulletin) Post(ctx context.Context, id string, msg *transport.Message) (bulletin.Response, error) {
-	resp, err := bb.mem.Post(ctx, id, msg)
+func (bb *Bulletin) findTopicForNamespace(namespace string) (string, *rpc.Topic) {
+	for name, topic := range bb.topics {
+		if namespace == name {
+			return name, topic
+		}
+	}
+
+	return "", nil
+}
+
+func (bb *Bulletin) Post(ctx context.Context, namespace, id string, msg *transport.Message) (bulletin.Response, error) {
+	resp, err := bb.mem.Post(ctx, namespace, id, msg)
 	if err != nil {
 		return bulletin.Response{}, fmt.Errorf("post to local store: %w", err)
 	}
 
 	// gossip
-	name, topic := bb.findTopicForMessageID(id)
+	name, topic := bb.findTopicForNamespace(namespace)
 	if topic == nil {
 		return bulletin.Response{}, bulletin.ErrTopicNotFound
 	}
@@ -182,9 +192,10 @@ func (bb *Bulletin) Post(ctx context.Context, id string, msg *transport.Message)
 	}
 
 	bbMessage := &Message{
-		Type:    postMessageType,
-		Id:      id,
-		Payload: payload,
+		Type:      postMessageType,
+		Namespace: namespace,
+		Id:        id,
+		Payload:   payload,
 	}
 	msgbuf, err := proto.Marshal(bbMessage)
 	if err != nil {
@@ -203,21 +214,22 @@ func (bb *Bulletin) Peers(topic string) []peer.ID {
 	return bb.h.PubSub().ListPeers(topic)
 }
 
-func (bb *Bulletin) Read(ctx context.Context, id string) (bulletin.Response, error) {
+func (bb *Bulletin) Read(ctx context.Context, namespace, id string) (bulletin.Response, error) {
 	// check if the read key is in our local store, otherwise ask the network
-	resp, err := bb.mem.Read(ctx, id)
+	resp, err := bb.mem.Read(ctx, namespace, id)
 	if errors.Is(err, bulletin.ErrMessageNotFound) {
 		log.Debugf("not found locally, fetching from pubsub")
 
-		name, topic := bb.findTopicForMessageID(id)
+		name, topic := bb.findTopicForNamespace(namespace)
 		if topic == nil {
 			return bulletin.Response{}, bulletin.ErrTopicNotFound
 		}
 		log.Debugf("publishing read request on topic: %s", name)
 
 		buf, err := proto.Marshal(&Message{
-			Type: readMessageType,
-			Id:   id,
+			Type:      readMessageType,
+			Namespace: namespace,
+			Id:        id,
 		})
 		if err != nil {
 			return bulletin.Response{}, fmt.Errorf("marshal read message: %w", err)
@@ -285,7 +297,7 @@ func WithTimeFilter(t time.Time) QueryOption {
 
 // Query
 // TODO? Options for enable/disable net query?
-func (bb *Bulletin) Query(ctx context.Context, query string) (<-chan bulletin.QueryResponse, error) {
+func (bb *Bulletin) Query(ctx context.Context, namespace, query string) (<-chan bulletin.QueryResponse, error) {
 	// q := &queryConfig{}
 
 	if query == "" {
@@ -296,7 +308,7 @@ func (bb *Bulletin) Query(ctx context.Context, query string) (<-chan bulletin.Qu
 	respCh := make(chan bulletin.QueryResponse, queryResponseBuffer)
 
 	// local query
-	localRespCh, err := bb.mem.Query(ctx, query)
+	localRespCh, err := bb.mem.Query(ctx, namespace, query)
 	if err != nil {
 		return nil, fmt.Errorf("query local store: %w", err)
 	}
@@ -308,8 +320,9 @@ func (bb *Bulletin) Query(ctx context.Context, query string) (<-chan bulletin.Qu
 
 	// net query
 	bbMessage := &Message{
-		Type:    queryMessageType,
-		Payload: []byte(query),
+		Type:      queryMessageType,
+		Namespace: namespace,
+		Payload:   []byte(query),
 	}
 	msgbuf, err := proto.Marshal(bbMessage)
 	if err != nil {
@@ -323,8 +336,8 @@ func (bb *Bulletin) Query(ctx context.Context, query string) (<-chan bulletin.Qu
 		// topic name: "/ring/123"
 		// query: *, /ring/123/dkg/0*
 		//
-		// either the topic matches the glob pattern, or its a prefix of the glob pattern
-		if !glob.Glob(query, name) && !strings.HasPrefix(query, name) {
+		// the topic matches the glob pattern
+		if !glob.Glob(namespace, name) {
 			continue
 		}
 
@@ -358,7 +371,7 @@ func (bb *Bulletin) Query(ctx context.Context, query string) (<-chan bulletin.Qu
 					continue
 				}
 
-				if bb.mem.Has(ctx, bbMessage.Id) {
+				if bb.mem.Has(ctx, bbMessage.Namespace, bbMessage.Id) {
 					continue
 				}
 
@@ -370,7 +383,8 @@ func (bb *Bulletin) Query(ctx context.Context, query string) (<-chan bulletin.Qu
 				}
 
 				// copy into our local bulletin
-				localResp, err := bb.mem.PostByString(ctx, bbMessage.Id, tMsg, false)
+				identifer := bbMessage.Namespace + bbMessage.Id
+				localResp, err := bb.mem.PostByString(ctx, identifer, tMsg, false)
 				if err != nil {
 					log.Errorf("Post query message: %s", err)
 					continue
@@ -428,15 +442,16 @@ func (bb *Bulletin) topicMessageHandler(from peer.ID, topic string, msg []byte) 
 			return nil, fmt.Errorf("unmarshal post message payload: %w", err)
 		}
 
-		_, err = bb.mem.PostByString(bb.ctx, bbMessage.Id, tMsg, true)
+		identifier := bbMessage.Namespace + bbMessage.Id
+		_, err = bb.mem.PostByString(bb.ctx, identifier, tMsg, true)
 		if err != nil {
 			return nil, fmt.Errorf("post message to local store: %w", err)
 		}
 
 	case readMessageType:
 		log.Debug("Handling topic message as read request")
-
-		resp, err := bb.mem.ReadByString(bb.ctx, bbMessage.Id)
+		identifier := bbMessage.Namespace + bbMessage.Id
+		resp, err := bb.mem.ReadByString(bb.ctx, identifier)
 		if err != nil {
 			return nil, fmt.Errorf("read message from local store: %w", err)
 		}
@@ -457,7 +472,7 @@ func (bb *Bulletin) topicMessageHandler(from peer.ID, topic string, msg []byte) 
 		messageResponse = buf
 	case queryMessageType:
 		log.Debug("handling topic message as query request")
-		respCh, err := bb.mem.Query(bb.ctx, string(bbMessage.Payload))
+		respCh, err := bb.mem.Query(bb.ctx, bbMessage.Namespace, string(bbMessage.Payload))
 		if err != nil {
 			return nil, fmt.Errorf("query local store: %w", err)
 		}

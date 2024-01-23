@@ -55,7 +55,8 @@ type Ring struct {
 	inj *do.Injector
 	app *App
 
-	preReqMsg chan *transport.Message
+	preReqMsg    chan *transport.Message
+	preNamespace string
 
 	xncCmts map[string]chan kyber.Point  // preEncryptMsgID
 	xncSki  map[string][]*share.PubShare // preEncryptMsgID
@@ -241,6 +242,8 @@ func (app *App) joinRing(ctx context.Context, manifest *ringv1alpha1.Manifest, f
 		return nil, fmt.Errorf("create pss service: %w", err)
 	}
 
+	preNamespace := fmt.Sprintf("/ring/%s/pre/store", string(rid))
+
 	rs = &Ring{
 		ID:        rid,
 		manifest:  manifest,
@@ -254,13 +257,14 @@ func (app *App) joinRing(ctx context.Context, manifest *ringv1alpha1.Manifest, f
 		N:         int(manifest.N),
 		T:         int(manifest.T),
 
-		nodes:     nodes,
-		services:  rs.services, // this is dumb, but im being lazy, sorry.
-		preReqMsg: make(chan *transport.Message, 10),
-		xncCmts:   make(map[string]chan kyber.Point),
-		xncSki:    make(map[string][]*share.PubShare),
-		Authz:     authzSrv,
-		Authn:     authnSrv,
+		nodes:        nodes,
+		services:     rs.services, // this is dumb, but im being lazy, sorry.
+		preReqMsg:    make(chan *transport.Message, 10),
+		preNamespace: preNamespace,
+		xncCmts:      make(map[string]chan kyber.Point),
+		xncSki:       make(map[string][]*share.PubShare),
+		Authz:        authzSrv,
+		Authn:        authnSrv,
 	}
 
 	go rs.preReencryptMessageHandler()
@@ -268,15 +272,14 @@ func (app *App) joinRing(ctx context.Context, manifest *ringv1alpha1.Manifest, f
 	tp.AddHandler(protocol.ID(elgamal.EncryptedSecretRequest), rs.preTransportMessageHandler)
 	tp.AddHandler(protocol.ID(elgamal.EncryptedSecretReply), rs.preTransportMessageHandler)
 
-	bbnamespace := fmt.Sprintf("/ring/%s/pre/store", string(rid))
-	err = bb.Register(ctx, bbnamespace)
+	err = bb.Register(ctx, preNamespace)
 	if err != nil {
 		return nil, fmt.Errorf("register bulletin: %w", err)
 	}
 
 	// TODO: this is a hack to wait for the bulletin to be registered
 	// time.Sleep(3 * time.Second)
-	log.Infof("registered to namespace %s", bbnamespace)
+	log.Infof("registered to namespace %s", preNamespace)
 
 	return rs, nil
 }

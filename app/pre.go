@@ -31,7 +31,7 @@ func (r *Ring) StoreSecret(ctx context.Context, rid types.RingID, scrt *types.Se
 	}
 
 	sid := types.SecretID(cid.String())
-	storeMsgID := preStoreMsgID(string(rid), string(sid))
+	storeMsgID := preStoreMsgID(string(sid))
 
 	msg, err := r.Transport.NewMessage(rid, storeMsgID, false, payload, "", nil)
 	if err != nil {
@@ -41,7 +41,7 @@ func (r *Ring) StoreSecret(ctx context.Context, rid types.RingID, scrt *types.Se
 	// r.encCmts[storeMsgID] = scrt.EncCmt
 	// r.encScrts[storeMsgID] = scrt.EncScrt
 
-	_, err = r.Bulletin.Post(ctx, storeMsgID, msg)
+	_, err = r.Bulletin.Post(ctx, r.preNamespace, storeMsgID, msg)
 	if err != nil {
 		return "", fmt.Errorf("post PRE message to bulletin: %w", err)
 	}
@@ -347,9 +347,9 @@ func (r *Ring) doProcessReencrypt(req *ringv1alpha1.ReencryptSecretRequest) (*ri
 
 // GetSecret reads the secret identified by sid from the secret store
 func (r *Ring) GetSecret(ctx context.Context, sid string) (types.Secret, error) {
-	storeMsgID := preStoreMsgID(string(r.ID), sid)
+	storeMsgID := preStoreMsgID(sid)
 	var scrt types.Secret
-	buf, err := r.Bulletin.Read(context.TODO(), storeMsgID)
+	buf, err := r.Bulletin.Read(ctx, r.preNamespace, storeMsgID)
 	if err != nil {
 		return scrt, err
 	}
@@ -368,8 +368,8 @@ func (r *Ring) GetSecret(ctx context.Context, sid string) (types.Secret, error) 
 	return scrt, nil
 }
 
-func preStoreMsgID(rid string, sid string) string {
-	return fmt.Sprintf("/ring/%s/pre/store/%s", rid, sid)
+func preStoreMsgID(sid string) string {
+	return fmt.Sprintf("/%s", sid)
 }
 
 func preReencryptMsgID(rid string, sid string, rawRdrPk []byte) string {

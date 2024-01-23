@@ -64,12 +64,12 @@ func (b *Bulletin) Register(ctx context.Context, namespace string) error {
 }
 
 // Post
-func (b *Bulletin) Post(ctx context.Context, identifier string, msg *transport.Message) (bulletin.Response, error) {
-	return b.PostByString(ctx, identifier, msg, true)
+func (b *Bulletin) Post(ctx context.Context, namespace, id string, msg *transport.Message) (bulletin.Response, error) {
+	return b.PostByString(ctx, namespace+id, msg, true)
 }
 
 func (b *Bulletin) PostByString(ctx context.Context, identifier string, msg *transport.Message, emit bool) (bulletin.Response, error) {
-	log.Debugf("handling post for ID %s, emit=%v", identifier, emit)
+	log.Debugf("handling post for namespace ID %s, emit=%v", identifier, emit)
 	if identifier == "" {
 		return bulletin.Response{}, bulletin.ErrEmptyID
 	}
@@ -104,8 +104,8 @@ func (b *Bulletin) PostByString(ctx context.Context, identifier string, msg *tra
 }
 
 // Read
-func (b *Bulletin) Read(ctx context.Context, identifier string) (bulletin.Response, error) {
-	return b.ReadByString(ctx, identifier)
+func (b *Bulletin) Read(ctx context.Context, namespace, id string) (bulletin.Response, error) {
+	return b.ReadByString(ctx, namespace+id)
 }
 
 func (b *Bulletin) ReadByString(ctx context.Context, identifier string) (bulletin.Response, error) {
@@ -134,8 +134,10 @@ func (b *Bulletin) ReadByString(ctx context.Context, identifier string) (bulleti
 }
 
 // Query
-func (b *Bulletin) Query(ctx context.Context, query string) (<-chan bulletin.QueryResponse, error) {
+func (b *Bulletin) Query(ctx context.Context, namespace, query string) (<-chan bulletin.QueryResponse, error) {
 	respCh := make(chan bulletin.QueryResponse, 0)
+
+	query = namespace + query
 
 	go func() {
 		b.mu.RLock()
@@ -168,10 +170,11 @@ func (b *Bulletin) Query(ctx context.Context, query string) (<-chan bulletin.Que
 	return respCh, nil
 }
 
-func (b *Bulletin) Has(ctx context.Context, id string) bool {
+func (b *Bulletin) Has(ctx context.Context, namespace, id string) bool {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	_, exists := b.messages[id]
+	identifier := namespace + id
+	_, exists := b.messages[identifier]
 	return exists
 }
 
