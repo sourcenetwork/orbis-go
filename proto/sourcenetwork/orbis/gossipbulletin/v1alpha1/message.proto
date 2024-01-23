@@ -4,7 +4,8 @@ package orbis.gossipbulletin.v1alpha1;
 
 message Message {
     string type = 1;
-    string id = 2;
-    bytes payload = 3;
-    bytes proof = 4;
+    string namespace = 2;
+    string id = 3;
+    bytes payload = 4;
+    bytes proof = 5;
 }
