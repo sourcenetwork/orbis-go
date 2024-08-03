@@ -31,11 +31,3 @@ authz:
 
 db:
   path: "data2"
-
-cosmos:
-  chainId: sourcehub-testnet1
-  accountName: validator2
-  keyringBackend: test
-  addressPrefix: source
-  fees: 30stake
-  rpcAddress: http://host.docker.internal:26657
