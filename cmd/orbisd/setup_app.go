@@ -36,9 +36,12 @@ func setupApp(ctx context.Context, cfg config.Config) (*app.App, error) {
 		return nil, fmt.Errorf("create host: %w", err)
 	}
 
-	cosmosclient, err := cosmos.New(ctx, cfg.Cosmos)
-	if err != nil {
-		return nil, fmt.Errorf("create cosmos client: %w", err)
+	var cosmosclient *cosmos.Client
+	if cfg.Cosmos != (config.Cosmos{}) {
+		cosmosclient, err = cosmos.New(ctx, cfg.Cosmos)
+		if err != nil {
+			return nil, fmt.Errorf("create cosmos client: %w", err)
+		}
 	}
 
 	tp, err := p2ptp.New(ctx, host, cfg.Transport)
