@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/sourcenetwork/orbis-go/adapter/cobracli"
+	oclient "github.com/sourcenetwork/orbis-go/adapter/cobracli/client"
 
 	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/ring/v1alpha1"
 	transportv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/transport/v1alpha1"
@@ -31,10 +32,14 @@ func main() {
 	}
 
 	// Setup client commands for the Orbis client.
+	rootCmd.AddCommand(oclient.ClientCmd())
+
+	// Setup server start commands
 	rootCmd.AddCommand(startCmd)
 
 	opts := []client.Option{
 		client.WithTimeout(1 * time.Second),
+		client.WithEnvVars("orbis"),
 	}
 
 	rootCmd.AddCommand(
