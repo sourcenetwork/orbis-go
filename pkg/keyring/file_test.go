@@ -30,6 +30,11 @@ func TestFileKeyringDirect(t *testing.T) {
 	// password should be remembered
 	assert.Equal(t, []byte("secret"), kr.password)
 
+	// clean the state so the testKeyring function
+	// uses an empty keyring
+	err = kr.Delete("peer_key")
+	require.NoError(t, err)
+
 	testKeyring(t, kr)
 }
 
@@ -73,4 +78,22 @@ func testKeyring(t *testing.T, kr Keyring) {
 
 	_, err = kr.Get("node_key")
 	assert.ErrorIs(t, err, ErrNotFound)
+
+	// add another entry so there is more than 1 key
+	// when calling List
+	err = kr.Set("random_key", []byte("xyz"))
+	require.NoError(t, err)
+
+	infos, err := kr.List()
+	require.NoError(t, err)
+	require.Equal(t, []Info{
+		{
+			Name: "peer_key",
+			Key:  []byte("abc"),
+		},
+		{
+			Name: "random_key",
+			Key:  []byte("xyz"),
+		},
+	}, infos)
 }

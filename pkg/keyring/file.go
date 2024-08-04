@@ -12,8 +12,10 @@ package keyring
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwe"
@@ -27,6 +29,9 @@ func init() {
 const (
 	keyringFileDirName = "keyring-file"
 	keyringTestDirName = "keyring-test"
+	keyringOSDirName   = "keyring-os"
+
+	fileExtension = ".keyinfo"
 )
 
 var _ Keyring = (*fileKeyring)(nil)
@@ -59,7 +64,6 @@ func initFileKeyring(args ...any) (Keyring, error) {
 		return nil, fmt.Errorf("wrong number of args: %w", ErrInvalidArgs)
 	}
 
-	fmt.Println("dir:", args[0])
 	dir, ok := args[0].(string)
 	if !ok {
 		return nil, fmt.Errorf("bad string arg: %w", ErrInvalidArgs)
@@ -96,11 +100,11 @@ func (f *fileKeyring) Set(name string, key []byte) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(f.dir, name), cipher, 0755)
+	return os.WriteFile(f.filepath(name), cipher, 0755)
 }
 
 func (f *fileKeyring) Get(name string) ([]byte, error) {
-	cipher, err := os.ReadFile(filepath.Join(f.dir, name))
+	cipher, err := os.ReadFile(f.filepath(name))
 	if os.IsNotExist(err) {
 		return nil, ErrNotFound
 	}
@@ -111,12 +115,35 @@ func (f *fileKeyring) Get(name string) ([]byte, error) {
 	return jwe.Decrypt(cipher, jwe.WithKey(keyEncryptionAlgorithm, password))
 }
 
-func (f *fileKeyring) Delete(user string) error {
-	err := os.Remove(filepath.Join(f.dir, user))
+func (f *fileKeyring) Delete(name string) error {
+	err := os.Remove(f.filepath(name))
 	if os.IsNotExist(err) {
 		return ErrNotFound
 	}
 	return err
+}
+
+func (f *fileKeyring) List() ([]Info, error) {
+	var infos []Info
+	// walk the director and filter for our keyinfo files
+	filepath.WalkDir(f.dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if filepath.Ext(d.Name()) == fileExtension {
+			name := getFilename(d.Name())
+			key, err := f.Get(name)
+			if err != nil {
+				return err
+			}
+			infos = append(infos, Info{
+				Name: name,
+				Key:  key,
+			})
+		}
+		return nil
+	})
+	return infos, nil
 }
 
 // promptPassword returns the password from the user.
@@ -132,4 +159,12 @@ func (f *fileKeyring) promptPassword() ([]byte, error) {
 	}
 	f.password = password
 	return password, nil
+}
+
+func (f *fileKeyring) filepath(name string) string {
+	return filepath.Join(f.dir, name+fileExtension)
+}
+
+func getFilename(filename string) string {
+	return strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename))
 }

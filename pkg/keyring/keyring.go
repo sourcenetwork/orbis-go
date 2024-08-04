@@ -20,6 +20,11 @@ var (
 	keyrings map[string]InitFunc = map[string]InitFunc{}
 )
 
+type Info struct {
+	Name string
+	Key  []byte
+}
+
 // Keyring provides a simple set/get interface for a keyring service.
 type Keyring interface {
 	// Set stores the given key in the keystore under the given name.
@@ -34,7 +39,13 @@ type Keyring interface {
 	//
 	// If a key with that name does not exist `ErrNotFound` is returned.
 	Delete(name string) error
+	// List all keys in the Keyring, only public information
+	List() ([]Info, error)
 }
+
+// type Keyring interface {
+// 	Keystore
+// }
 
 type InitFunc func(args ...any) (Keyring, error)
 
