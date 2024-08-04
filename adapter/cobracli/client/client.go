@@ -25,9 +25,9 @@ for interacting with an Orbis Ring.`,
 	}
 	cfg.BindFlags(cmd.PersistentFlags())
 	cmd.AddCommand(
+		PolicyCmd(cfg),
 		GetSecretClientCmd(cfg),
 		PutSecretClientCmd(cfg),
-		PolicyCmd(cfg),
 	)
 
 	return cmd
