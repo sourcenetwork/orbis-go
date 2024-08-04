@@ -17,7 +17,7 @@ import (
 )
 
 func init() {
-	Register("system", initSystemKeyring)
+	Register("os", initSystemKeyring)
 }
 
 var _ Keyring = (*systemKeyring)(nil)
