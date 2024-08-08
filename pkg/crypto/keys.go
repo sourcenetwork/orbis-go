@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"crypto/subtle"
+	b64 "encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -68,12 +69,37 @@ type Key interface {
 	MarshalJWK() ([]byte, error)
 }
 
+func IsAsymmetric(key Key) bool {
+	switch key.(type) {
+	case PublicKey, PrivateKey:
+		return true
+	}
+	return false
+}
+
+func IsPublic(key Key) bool {
+	switch key.(type) {
+	case PublicKey:
+		return true
+	}
+	return false
+}
+
+func IsPrivate(key Key) bool {
+	switch key.(type) {
+	case PublicKey:
+		return true
+	}
+	return false
+}
+
 // PublicKey
 type PublicKey interface {
 	Key
 	Verify(data []byte, sig []byte) (bool, error)
 	Point() kyber.Point
 	Std() (gocrypto.PublicKey, error)
+	String() string
 }
 
 var _ PublicKey = (*pubKeyLibP2P)(nil)
@@ -222,6 +248,13 @@ func (p *pubKeyLibP2P) Std() (gocrypto.PublicKey, error) {
 		return *kt, nil
 	}
 	return gokey, nil
+}
+
+func (p *pubKeyLibP2P) String() string {
+	buf, _ := p.Raw()
+
+	enc := b64.StdEncoding.EncodeToString(buf)
+	return enc
 }
 
 func (p *pubKeyLibP2P) MarshalJWK() ([]byte, error) {
