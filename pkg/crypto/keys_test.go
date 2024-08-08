@@ -33,7 +33,7 @@ func TestKeyGeneration(t *testing.T) {
 	buf3, err := pubKey.MarshalBinary()
 	require.NoError(t, err)
 	fmt.Printf("%x%x\n", buf2, buf3)
-	t.Fail()
+
 }
 
 func TestSecp256PublicKeyMarshalling(t *testing.T) {
@@ -85,7 +85,7 @@ func TestPeerIDToPublicKeySecp256k1(t *testing.T) {
 
 	cpubKey, err := PublicKeyFromLibP2P(pubKey)
 	require.NoError(t, err)
-	require.True(t, pubKey.Equals(cpubKey))
+	require.True(t, pubKey.Equals(cpubKey.(*pubKeyLibP2P).PubKey))
 
 	/////////////////////////////////////////
 
@@ -107,7 +107,6 @@ func TestPeerIDToPublicKeySecp256k1(t *testing.T) {
 	t.Log("computed point:", p2.String())
 	t.Log("extracted point:", cpubKey.Point().String())
 
-	t.Fail()
 }
 
 func TestPeerIDToPublicKeyEd25519(t *testing.T) {
@@ -131,7 +130,7 @@ func TestPeerIDToPublicKeyEd25519(t *testing.T) {
 
 	cpubKey, err := PublicKeyFromLibP2P(pubKey)
 	require.NoError(t, err)
-	require.True(t, pubKey.Equals(cpubKey))
+	require.True(t, pubKey.Equals(cpubKey.(*pubKeyLibP2P).PubKey))
 
 	scalar := cprivKey.Scalar()             // private Key scalar
 	point := suite.Point().Mul(scalar, nil) // public key point

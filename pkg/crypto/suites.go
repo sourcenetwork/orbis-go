@@ -3,7 +3,6 @@ package crypto
 import (
 	"strings"
 
-	icpb "github.com/libp2p/go-libp2p/core/crypto/pb"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto/suites/secp256k1"
 	"go.dedis.ch/kyber/v3/group/edwards25519"
 	"go.dedis.ch/kyber/v3/suites"
@@ -22,11 +21,11 @@ func init() {
 	protobuf.RegisterInterface(func() interface{} { return spk1.Scalar() })
 }
 
-func SuiteForType(kt icpb.KeyType) (suites.Suite, error) {
+func SuiteForType(kt KeyType) (suites.Suite, error) {
 	switch kt {
-	case icpb.KeyType_Secp256k1, icpb.KeyType_ECDSA:
+	case Secp256k1, ECDSA:
 		return secp256k1.NewBlakeKeccackSecp256k1(), nil
-	case icpb.KeyType_Ed25519:
+	case Ed25519:
 		// TODO
 		// reader := rand.New(rand.NewSource(0))
 		// r := random.New(reader)
