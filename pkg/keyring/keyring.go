@@ -47,15 +47,18 @@ func New(backend string, args ...any) (Keyring, error) {
 }
 
 func (k *keyring) Set(name string, key crypto.Key) error {
-
-	data, err := json.Marshal(key)
+	jkey, err := keyToJWK(key)
 	if err != nil {
-		return err
+		return fmt.Errorf("converting to JWK: %w", err)
+	}
+	data, err := json.Marshal(jkey)
+	if err != nil {
+		return fmt.Errorf("marshaling JWK: %w", err)
 	}
 	return k.store.Set(name, data)
 }
 
-func marshalJWK(key crypto.Key) (jwk.Key, error) {
+func keyToJWK(key crypto.Key) (jwk.Key, error) {
 	var gokey any
 	var err error
 	switch kt := key.(type) {
@@ -94,18 +97,25 @@ func marshalJWK(key crypto.Key) (jwk.Key, error) {
 func (k *keyring) Get(name string) (crypto.Key, error) {
 	data, err := k.store.Get(name)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get from store: %w", err)
 	}
 
 	jKey, err := jwk.ParseKey(data)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parse JWK: %w", err)
 	}
 
-	return unmarshalJWK(jKey)
+	return jwkToKey(jKey)
 }
 
-func unmarshalJWK(key jwk.Key) (crypto.Key, error) {
+// jwkToKey converts a jwk.JWK key to a crypto.Key key.
+// However, there are some caveats when making this conversion
+// due to a type mismatch in the orbis/crypto package (and libp2p).
+// So we have to do more work when converting secp256k1 keys.
+//
+// Note: We don't yet support Symmetric keys in the orbis/crypto
+// package so this is left as a TODO.
+func jwkToKey(key jwk.Key) (crypto.Key, error) {
 	asymmetric, ok := key.(jwk.AsymmetricKey)
 	if !ok {
 		// TODO HANDLE SYMMETRIC KEYS
@@ -130,9 +140,10 @@ func unmarshalJWK(key jwk.Key) (crypto.Key, error) {
 		var ecKey ecdsa.PrivateKey
 		key.Raw(&ecKey)
 		// convert from crypto/ecdsa to dcrec/secp256k1
-		var scalar *secp256k1.ModNScalar
+		var scalar secp256k1.ModNScalar
+		fmt.Println("secp.D", ecKey.D)
 		scalar.SetByteSlice(ecKey.D.Bytes())
-		gokey := secp256k1.NewPrivateKey(scalar)
+		gokey := secp256k1.NewPrivateKey(&scalar)
 		return crypto.PrivateKeyFromBytes("secp256k1", gokey.Serialize())
 	} else if !asymmetric.IsPrivate() && crv == jwa.Secp256k1 {
 		var ecKey ecdsa.PublicKey
@@ -149,7 +160,7 @@ func unmarshalJWK(key jwk.Key) (crypto.Key, error) {
 	} else if !asymmetric.IsPrivate() && crv == jwa.Ed25519 {
 		var ecKey ed25519.PublicKey
 		key.Raw(&ecKey)
-		return crypto.PrivateKeyFromBytes("ed25519", []byte(ecKey))
+		return crypto.PublicKeyFromBytes("ed25519", []byte(ecKey))
 	}
 
 	return nil, fmt.Errorf("unsupported curve or algorithm")
@@ -177,7 +188,7 @@ func (k *keyring) List() ([]Info, error) {
 		if err != nil {
 			return nil, err
 		}
-		key, err := unmarshalJWK(rawKey)
+		key, err := jwkToKey(rawKey)
 		infos[i] = Info{
 			Name: info.Name,
 			Key:  key,
@@ -188,5 +199,21 @@ func (k *keyring) List() ([]Info, error) {
 }
 
 func (k *keyring) Sign(name string, msg []byte) ([]byte, crypto.PublicKey, error) {
-	panic("not implemented") // TODO: Implement
+	key, err := k.Get(name)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// make sure the key we got supports signing
+	privKey, ok := key.(crypto.PrivateKey)
+	if !ok {
+		return nil, nil, fmt.Errorf("signing only supported for private keys")
+	}
+
+	sig, err := privKey.Sign(msg)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return sig, privKey.GetPublic(), nil
 }

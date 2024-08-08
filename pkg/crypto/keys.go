@@ -211,7 +211,17 @@ func (p *pubKeyLibP2P) Std() (gocrypto.PublicKey, error) {
 	case *ic.Secp256k1PublicKey:
 		return (*secp256k1.PublicKey)(pk), nil
 	}
-	return ic.PubKeyToStdKey(p.PubKey)
+	gokey, err := ic.PubKeyToStdKey(p.PubKey)
+	if err != nil {
+		return nil, err
+	}
+
+	// convert ed25519 keys to non pointers
+	switch kt := gokey.(type) {
+	case *ed25519.PublicKey:
+		return *kt, nil
+	}
+	return gokey, nil
 }
 
 func (p *pubKeyLibP2P) MarshalJWK() ([]byte, error) {
@@ -338,7 +348,18 @@ func (p *privKeyLibP2P) Std() (gocrypto.PrivateKey, error) {
 	case *ic.Secp256k1PrivateKey:
 		return (*secp256k1.PrivateKey)(pk), nil
 	}
-	return ic.PrivKeyToStdKey(p.PrivKey)
+
+	gokey, err := ic.PrivKeyToStdKey(p.PrivKey)
+	if err != nil {
+		return nil, err
+	}
+
+	// convert ed25519 keys to non pointers
+	switch kt := gokey.(type) {
+	case *ed25519.PrivateKey:
+		return *kt, nil
+	}
+	return gokey, nil
 }
 
 // Scalar returns a numeric elliptic curve scalar
