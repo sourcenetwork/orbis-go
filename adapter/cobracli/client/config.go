@@ -10,6 +10,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/sourcenetwork/orbis-go/adapter/cobracli/keys"
 	"github.com/sourcenetwork/orbis-go/pkg/util/naming"
 
 	"github.com/spf13/pflag"
@@ -19,10 +20,9 @@ import (
 )
 
 type Config struct {
-	KeyringBackend string // keyring backend
-	KeyringPath    string // Keyring path argument for some backends
-	KeyringService string // Keyring service argument for some backends
-	From           string // keyring identity to execute with
+	Keyring *keys.Config
+
+	From string // keyring identity to execute with
 
 	ServerAddr   string        // remote oribs server address
 	AuthzAddr    string        // remote authz server address
@@ -43,21 +43,19 @@ type Config struct {
 }
 
 var DefaultConfig = &Config{
-	KeyringBackend: "file",
-	KeyringPath:    "$HOME/.orbis",
-	ServerAddr:     "localhost:8081",
-	AuthzAddr:      "localhost:8080",
-	Timeout:        10 * time.Second,
-	UseEnvVars:     true,
-	EnvVarPrefix:   "orbis",
-	EnvVarNamer:    naming.UpperSnake,
-	FlagNamer:      naming.LowerKebab,
+	Keyring: keys.DefaultConfig,
+
+	ServerAddr:   "localhost:8081",
+	AuthzAddr:    "localhost:8080",
+	Timeout:      10 * time.Second,
+	UseEnvVars:   true,
+	EnvVarPrefix: "orbis",
+	EnvVarNamer:  naming.UpperSnake,
+	FlagNamer:    naming.LowerKebab,
 }
 
 func (c *Config) BindFlags(fs *pflag.FlagSet) {
-	fs.StringVarP(&c.KeyringBackend, namer("KeyringBackend"), "k", c.KeyringBackend, "keyring backend to get identities from")
-	fs.StringVarP(&c.KeyringPath, namer("KeyringPath"), "", c.KeyringPath, "keyring path argument for some backends")
-	fs.StringVarP(&c.KeyringService, namer("KeyringService"), "", c.KeyringService, "keyring service argument for some backends")
+	c.Keyring.BindFlags(fs)
 	fs.StringVarP(&c.From, namer("From"), "f", c.From, "keyring identity to use")
 	fs.StringVarP(&c.ServerAddr, namer("ServerAddr"), "s", c.ServerAddr, "orbis service address in the form host:port")
 	fs.StringVarP(&c.ServerAddr, namer("AuthzAddr"), "z", c.AuthzAddr, "authorization service address in the form host:port")

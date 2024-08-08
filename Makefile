@@ -6,7 +6,7 @@ docker:
 
 .PHONY: build
 build:
-	go build -o build/orbisd ./cmd/orbisd 
+	go build -tags jwx_es256k -o build/orbisd ./cmd/orbisd 
 
 run:
 	docker-compose -f demo/acp/compose.yaml down -v

@@ -1,6 +1,8 @@
 package client
 
 import (
+	"github.com/sourcenetwork/orbis-go/adapter/cobracli/keys"
+	"github.com/sourcenetwork/orbis-go/pkg/keyring"
 	"github.com/sourcenetwork/orbis-go/pkg/util/flag"
 	"github.com/spf13/cobra"
 )
@@ -20,6 +22,12 @@ for interacting with an Orbis Ring.`,
 					return err
 				}
 			}
+
+			kr, err := keys.KeyringFromConfig(cfg.Keyring)
+			if err != nil {
+				return err
+			}
+			c.SetContext(keyring.WithKeyring(c.Context(), kr))
 			return nil
 		},
 	}

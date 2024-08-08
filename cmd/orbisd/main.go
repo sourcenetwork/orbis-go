@@ -5,6 +5,7 @@ import (
 
 	"github.com/sourcenetwork/orbis-go/adapter/cobracli"
 	oclient "github.com/sourcenetwork/orbis-go/adapter/cobracli/client"
+	"github.com/sourcenetwork/orbis-go/adapter/cobracli/keys"
 
 	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/ring/v1alpha1"
 	transportv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/transport/v1alpha1"
@@ -35,7 +36,10 @@ func main() {
 	rootCmd.AddCommand(oclient.ClientCmd())
 
 	// Setup server start commands
-	rootCmd.AddCommand(startCmd)
+	rootCmd.AddCommand(
+		startCmd,
+		keys.KeyCmd(),
+	)
 
 	opts := []client.Option{
 		client.WithTimeout(1 * time.Second),
