@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0, included in the file
 // licenses/APL.txt.
 
-package keyring
+package keystore
 
 import (
 	"fmt"
@@ -16,14 +16,15 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwe"
 )
 
 func init() {
-	Register("file", initFileKeyring)
-	Register("test", initTestKeyring)
+	Register("file", initFileKeystore)
+	Register("test", initTestKeystore)
 }
 
 const (
@@ -34,32 +35,34 @@ const (
 	fileExtension = ".keyinfo"
 )
 
-var _ Keyring = (*fileKeyring)(nil)
+var _ Keystore = (*fileKeystore)(nil)
 
 var keyEncryptionAlgorithm = jwa.PBES2_HS512_A256KW
 
-// fileKeyring is a keyring that stores keys in encrypted files.
-type fileKeyring struct {
+// fileKeystore is a keyring that stores keys in encrypted files.
+type fileKeystore struct {
 	// dir is the keystore root directory
 	dir string
 	// password is the user defined password used to generate encryption keys
 	password []byte
 	// prompt func is used to retrieve the user password
 	prompt PromptFunc
+	// basic mutex
+	mu sync.Mutex
 }
 
-// OpenFileKeyring opens the keyring in the given directory.
-func OpenFileKeyring(dir string, prompt PromptFunc) (*fileKeyring, error) {
+// OpenFileKeystore opens the keyring in the given directory.
+func OpenFileKeystore(dir string, prompt PromptFunc) (*fileKeystore, error) {
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, err
 	}
-	return &fileKeyring{
+	return &fileKeystore{
 		dir:    dir,
 		prompt: prompt,
 	}, nil
 }
 
-func initFileKeyring(args ...any) (Keyring, error) {
+func initFileKeystore(args ...any) (Keystore, error) {
 	if len(args) != 1 {
 		return nil, fmt.Errorf("wrong number of args: %w", ErrInvalidArgs)
 	}
@@ -71,11 +74,11 @@ func initFileKeyring(args ...any) (Keyring, error) {
 	dir = filepath.Join(dir, keyringFileDirName)
 	prompt := TerminalPrompt
 
-	kr, err := OpenFileKeyring(dir, prompt)
+	kr, err := OpenFileKeystore(dir, prompt)
 	return kr, err
 }
 
-func initTestKeyring(args ...any) (Keyring, error) {
+func initTestKeystore(args ...any) (Keystore, error) {
 	if len(args) != 1 {
 		return nil, ErrInvalidArgs
 	}
@@ -87,15 +90,22 @@ func initTestKeyring(args ...any) (Keyring, error) {
 	dir = filepath.Join(dir, keyringTestDirName)
 	prompt := FixedStringPrompt("secret")
 
-	kr, err := OpenFileKeyring(dir, prompt)
+	kr, err := OpenFileKeystore(dir, prompt)
 	return kr, err
 }
 
-func (f *fileKeyring) Set(name string, key []byte) error {
+func (f *fileKeystore) Set(name string, key []byte) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	password, err := f.promptPassword()
 	if err != nil {
 		return err
 	}
+
+	return f.set(name, key, password)
+}
+
+func (f *fileKeystore) set(name string, key []byte, password []byte) error {
 	cipher, err := jwe.Encrypt(key, jwe.WithKey(keyEncryptionAlgorithm, password))
 	if err != nil {
 		return err
@@ -103,19 +113,39 @@ func (f *fileKeyring) Set(name string, key []byte) error {
 	return os.WriteFile(f.filepath(name), cipher, 0755)
 }
 
-func (f *fileKeyring) Get(name string) ([]byte, error) {
-	cipher, err := os.ReadFile(f.filepath(name))
-	if os.IsNotExist(err) {
-		return nil, ErrNotFound
-	}
+func (f *fileKeystore) Get(name string) ([]byte, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	password, err := f.promptPassword()
 	if err != nil {
 		return nil, err
 	}
+
+	return f.get(name, password)
+}
+
+func (f *fileKeystore) get(name string, password []byte) ([]byte, error) {
+	cipher, err := os.ReadFile(f.filepath(name))
+	if os.IsNotExist(err) {
+		return nil, ErrNotFound
+	}
 	return jwe.Decrypt(cipher, jwe.WithKey(keyEncryptionAlgorithm, password))
 }
 
-func (f *fileKeyring) Delete(name string) error {
+func (f *fileKeystore) Delete(name string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	// gate the action by the password
+	_, err := f.promptPassword()
+	if err != nil {
+		return err
+	}
+
+	return f.delete(name)
+}
+
+func (f *fileKeystore) delete(name string) error {
 	err := os.Remove(f.filepath(name))
 	if os.IsNotExist(err) {
 		return ErrNotFound
@@ -123,7 +153,15 @@ func (f *fileKeyring) Delete(name string) error {
 	return err
 }
 
-func (f *fileKeyring) List() ([]Info, error) {
+func (f *fileKeystore) List() ([]Info, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	password, err := f.promptPassword()
+	if err != nil {
+		return nil, err
+	}
+
 	var infos []Info
 	// walk the director and filter for our keyinfo files
 	filepath.WalkDir(f.dir, func(path string, d fs.DirEntry, err error) error {
@@ -132,13 +170,13 @@ func (f *fileKeyring) List() ([]Info, error) {
 		}
 		if filepath.Ext(d.Name()) == fileExtension {
 			name := getFilename(d.Name())
-			key, err := f.Get(name)
+			key, err := f.get(name, password)
 			if err != nil {
 				return err
 			}
 			infos = append(infos, Info{
 				Name: name,
-				Key:  key,
+				Data: key,
 			})
 		}
 		return nil
@@ -149,7 +187,7 @@ func (f *fileKeyring) List() ([]Info, error) {
 // promptPassword returns the password from the user.
 //
 // If the password has been previously prompted it will be remembered.
-func (f *fileKeyring) promptPassword() ([]byte, error) {
+func (f *fileKeystore) promptPassword() ([]byte, error) {
 	if len(f.password) > 0 {
 		return f.password, nil
 	}
@@ -161,7 +199,7 @@ func (f *fileKeyring) promptPassword() ([]byte, error) {
 	return password, nil
 }
 
-func (f *fileKeyring) filepath(name string) string {
+func (f *fileKeystore) filepath(name string) string {
 	return filepath.Join(f.dir, name+fileExtension)
 }
 

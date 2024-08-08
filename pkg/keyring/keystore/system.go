@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0, included in the file
 // licenses/APL.txt.
 
-package keyring
+package keystore
 
 import (
 	"encoding/base64"
@@ -19,39 +19,39 @@ import (
 )
 
 func init() {
-	Register("os", initSystemKeyring)
+	Register("os", initSystemKeystore)
 }
 
-var _ Keyring = (*systemKeyring)(nil)
+var _ Keystore = (*systemKeystore)(nil)
 
-// systemKeyring is a keyring that utilizies the
+// systemKeystore is a keyring that utilizies the
 // built in key management system of the OS.
-type systemKeyring struct {
+type systemKeystore struct {
 	// service is the service name to use when using the system keyring
 	service string
-	// index uses the fileKeyring to create an index of existing keys
-	// because the systemKeyring implementation doesn't provide any
+	// index uses the fileKeystore to create an index of existing keys
+	// because the systemKeystore implementation doesn't provide any
 	// List/Query functionality. TODO: Native List functions
-	index *fileKeyring
+	index *fileKeystore
 }
 
-// OpenSystemKeyring opens the system keyring managed by the OS.
+// OpenSystemKeystore opens the system keyring managed by the OS.
 // dir is the path to the index
 // service is the system store prefix
-func OpenSystemKeyring(dir string, service string) (*systemKeyring, error) {
+func OpenSystemKeystore(dir string, service string) (*systemKeystore, error) {
 	// the file keyring is just used as an index, and doesn't store
 	// the actual private value, so we can use a FixedString password
-	fk, err := OpenFileKeyring(dir, FixedStringPrompt("secret"))
+	fk, err := OpenFileKeystore(dir, FixedStringPrompt("secret"))
 	if err != nil {
 		return nil, err
 	}
-	return &systemKeyring{
+	return &systemKeystore{
 		service: service,
 		index:   fk,
 	}, nil
 }
 
-func initSystemKeyring(args ...any) (Keyring, error) {
+func initSystemKeystore(args ...any) (Keystore, error) {
 	if len(args) != 2 {
 		return nil, ErrInvalidArgs
 	}
@@ -67,10 +67,10 @@ func initSystemKeyring(args ...any) (Keyring, error) {
 		return nil, ErrInvalidArgs
 	}
 
-	return OpenSystemKeyring(dir, service)
+	return OpenSystemKeystore(dir, service)
 }
 
-func (s *systemKeyring) Set(name string, key []byte) error {
+func (s *systemKeystore) Set(name string, key []byte) error {
 	enc := base64.StdEncoding.EncodeToString(key)
 	err := s.index.Set(name, []byte(name))
 	if err != nil {
@@ -87,7 +87,7 @@ func (s *systemKeyring) Set(name string, key []byte) error {
 	return nil
 }
 
-func (s *systemKeyring) Get(name string) ([]byte, error) {
+func (s *systemKeystore) Get(name string) ([]byte, error) {
 	enc, err := keyring.Get(s.service, name)
 	if err != nil {
 		return nil, err
@@ -100,7 +100,7 @@ func (s *systemKeyring) Get(name string) ([]byte, error) {
 	return dst[:n], nil
 }
 
-func (s *systemKeyring) Delete(user string) error {
+func (s *systemKeystore) Delete(user string) error {
 	err := keyring.Delete(s.service, user)
 	if err != nil {
 		return err
@@ -110,7 +110,7 @@ func (s *systemKeyring) Delete(user string) error {
 	return s.index.Delete(user)
 }
 
-func (s *systemKeyring) List() ([]Info, error) {
+func (s *systemKeystore) List() ([]Info, error) {
 	indexInfos, err := s.index.List()
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get index list: %w", err)
@@ -124,7 +124,7 @@ func (s *systemKeyring) List() ([]Info, error) {
 		}
 		infos = append(infos, Info{
 			Name: info.Name,
-			Key:  key,
+			Data: key,
 		})
 	}
 	return infos, nil

@@ -5,7 +5,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func Commands() *cobra.Command {
+func Cmds() *cobra.Command {
 	cfg := DefaultConfig
 	var cmd *cobra.Command // separate variable defition is required!
 	cmd = &cobra.Command{

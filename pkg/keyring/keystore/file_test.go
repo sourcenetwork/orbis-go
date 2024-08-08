@@ -7,8 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0, included in the file
 // licenses/APL.txt.
-
-package keyring
+package keystore
 
 import (
 	"testing"
@@ -17,10 +16,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFileKeyringDirect(t *testing.T) {
+func TestFileKeystoreDirect(t *testing.T) {
 	prompt := FixedStringPrompt("secret")
 
-	kr, err := OpenFileKeyring(t.TempDir(), prompt)
+	kr, err := OpenFileKeystore(t.TempDir(), prompt)
 	require.NoError(t, err)
 
 	// seed the file keyring to resolve the password
@@ -30,35 +29,35 @@ func TestFileKeyringDirect(t *testing.T) {
 	// password should be remembered
 	assert.Equal(t, []byte("secret"), kr.password)
 
-	// clean the state so the testKeyring function
+	// clean the state so the testKeystore function
 	// uses an empty keyring
 	err = kr.Delete("peer_key")
 	require.NoError(t, err)
 
-	testKeyring(t, kr)
+	testKeystore(t, kr)
 }
 
-func TestBackendFileKeyringOpen(t *testing.T) {
+func TestBackendFileKeystoreOpen(t *testing.T) {
 	kr, err := Open("file", t.TempDir())
 	require.NoError(t, err)
 
 	// get the file keyring struct from the interface
 	// so we can stub the prompt func
-	krf, ok := kr.(*fileKeyring)
+	krf, ok := kr.(*fileKeystore)
 	require.True(t, ok)
 	krf.prompt = FixedStringPrompt("secret")
 
-	testKeyring(t, kr)
+	testKeystore(t, kr)
 }
 
-func TestBackendTestKeyringOpen(t *testing.T) {
+func TestBackendTestKeystoreOpen(t *testing.T) {
 	kr, err := Open("test", t.TempDir())
 	require.NoError(t, err)
 
-	testKeyring(t, kr)
+	testKeystore(t, kr)
 }
 
-func testKeyring(t *testing.T, kr Keyring) {
+func testKeystore(t *testing.T, kr Keystore) {
 	err := kr.Set("peer_key", []byte("abc"))
 	require.NoError(t, err)
 
@@ -89,11 +88,11 @@ func testKeyring(t *testing.T, kr Keyring) {
 	require.Equal(t, []Info{
 		{
 			Name: "peer_key",
-			Key:  []byte("abc"),
+			Data: []byte("abc"),
 		},
 		{
 			Name: "random_key",
-			Key:  []byte("xyz"),
+			Data: []byte("xyz"),
 		},
 	}, infos)
 }
