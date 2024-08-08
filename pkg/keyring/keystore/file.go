@@ -11,6 +11,9 @@
 package keystore
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -191,12 +194,75 @@ func (f *fileKeystore) promptPassword() ([]byte, error) {
 	if len(f.password) > 0 {
 		return f.password, nil
 	}
-	password, err := f.prompt("Enter keystore password:")
+	password, err := f.prompt("Enter keystore password")
 	if err != nil {
 		return nil, err
 	}
+
+	keyhashFileName := filepath.Join(f.dir, "keyhash")
+	// confirm
+	if _, err := os.Stat(keyhashFileName); errors.Is(err, os.ErrNotExist) {
+		err = f.confirmPassword(password, 1)
+		if err != nil {
+			return nil, err
+		}
+	} else if err == nil {
+		keyhashFileName := filepath.Join(f.dir, "keyhash")
+		keyhashOrig, err := os.ReadFile(keyhashFileName)
+		if err != nil {
+			return nil, err
+		}
+		err = f.verifyPassword(password, keyhashOrig, 1)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// original os stat err
+		return nil, err
+	}
+
 	f.password = password
 	return password, nil
+}
+
+func (f *fileKeystore) confirmPassword(password []byte, attempts int) error {
+	keyhashFileName := filepath.Join(f.dir, "keyhash")
+	if attempts >= 3 {
+		return fmt.Errorf("too many attempts")
+	}
+	passwordConfirm, err := f.prompt("Confirm keystore password")
+	if err != nil {
+		return err
+	}
+
+	if string(passwordConfirm) != string(password) {
+		attempts += 1
+		return f.confirmPassword(password, attempts)
+	}
+
+	// create keyhash file
+	keyhash := hash(password)
+	return os.WriteFile(keyhashFileName, keyhash, 0755)
+}
+
+func (f *fileKeystore) verifyPassword(password []byte, pwhash []byte, attempts int) error {
+	keyhash := hash(password)
+	if !bytes.Equal(keyhash, pwhash) {
+		if attempts >= 3 {
+			return fmt.Errorf("too many attempts")
+		}
+		password, err := f.prompt(fmt.Sprintf("Enter keystore password (%d/%d)", attempts, 3))
+		if err != nil {
+			return err
+		}
+		return f.verifyPassword(password, pwhash, attempts+1)
+	}
+	return nil
+}
+
+func hash(data []byte) []byte {
+	hash := sha256.New()
+	return hash.Sum(data)
 }
 
 func (f *fileKeystore) filepath(name string) string {

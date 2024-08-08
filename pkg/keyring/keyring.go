@@ -1,6 +1,7 @@
 package keyring
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"encoding/json"
@@ -141,7 +142,6 @@ func jwkToKey(key jwk.Key) (crypto.Key, error) {
 		key.Raw(&ecKey)
 		// convert from crypto/ecdsa to dcrec/secp256k1
 		var scalar secp256k1.ModNScalar
-		fmt.Println("secp.D", ecKey.D)
 		scalar.SetByteSlice(ecKey.D.Bytes())
 		gokey := secp256k1.NewPrivateKey(&scalar)
 		return crypto.PrivateKeyFromBytes("secp256k1", gokey.Serialize())
@@ -189,6 +189,9 @@ func (k *keyring) List() ([]Info, error) {
 			return nil, err
 		}
 		key, err := jwkToKey(rawKey)
+		if err != nil {
+			return nil, err
+		}
 		infos[i] = Info{
 			Name: info.Name,
 			Key:  key,
@@ -216,4 +219,21 @@ func (k *keyring) Sign(name string, msg []byte) ([]byte, crypto.PublicKey, error
 	}
 
 	return sig, privKey.GetPublic(), nil
+}
+
+type ctxKey string
+
+const (
+	keyringCtxKey ctxKey = "keyring"
+)
+
+// WithKeyring adds a keyring to a context
+func WithKeyring(ctx context.Context, kr Keyring) context.Context {
+	return context.WithValue(ctx, keyringCtxKey, kr)
+}
+
+// FromContext gets an existing keyring from a context
+func FromContext(ctx context.Context) (Keyring, bool) {
+	keyring, ok := ctx.Value(keyringCtxKey).(Keyring)
+	return keyring, ok
 }

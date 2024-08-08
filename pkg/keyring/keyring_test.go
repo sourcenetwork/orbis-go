@@ -55,4 +55,19 @@ func testKeyringAsymmetricBasic(t *testing.T, keyring Keyring, suite suites.Suit
 	pk2, err := keyring.Get(testKeyName2)
 	require.NoError(t, err)
 	require.True(t, pk2.Equals(pub))
+
+	keyInfos, err := keyring.List()
+	require.NoError(t, err)
+
+	require.Equal(t, testKeyName, keyInfos[0].Name)
+	require.True(t, priv.Equals(keyInfos[0].Key))
+
+	require.Equal(t, testKeyName2, keyInfos[1].Name)
+	require.True(t, pub.Equals(keyInfos[1].Key))
+
+	err = keyring.Delete(testKeyName)
+	require.NoError(t, err)
+
+	_, err = keyring.Get(testKeyName)
+	require.Error(t, err)
 }
