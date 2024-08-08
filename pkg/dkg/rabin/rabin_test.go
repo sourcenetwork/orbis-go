@@ -99,7 +99,7 @@ func randomNodes(num int, ste suites.Suite) []transport.Node {
 }
 
 func randomNodeFromPublicKey(pubkey crypto.PublicKey) transport.Node {
-	pid, err := peer.IDFromPublicKey(pubkey)
+	pid, err := peer.IDFromPublicKey(crypto.ToLibP2PPublicKey(pubkey))
 	if err != nil {
 		panic(err)
 	}

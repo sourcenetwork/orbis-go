@@ -5,7 +5,6 @@ import (
 
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 
-	ic "github.com/libp2p/go-libp2p/core/crypto"
 	libp2phost "github.com/libp2p/go-libp2p/core/host"
 	ma "github.com/multiformats/go-multiaddr"
 )
@@ -57,11 +56,11 @@ func (h *Host) Close() error {
 
 type Node struct {
 	id        string
-	publicKey ic.PubKey
+	publicKey crypto.PublicKey
 	address   ma.Multiaddr
 }
 
-func NewNode(id string, publicKey ic.PubKey, address ma.Multiaddr) *Node {
+func NewNode(id string, publicKey crypto.PublicKey, address ma.Multiaddr) *Node {
 	return &Node{
 		id:        id,
 		publicKey: publicKey,
@@ -74,8 +73,7 @@ func (n Node) ID() string {
 }
 
 func (n Node) PublicKey() crypto.PublicKey {
-	pubkey, _ := crypto.PublicKeyFromLibP2P(n.publicKey)
-	return pubkey
+	return n.publicKey
 }
 
 func (n Node) Address() ma.Multiaddr {

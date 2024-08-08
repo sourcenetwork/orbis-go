@@ -9,7 +9,7 @@ import (
 	transportv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/transport/v1alpha1"
 	"github.com/sourcenetwork/orbis-go/pkg/transport"
 
-	libp2pcrypto "github.com/libp2p/go-libp2p/core/crypto/pb"
+	icpb "github.com/libp2p/go-libp2p/core/crypto/pb"
 )
 
 type transportService struct {
@@ -35,12 +35,13 @@ func (s *transportService) GetHost(ctx context.Context, req *transportv1alpha1.G
 		return nil, err
 	}
 
+	kt := icpb.KeyType(tp.Host().PublicKey().Type())
 	resp := &transportv1alpha1.GetHostResponse{
 		Node: &transportv1alpha1.Node{
 			Id:      tp.Host().ID(),
 			Address: tp.Host().Address().String(),
-			PublicKey: &libp2pcrypto.PublicKey{
-				Type: tp.Host().PublicKey().Type().Enum(),
+			PublicKey: &icpb.PublicKey{
+				Type: &kt,
 				Data: raw,
 			},
 		},

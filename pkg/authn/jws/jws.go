@@ -137,7 +137,7 @@ func (c credentialSrv) VerifyRequestSubject(ctx context.Context, token []byte) (
 			return authn.SubjectInfo{}, fmt.Errorf("JWS subject bech32 verification failed: %w", err)
 		}
 		if addr != subject {
-			return authn.SubjectInfo{}, fmt.Errorf("JWS subject bech32 mismatch")
+			return authn.SubjectInfo{}, fmt.Errorf("JWS subject bech32 mismatch %s != %s", addr, subject)
 		}
 	}
 
