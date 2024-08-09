@@ -132,13 +132,12 @@ func (s *utilService) CreateJWT(ctx context.Context, req *utilityv1alpha1.Create
 }
 
 func (s *utilService) CreateKeypair(ctx context.Context, req *utilityv1alpha1.CreateKeypairRequest) (*utilityv1alpha1.CreateKeypairResponse, error) {
-
-	ste, err := crypto.FindSuite(req.KeyType)
+	keyType, err := crypto.KeyPairTypeFromString(req.KeyType)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "unsupported key type: %s", err)
 	}
 
-	privateKey, publicKey, err := crypto.GenerateKeyPair(ste, rand.Reader)
+	privateKey, publicKey, err := crypto.GenerateKeyPair(keyType, rand.Reader)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "generate key pair: %s", err)
 	}
@@ -227,7 +226,11 @@ func (s *utilService) DecryptSecret(ctx context.Context, req *utilityv1alpha1.De
 		return nil, status.Errorf(codes.InvalidArgument, "unmarshal xncCmt: %s", err)
 	}
 
-	sk, err := crypto.PrivateKeyFromBytes(req.KeyType, req.RdrSk)
+	kt, err := crypto.KeyPairTypeFromString(req.KeyType)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "unknown key type: %s", err)
+	}
+	sk, err := crypto.PrivateKeyFromBytes(kt, req.RdrSk)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "unmarshal rdrSk: %s", err)
 	}
