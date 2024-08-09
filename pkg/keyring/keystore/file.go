@@ -56,6 +56,7 @@ type fileKeystore struct {
 
 // OpenFileKeystore opens the keyring in the given directory.
 func OpenFileKeystore(dir string, prompt PromptFunc) (*fileKeystore, error) {
+	dir = os.ExpandEnv(dir)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, err
 	}
@@ -212,7 +213,7 @@ func (f *fileKeystore) promptPassword() ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		err = f.verifyPassword(password, keyhashOrig, 1)
+		err = f.verifyPassword(password, keyhashOrig, 2)
 		if err != nil {
 			return nil, err
 		}
@@ -242,7 +243,7 @@ func (f *fileKeystore) confirmPassword(password []byte, attempts int) error {
 
 	// create keyhash file
 	keyhash := hash(password)
-	return os.WriteFile(keyhashFileName, keyhash, 0755)
+	return os.WriteFile(keyhashFileName, keyhash, 0600)
 }
 
 func (f *fileKeystore) verifyPassword(password []byte, pwhash []byte, attempts int) error {
@@ -251,12 +252,13 @@ func (f *fileKeystore) verifyPassword(password []byte, pwhash []byte, attempts i
 		if attempts >= 3 {
 			return fmt.Errorf("too many attempts")
 		}
-		password, err := f.prompt(fmt.Sprintf("Enter keystore password (%d/%d)", attempts, 3))
+		password, err := f.prompt(fmt.Sprintf("Enter keystore password (attempt: %d/%d)", attempts, 3))
 		if err != nil {
 			return err
 		}
 		return f.verifyPassword(password, pwhash, attempts+1)
 	}
+
 	return nil
 }
 
@@ -266,7 +268,8 @@ func hash(data []byte) []byte {
 }
 
 func (f *fileKeystore) filepath(name string) string {
-	return filepath.Join(f.dir, name+fileExtension)
+	path := filepath.Join(f.dir, name+fileExtension)
+	return path
 }
 
 func getFilename(filename string) string {

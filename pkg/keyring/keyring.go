@@ -144,7 +144,7 @@ func jwkToKey(key jwk.Key) (crypto.Key, error) {
 		var scalar secp256k1.ModNScalar
 		scalar.SetByteSlice(ecKey.D.Bytes())
 		gokey := secp256k1.NewPrivateKey(&scalar)
-		return crypto.PrivateKeyFromBytes("secp256k1", gokey.Serialize())
+		return crypto.PrivateKeyFromBytes(crypto.Secp256k1, gokey.Serialize())
 	} else if !asymmetric.IsPrivate() && crv == jwa.Secp256k1 {
 		var ecKey ecdsa.PublicKey
 		key.Raw(&ecKey)
@@ -152,15 +152,15 @@ func jwkToKey(key jwk.Key) (crypto.Key, error) {
 		x := bigIntToFieldVal(ecKey.X)
 		y := bigIntToFieldVal(ecKey.Y)
 		gokey := secp256k1.NewPublicKey(x, y)
-		return crypto.PublicKeyFromBytes("secp256k1", gokey.SerializeUncompressed())
+		return crypto.PublicKeyFromBytes(crypto.Secp256k1, gokey.SerializeUncompressed())
 	} else if asymmetric.IsPrivate() && crv == jwa.Ed25519 {
 		var ecKey ed25519.PrivateKey
 		key.Raw(&ecKey)
-		return crypto.PrivateKeyFromBytes("ed25519", []byte(ecKey))
+		return crypto.PrivateKeyFromBytes(crypto.Ed25519, []byte(ecKey))
 	} else if !asymmetric.IsPrivate() && crv == jwa.Ed25519 {
 		var ecKey ed25519.PublicKey
 		key.Raw(&ecKey)
-		return crypto.PublicKeyFromBytes("ed25519", []byte(ecKey))
+		return crypto.PublicKeyFromBytes(crypto.Ed25519, []byte(ecKey))
 	}
 
 	return nil, fmt.Errorf("unsupported curve or algorithm")
@@ -180,17 +180,17 @@ func (k *keyring) Delete(name string) error {
 func (k *keyring) List() ([]Info, error) {
 	rawinfos, err := k.store.List()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("keystore list: %w", err)
 	}
 	infos := make([]Info, len(rawinfos))
 	for i, info := range rawinfos {
 		rawKey, err := jwk.ParseKey(info.Data)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("parse JWK: %w", err)
 		}
 		key, err := jwkToKey(rawKey)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("converting JWK: %w", err)
 		}
 		infos[i] = Info{
 			Name: info.Name,

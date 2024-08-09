@@ -6,7 +6,6 @@ import (
 
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	"github.com/stretchr/testify/require"
-	"go.dedis.ch/kyber/v3/suites"
 )
 
 func TestKeyringAsymmetricBasicEd25519(t *testing.T) {
@@ -14,10 +13,7 @@ func TestKeyringAsymmetricBasicEd25519(t *testing.T) {
 	require.NoError(t, err)
 
 	// generate our test keypair
-	suite, err := crypto.SuiteForType(crypto.Ed25519)
-	require.NoError(t, err)
-
-	testKeyringAsymmetricBasic(t, keyring, suite)
+	testKeyringAsymmetricBasic(t, keyring, crypto.Ed25519)
 }
 
 func TestKeyringAsymmetricBasicSecp256k1(t *testing.T) {
@@ -25,16 +21,14 @@ func TestKeyringAsymmetricBasicSecp256k1(t *testing.T) {
 	require.NoError(t, err)
 
 	// generate our test keypair
-	suite, err := crypto.SuiteForType(crypto.Secp256k1)
-	require.NoError(t, err)
-
-	testKeyringAsymmetricBasic(t, keyring, suite)
+	testKeyringAsymmetricBasic(t, keyring, crypto.Secp256k1)
 }
 
-func testKeyringAsymmetricBasic(t *testing.T, keyring Keyring, suite suites.Suite) {
+func testKeyringAsymmetricBasic(t *testing.T, keyring Keyring, keyType crypto.KeyType) {
 	testKeyName := "testKey1"
+
 	// nil arg is to ensure a random reader
-	priv, pub, err := crypto.GenerateKeyPair(suite, rand.Reader)
+	priv, pub, err := crypto.GenerateKeyPair(keyType, rand.Reader)
 	require.NoError(t, err)
 
 	err = keyring.Set(testKeyName, priv)

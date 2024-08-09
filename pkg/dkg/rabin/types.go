@@ -270,8 +270,7 @@ func dkgToProto(d *dkg) (*rabinv1alpha1.DKG, error) {
 	if d.distPubKey != nil {
 		distPubKey, err = d.distPubKey.MarshalBinary()
 		if err != nil {
-			fmt.Println("dkg state", d.State())
-			fmt.Println("distpubkey", d.distPubKey)
+
 			return nil, fmt.Errorf("couldn't marshal pubkey: %w", err)
 		}
 	}

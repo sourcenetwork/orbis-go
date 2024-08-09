@@ -87,10 +87,24 @@ func IsPublic(key Key) bool {
 
 func IsPrivate(key Key) bool {
 	switch key.(type) {
-	case PublicKey:
+	case PrivateKey:
 		return true
 	}
 	return false
+}
+
+func GetPublic(key Key) (PublicKey, error) {
+	if !IsAsymmetric(key) {
+		return nil, fmt.Errorf("key must be asymmetric")
+	}
+
+	switch kt := key.(type) {
+	case PublicKey:
+		return kt, nil
+	case PrivateKey:
+		return kt.GetPublic(), nil
+	}
+	return nil, fmt.Errorf("unknown key type")
 }
 
 // PublicKey
@@ -178,10 +192,10 @@ func PublicKeyFromPoint(suite suites.Suite, point kyber.Point) (PublicKey, error
 	return PublicKeyFromLibP2P(pk)
 }
 
-func PublicKeyFromBytes(keyType string, buf []byte) (PublicKey, error) {
+func PublicKeyFromBytes(keyType KeyType, buf []byte) (PublicKey, error) {
 	var pk ic.PubKey
 	var err error
-	switch strings.ToLower(keyType) {
+	switch keyType.String() {
 	case "ed25519":
 		pk, err = ic.UnmarshalEd25519PublicKey(buf)
 	case "secp256k1":
@@ -315,8 +329,8 @@ type privKeyLibP2P struct {
 	suite suites.Suite
 }
 
-func GenerateKeyPair(ste suites.Suite, src io.Reader) (PrivateKey, PublicKey, error) {
-	keyType, err := KeyPairTypeFromString(ste.String())
+func GenerateKeyPair(keyType KeyType, src io.Reader) (PrivateKey, PublicKey, error) {
+	suite, err := SuiteForType(keyType)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -327,25 +341,25 @@ func GenerateKeyPair(ste suites.Suite, src io.Reader) (PrivateKey, PublicKey, er
 
 	return &privKeyLibP2P{
 			PrivKey: sk,
-			suite:   ste,
+			suite:   suite,
 		}, &pubKeyLibP2P{
 			PubKey: pk,
-			suite:  ste,
+			suite:  suite,
 		}, nil
 }
 
-func PrivateKeyFromBytes(keyType string, buf []byte) (PrivateKey, error) {
+func PrivateKeyFromBytes(keyType KeyType, buf []byte) (PrivateKey, error) {
 	var pk ic.PrivKey
 	var err error
-	switch strings.ToLower(keyType) {
-	case "ed25519":
+	switch keyType {
+	case Ed25519:
 		pk, err = ic.UnmarshalEd25519PrivateKey(buf)
-	case "secp256k1":
+	case Secp256k1:
 		pk, err = ic.UnmarshalSecp256k1PrivateKey(buf)
-	case "ecdsa":
+	case ECDSA:
 		pk, err = ic.UnmarshalECDSAPrivateKey(buf)
-	case "rsa":
-		pk, err = ic.UnmarshalRsaPrivateKey(buf)
+	// case "rsa":
+	// 	pk, err = ic.UnmarshalRsaPrivateKey(buf)
 	default:
 		return nil, ErrBadKeyType
 	}

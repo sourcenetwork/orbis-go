@@ -5,7 +5,6 @@ import (
 	gocrypto "crypto"
 	"crypto/ed25519"
 	"crypto/rand"
-	"fmt"
 	"testing"
 	"time"
 
@@ -199,7 +198,6 @@ func TestJWSCredentialServicBech32(t *testing.T) {
 	cryptoPubKey := mustGetPublicKey(ed25519PubKey)
 	ed25519Signer := mustMakeSigner(jose.EdDSA, ed25519PrivKey, testKID)
 	testAddress := mustGenerateBech32Address(cryptoPubKey)
-	fmt.Println(testAddress)
 
 	// create signed JWT token
 	claims := claims{
