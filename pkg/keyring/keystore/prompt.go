@@ -11,12 +11,12 @@ import (
 type PromptFunc func(string) ([]byte, error)
 
 func TerminalPrompt(prompt string) ([]byte, error) {
-	fmt.Printf("%s: ", prompt)
+	fmt.Fprintf(os.Stderr, "%s: ", prompt)
 	b, err := term.ReadPassword(int(os.Stdin.Fd()))
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println()
+	fmt.Fprintf(os.Stderr, "\n") // line break for formatting consistency
 	return b, nil
 }
 
