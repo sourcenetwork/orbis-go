@@ -35,7 +35,6 @@ func (c *Config) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&c.KeyringBackend, namer("KeyringBackend"), "k", c.KeyringBackend, "keyring backend to get identities from (file|os|test)")
 	fs.StringVarP(&c.KeyringPath, namer("KeyringPath"), "", c.KeyringPath, "keyring path argument for some backends")
 	fs.StringVarP(&c.KeyringService, namer("KeyringService"), "", c.KeyringService, "keyring service argument for some backends")
-	fs.StringVarP(&c.Output, namer("Output"), "", c.Output, "output format (text|json|yaml)")
 }
 
 func namer(in string) string {

@@ -55,6 +55,8 @@ func KeyCmd() *cobra.Command {
 		},
 	}
 	cfg.BindFlags(cmd.PersistentFlags())
+	// output needs to be handled separetly because its duplicated on client subcommand
+	cmd.PersistentFlags().StringVarP(&cfg.Output, namer("Output"), "", cfg.Output, "output format (text|json|yaml)")
 	cmd.AddCommand(
 		ListCmd(cfg),
 		AddCmd(cfg),
