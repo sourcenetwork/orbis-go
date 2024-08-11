@@ -228,7 +228,7 @@ func (f *fileKeystore) promptPassword() ([]byte, error) {
 
 func (f *fileKeystore) confirmPassword(password []byte, attempts int) error {
 	keyhashFileName := filepath.Join(f.dir, "keyhash")
-	if attempts >= 3 {
+	if attempts > 3 {
 		return fmt.Errorf("too many attempts")
 	}
 	passwordConfirm, err := f.prompt("Confirm keystore password")
@@ -249,7 +249,7 @@ func (f *fileKeystore) confirmPassword(password []byte, attempts int) error {
 func (f *fileKeystore) verifyPassword(password []byte, pwhash []byte, attempts int) error {
 	keyhash := hash(password)
 	if !bytes.Equal(keyhash, pwhash) {
-		if attempts >= 3 {
+		if attempts > 3 {
 			return fmt.Errorf("too many attempts")
 		}
 		password, err := f.prompt(fmt.Sprintf("Enter keystore password (attempt: %d/%d)", attempts, 3))
