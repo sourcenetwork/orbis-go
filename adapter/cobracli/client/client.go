@@ -1,6 +1,10 @@
 package client
 
 import (
+	"os"
+
+	"github.com/segmentio/cli"
+	"github.com/sourcenetwork/orbis-go/adapter/cobracli"
 	"github.com/sourcenetwork/orbis-go/adapter/cobracli/keys"
 	"github.com/sourcenetwork/orbis-go/pkg/keyring"
 	"github.com/sourcenetwork/orbis-go/pkg/util/flag"
@@ -28,6 +32,12 @@ for interacting with an Orbis Ring.`,
 				return err
 			}
 			c.SetContext(keyring.WithKeyring(c.Context(), kr))
+
+			pf, err := cli.Format(cfg.Output, os.Stdout)
+			if err != nil {
+				return err
+			}
+			c.SetContext(cobracli.WithContext(c.Context(), kr, pf))
 			return nil
 		},
 	}

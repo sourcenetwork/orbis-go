@@ -22,7 +22,8 @@ import (
 type Config struct {
 	Keyring *keys.Config
 
-	From string // keyring identity to execute with
+	From   string // keyring identity to execute with
+	RingId string // secret ring ID
 
 	ServerAddr   string        // remote oribs server address
 	AuthzAddr    string        // remote authz server address
@@ -40,6 +41,8 @@ type Config struct {
 	CACertFile         string
 	CertFile           string
 	KeyFile            string
+
+	Output string
 }
 
 var DefaultConfig = &Config{
@@ -52,11 +55,13 @@ var DefaultConfig = &Config{
 	EnvVarPrefix: "orbis",
 	EnvVarNamer:  naming.UpperSnake,
 	FlagNamer:    naming.LowerKebab,
+	Output:       "yaml",
 }
 
 func (c *Config) BindFlags(fs *pflag.FlagSet) {
 	c.Keyring.BindFlags(fs)
-	fs.StringVarP(&c.From, namer("From"), "f", c.From, "keyring identity to use")
+	fs.StringVarP(&c.From, namer("From"), "", c.From, "keyring identity to use")
+	fs.StringVarP(&c.RingId, namer("RingId"), "r", c.RingId, "Secret Ring ID")
 	fs.StringVarP(&c.ServerAddr, namer("ServerAddr"), "s", c.ServerAddr, "orbis service address in the form host:port")
 	fs.StringVarP(&c.ServerAddr, namer("AuthzAddr"), "z", c.AuthzAddr, "authorization service address in the form host:port")
 	fs.DurationVar(&c.Timeout, namer("Timeout"), c.Timeout, "client connection timeout")
@@ -66,6 +71,7 @@ func (c *Config) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&c.CACertFile, namer("TLS CACertFile"), c.CACertFile, "CA certificate file")
 	fs.StringVar(&c.CertFile, namer("TLS CertFile"), c.CertFile, "client certificate file")
 	fs.StringVar(&c.KeyFile, namer("TLS KeyFile"), c.KeyFile, "client key file")
+	fs.StringVarP(&c.Output, namer("Output"), "", c.Output, "output format (text|json|yaml)")
 }
 
 func (c *Config) dialOpts(ctx context.Context, opts *[]grpc.DialOption) error {
@@ -113,7 +119,7 @@ func (c *Config) dialOpts(ctx context.Context, opts *[]grpc.DialOption) error {
 	return nil
 }
 
-func RoundTrip(ctx context.Context, cfg *Config, fn func(grpc.ClientConnInterface) error) error {
+func RoundTrip(ctx context.Context, cfg *Config, addr string, fn func(conn grpc.ClientConnInterface) error) error {
 	var err error
 
 	opts := []grpc.DialOption{grpc.WithBlock()}
@@ -127,10 +133,10 @@ func RoundTrip(ctx context.Context, cfg *Config, fn func(grpc.ClientConnInterfac
 		defer done()
 	}
 
-	cc, err := grpc.DialContext(ctx, cfg.ServerAddr, opts...)
+	cc, err := grpc.DialContext(ctx, addr, opts...)
 	if err != nil {
 		if err == context.DeadlineExceeded {
-			return fmt.Errorf("timeout dialing server: %s", cfg.ServerAddr)
+			return fmt.Errorf("timeout dialing server: %s", addr)
 		}
 		return err
 	}
