@@ -13,6 +13,8 @@ import (
 	"io"
 	"strings"
 
+	scrypto "github.com/TBD54566975/ssi-sdk/crypto"
+	"github.com/TBD54566975/ssi-sdk/did/key"
 	cometcrypto "github.com/cometbft/cometbft/crypto"
 	"github.com/cometbft/cometbft/crypto/tmhash"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -64,9 +66,6 @@ type Key interface {
 	Raw() ([]byte, error)
 	// Type returns the key type
 	Type() KeyType
-
-	// MarshalJWK marhals the key to a JsonWebKey (JWK)
-	MarshalJWK() ([]byte, error)
 }
 
 func IsAsymmetric(key Key) bool {
@@ -107,6 +106,19 @@ func GetPublic(key Key) (PublicKey, error) {
 	return nil, fmt.Errorf("unknown key type")
 }
 
+func GetPrivate(key Key) (PrivateKey, error) {
+	if !IsAsymmetric(key) {
+		return nil, fmt.Errorf("key must by asymmetric")
+	}
+
+	priv, ok := key.(PrivateKey)
+	if !ok {
+		return nil, fmt.Errorf("key isn't private")
+	}
+
+	return priv, nil
+}
+
 // PublicKey
 type PublicKey interface {
 	Key
@@ -114,6 +126,7 @@ type PublicKey interface {
 	Point() kyber.Point
 	Std() (gocrypto.PublicKey, error)
 	String() string
+	DID() (string, error)
 }
 
 var _ PublicKey = (*pubKeyLibP2P)(nil)
@@ -271,6 +284,23 @@ func (p *pubKeyLibP2P) String() string {
 	return enc
 }
 
+func (p *pubKeyLibP2P) DID() (string, error) {
+	didKeyType, err := cryptoKeyTypeToDID(p.Type())
+	if err != nil {
+		return "", err
+	}
+	keyBuf, err := p.Raw()
+	if err != nil {
+		return "", err
+	}
+	didKey, err := key.CreateDIDKey(didKeyType, keyBuf)
+	if err != nil {
+		return "", fmt.Errorf("creating did: %w", err)
+	}
+
+	return didKey.String(), nil
+}
+
 func (p *pubKeyLibP2P) MarshalJWK() ([]byte, error) {
 	goPubKey, err := ic.PubKeyToStdKey(p.PubKey)
 	if err != nil {
@@ -296,6 +326,17 @@ func (p *pubKeyLibP2P) Equals(k1 Key) bool {
 	}
 
 	return basicEquals(p, k1)
+}
+
+func cryptoKeyTypeToDID(kt KeyType) (scrypto.KeyType, error) {
+	switch kt {
+	case Ed25519:
+		return scrypto.Ed25519, nil
+	case Secp256k1:
+		return scrypto.SECP256k1, nil
+	}
+
+	return "", fmt.Errorf("invalid key type")
 }
 
 func basicEquals(k1, k2 Key) bool {
