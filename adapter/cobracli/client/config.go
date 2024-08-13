@@ -61,7 +61,7 @@ var DefaultConfig = &Config{
 func (c *Config) BindFlags(fs *pflag.FlagSet) {
 	c.Keyring.BindFlags(fs)
 	fs.StringVarP(&c.From, namer("From"), "", c.From, "keyring identity to use")
-	fs.StringVarP(&c.RingId, namer("RingId"), "r", c.RingId, "Secret Ring ID")
+	fs.StringVarP(&c.RingId, namer("RingId"), "", c.RingId, "Secret Ring ID")
 	fs.StringVarP(&c.ServerAddr, namer("ServerAddr"), "s", c.ServerAddr, "orbis service address in the form host:port")
 	fs.StringVarP(&c.ServerAddr, namer("AuthzAddr"), "z", c.AuthzAddr, "authorization service address in the form host:port")
 	fs.DurationVar(&c.Timeout, namer("Timeout"), c.Timeout, "client connection timeout")

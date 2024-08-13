@@ -8,6 +8,7 @@ import (
 
 	"github.com/sourcenetwork/orbis-go/adapter/cobracli"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
+	"github.com/sourcenetwork/orbis-go/pkg/keyring"
 	"github.com/sourcenetwork/zanzi/pkg/api"
 	"github.com/sourcenetwork/zanzi/pkg/domain"
 	"github.com/spf13/cobra"
@@ -123,15 +124,7 @@ func RegisterPolicyCmd(cfg *Config) *cobra.Command {
 			if !ok {
 				return fmt.Errorf("couldn't get client context")
 			}
-			fromKey, err := ctx.Keyring().Get(cfg.From)
-			if err != nil {
-				return fmt.Errorf("getting key %s: %w", cfg.From, err)
-			}
-			if !crypto.IsPrivate(fromKey) {
-				return fmt.Errorf("from key must be a private keypair")
-			}
-			fromKeyPriv := fromKey.(crypto.PrivateKey)
-			did, err := fromKeyPriv.GetPublic().DID()
+			did, err := fromDID(ctx.Keyring(), cfg.From)
 			if err != nil {
 				return fmt.Errorf("getting key DID identifier: %w", err)
 			}
@@ -306,4 +299,21 @@ func doRelationshipRequest(
 		return err
 	})
 	return resp, err
+}
+
+func fromDID(kr keyring.Keyring, from string) (string, error) {
+	fromKey, err := kr.Get(from)
+	if err != nil {
+		return "", fmt.Errorf("getting key %s: %w", from, err)
+	}
+	if !crypto.IsPrivate(fromKey) {
+		return "", fmt.Errorf("from key must be a private keypair")
+	}
+	fromKeyPriv := fromKey.(crypto.PrivateKey)
+	did, err := fromKeyPriv.GetPublic().DID()
+	if err != nil {
+		return "", fmt.Errorf("getting key DID identifier: %w", err)
+	}
+
+	return did, nil
 }

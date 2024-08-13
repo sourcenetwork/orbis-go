@@ -96,6 +96,9 @@ func keyToJWK(key crypto.Key) (jwk.Key, error) {
 }
 
 func (k *keyring) Get(name string) (crypto.Key, error) {
+	if name == "" {
+		return nil, fmt.Errorf("missing key name")
+	}
 	data, err := k.store.Get(name)
 	if err != nil {
 		return nil, fmt.Errorf("get from store: %w", err)

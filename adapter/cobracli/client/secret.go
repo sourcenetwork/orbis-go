@@ -14,6 +14,7 @@ import (
 	ringv1alpha1 "github.com/sourcenetwork/orbis-go/gen/proto/orbis/ring/v1alpha1"
 	"github.com/sourcenetwork/orbis-go/pkg/crypto"
 	"github.com/sourcenetwork/orbis-go/pkg/pre/elgamal"
+	"github.com/sourcenetwork/orbis-go/pkg/types"
 	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/kyber/v3/suites"
 	"google.golang.org/grpc"
@@ -131,11 +132,112 @@ func PutSecretClientCmd(cfg *Config) *cobra.Command {
 	cmd.PersistentFlags().Bool("managed", false, "Managed authorization to automatically create permissions")
 	cmd.PersistentFlags().StringP("permission", "p", "", "Permission to access the secret")
 	cmd.PersistentFlags().BoolP("base64", "b", false, "Secret is base64 encoded")
+	cmd.PersistentFlags().StringP("policy", "", "", "Policy for managed authorization")
+	cmd.PersistentFlags().StringP("resource", "r", "", "Resource for managed authorization")
 	return cmd
 }
 
 func doManagedSecretPut(cfg *Config, cmd *cobra.Command, args []string) error {
-	panic("todo managed secret")
+	secret := []byte(args[0])
+	isBase64, err := cmd.Flags().GetBool("base64")
+	if err != nil {
+		return err
+	}
+
+	if len(secret) == 0 {
+		return fmt.Errorf("secret zero lenght")
+	}
+
+	if isBase64 {
+		var secretBuf []byte
+		b64.StdEncoding.Decode(secretBuf, secret)
+		secret = secretBuf
+	}
+
+	policyID, err := cmd.Flags().GetString("policy")
+	if err != nil {
+		return err
+	}
+	if policyID == "" {
+		return fmt.Errorf("managed authorization requires 'policy' flag")
+	}
+	permission, err := cmd.Flags().GetString("permission")
+	if err != nil {
+		return err
+	}
+	if permission == "" {
+		return fmt.Errorf("managed authorization requires 'permission' flag")
+	}
+	resource, err := cmd.Flags().GetString("resource")
+	if err != nil {
+		return err
+	}
+	if resource == "" {
+		return fmt.Errorf("managed authorization requires 'resource' flag")
+	}
+
+	return RoundTrip(cmd.Context(), cfg, cfg.ServerAddr, func(conn grpc.ClientConnInterface) error {
+		ringClient := ringv1alpha1.NewRingServiceClient(conn)
+
+		pkReq := &ringv1alpha1.PublicKeyRequest{
+			Id: cfg.RingId,
+		}
+		pkResp, err := ringClient.PublicKey(cmd.Context(), pkReq)
+		if err != nil {
+			return fmt.Errorf("get ring public key: %w", err)
+		}
+
+		encCmt, encScrt, err := encryptSecret(
+			pkResp.PublicKey.Type.String(),
+			pkResp.PublicKey.Data,
+			secret)
+		if err != nil {
+			return fmt.Errorf("encrypt secret: %w", err)
+		}
+
+		// we can omit the authz context since the secret ID
+		// doesn't depend on it
+		secretType := types.NewSecret(encCmt, encScrt, "")
+		sid, err := secretType.ID()
+		if err != nil {
+			return fmt.Errorf("secret ID: %w", err)
+		}
+
+		ctx, ok := cobracli.FromContext(cmd.Context())
+		if !ok {
+			return fmt.Errorf("couldn't get client context")
+		}
+		did, err := fromDID(ctx.Keyring(), cfg.From)
+		if err != nil {
+			return fmt.Errorf("getting key DID identifier: %w", err)
+		}
+
+		_, err = doRelationshipRequest(cmd.Context(), cfg, policyID, resource,
+			string(sid), did, "owner")
+		if err != nil {
+			return fmt.Errorf("policy register object: %w", err)
+		}
+
+		// build authz context
+		// <policyID>/resourceName:resourceID#permission
+		authzCtx := fmt.Sprintf("%s/%s:%s#%s", policyID, resource, sid, permission)
+
+		storeSecretReq := &ringv1alpha1.StoreSecretRequest{
+			RingId: cfg.RingId,
+			Secret: &ringv1alpha1.Secret{
+				EncCmt:   encCmt,
+				EncScrt:  encScrt,
+				AuthzCtx: authzCtx,
+			},
+		}
+		storeSecretResp, err := ringClient.StoreSecret(cmd.Context(), storeSecretReq)
+		if err != nil {
+			return fmt.Errorf("store secret: %w", err)
+		}
+
+		fmt.Println(storeSecretResp.SecretId)
+		return nil
+	})
 }
 
 func doUnmanagedSecretPut(cfg *Config, cmd *cobra.Command, args []string) error {
@@ -192,7 +294,7 @@ func doUnmanagedSecretPut(cfg *Config, cmd *cobra.Command, args []string) error 
 			return fmt.Errorf("store secret: %w", err)
 		}
 
-		fmt.Println("secret ID:", storeSecretResp.SecretId)
+		fmt.Println(storeSecretResp.SecretId)
 		return nil
 	})
 }
