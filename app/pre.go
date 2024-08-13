@@ -25,12 +25,10 @@ func (r *Ring) StoreSecret(ctx context.Context, rid types.RingID, scrt *types.Se
 		return "", fmt.Errorf("marshal secret: %w", err)
 	}
 
-	cid, err := types.CidFromBytes(payload)
+	sid, err := scrt.ID()
 	if err != nil {
-		return "", fmt.Errorf("cid from bytes: %w", err)
+		return "", fmt.Errorf("secret ID: %w", err)
 	}
-
-	sid := types.SecretID(cid.String())
 	storeMsgID := preStoreMsgID(string(sid))
 
 	msg, err := r.Transport.NewMessage(rid, storeMsgID, false, payload, "", nil)
