@@ -29,7 +29,7 @@ var (
 
 func GetSecretClientCmd(cfg *Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get [secret-id]",
+		Use:   "get secret-id",
 		Short: "Get a secret",
 		Args:  cobra.ExactArgs(1),
 		RunE:  runGetSecretClientCmd(cfg),
@@ -110,7 +110,7 @@ func runGetSecretClientCmd(cfg *Config) func(cmd *cobra.Command, args []string) 
 
 func PutSecretClientCmd(cfg *Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "put [secret-value]",
+		Use:   "put secret",
 		Short: "Store a secret",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

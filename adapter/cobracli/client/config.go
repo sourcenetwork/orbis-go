@@ -25,7 +25,7 @@ type Config struct {
 	From   string // keyring identity to execute with
 	RingId string // secret ring ID
 
-	ServerAddr   string        // remote oribs server address
+	ServerAddr   string        // remote orbis server address
 	AuthzAddr    string        // remote authz server address
 	Timeout      time.Duration // grpc request timeout
 	UseEnvVars   bool
