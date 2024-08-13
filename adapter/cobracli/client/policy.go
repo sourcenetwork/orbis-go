@@ -37,7 +37,7 @@ func PolicyCmd(cfg *Config) *cobra.Command {
 
 func DescribePolicyCmd(cfg *Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "describe",
+		Use:   "describe [policy-id]",
 		Short: "Get and describe an existing policy",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -67,7 +67,7 @@ func DescribePolicyCmd(cfg *Config) *cobra.Command {
 
 func CreatePolicyCmd(cfg *Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "create",
+		Use:   "create -f <path-to>/policy.yaml",
 		Short: "Create a new policy",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			policyFilePath, err := cmd.Flags().GetString(flagCreateFile)
@@ -116,7 +116,7 @@ type setRelationOut struct {
 
 func RegisterPolicyCmd(cfg *Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "register",
+		Use:   "register [policy-id] [resource-name] [resource-id]",
 		Short: "Register a resource instance in the policy",
 		Args:  cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -157,7 +157,7 @@ func RegisterPolicyCmd(cfg *Config) *cobra.Command {
 
 func SetRelationshipPolicyCmd(cfg *Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "set",
+		Use:   "set [policy-id] [resource-name] [resource-id] [relation] [subject]",
 		Short: "Create a relation",
 		Args:  cobra.ExactArgs(5),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -195,7 +195,7 @@ func SetRelationshipPolicyCmd(cfg *Config) *cobra.Command {
 
 func CheckPolicyCmd(cfg *Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "check",
+		Use:   "check [policy-id] [subject] [permission]",
 		Short: "Evaluate a check call",
 		Args:  cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {

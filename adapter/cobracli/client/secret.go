@@ -29,13 +29,10 @@ var (
 
 func GetSecretClientCmd(cfg *Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get",
+		Use:   "get [secret-id]",
 		Short: "Get a secret",
 		Args:  cobra.ExactArgs(1),
-		// PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		// 	return cmd.Parent().MarkFlagRequired("from")
-		// },
-		RunE: runGetSecretClientCmd(cfg),
+		RunE:  runGetSecretClientCmd(cfg),
 	}
 	return cmd
 }
@@ -113,7 +110,7 @@ func runGetSecretClientCmd(cfg *Config) func(cmd *cobra.Command, args []string) 
 
 func PutSecretClientCmd(cfg *Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "put",
+		Use:   "put [secret-value]",
 		Short: "Store a secret",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
