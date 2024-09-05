@@ -10,13 +10,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-/*
-# Generate a new secp256k1 key named alice
-orbisd keys add -t secp256k1  alice
-# Import an existing private key
-orbisd keys add -t secp256k1 --pubkey <bas64> bob
-*/
-
 const (
 	flagAddType   = "type"
 	flagAddPubkey = "pubkey"
